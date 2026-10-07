@@ -1,0 +1,1 @@
+import{R as e,y as t}from"./_plugin-vue_export-helper-B24IcmBH.js";function n(n=1e3){let r=e(Date.now()),i=window.setInterval(()=>r.value=Date.now(),n);return t(()=>window.clearInterval(i)),r}export{n as t};

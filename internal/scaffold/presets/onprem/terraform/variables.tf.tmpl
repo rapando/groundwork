@@ -1,0 +1,8 @@
+variable "hosts" {
+  description = "Map of Ansible group to list of {name, ip}."
+  type = map(list(object({
+    name = string
+    ip   = string
+  })))
+  default = {}
+}

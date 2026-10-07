@@ -1,0 +1,7 @@
+bin/
+.groundwork/
+node_modules/
+web/e2e/screens/
+web/test-results/
+web/playwright-report/
+/dist/

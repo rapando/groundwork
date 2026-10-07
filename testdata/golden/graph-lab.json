@@ -1,0 +1,56 @@
+{
+  "mode": "standalone",
+  "empty": false,
+  "file_count": 4,
+  "iac_ratio": 1,
+  "terraform_roots": [
+    {
+      "path": "envs/dev",
+      "kind": "root",
+      "score": 5,
+      "providers": [
+        "aws"
+      ],
+      "tfvars": [
+        "envs/dev/terraform.tfvars"
+      ],
+      "evidence": [
+        {
+          "file": "envs/dev/main.tf",
+          "line": 1,
+          "note": "provider \"aws\" block"
+        },
+        {
+          "file": "envs/dev/terraform.tfvars",
+          "note": "tfvars file present"
+        }
+      ]
+    }
+  ],
+  "terraform_modules": [
+    {
+      "path": "modules/app",
+      "kind": "module",
+      "score": 0,
+      "referenced_by": [
+        "envs/dev"
+      ],
+      "evidence": [
+        {
+          "file": "envs/dev",
+          "note": "referenced as a module source by \"envs/dev\""
+        }
+      ]
+    }
+  ],
+  "ansible": [],
+  "ci": [],
+  "envs": [
+    {
+      "name": "dev",
+      "terraform": [
+        "envs/dev"
+      ]
+    }
+  ]
+}

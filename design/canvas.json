@@ -1,0 +1,163 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Code.dc.html": {
+      "expand": "fill",
+      "h": 1040,
+      "is_interactive": true,
+      "title": "Code explorer + verification",
+      "w": 1440,
+      "x": 0,
+      "y": 2000
+    },
+    "CodeVisual.dc.html": {
+      "expand": "fill",
+      "h": 1040,
+      "is_interactive": true,
+      "title": "Code — visualize (split)",
+      "w": 1440,
+      "x": 4560,
+      "y": 2000
+    },
+    "Detect.dc.html": {
+      "expand": "fill",
+      "h": 1320,
+      "is_interactive": true,
+      "title": "First run — existing code repo",
+      "w": 1440,
+      "x": 3040,
+      "y": 3240
+    },
+    "Graph.dc.html": {
+      "expand": "fill",
+      "h": 1120,
+      "is_interactive": true,
+      "title": "Resource graph",
+      "w": 1440,
+      "x": 3040,
+      "y": 2000
+    },
+    "Inventory.dc.html": {
+      "expand": "fill",
+      "h": 1120,
+      "is_interactive": true,
+      "title": "Inventory",
+      "w": 1440,
+      "x": 1520,
+      "y": 4760
+    },
+    "Light.dc.html": {
+      "expand": "fill",
+      "h": 1240,
+      "title": "Option B — Light & calm",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "Main.dc.html": {
+      "expand": "fill",
+      "h": 1460,
+      "is_interactive": true,
+      "title": "Option A — Dark ops console",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "Plan.dc.html": {
+      "expand": "fill",
+      "h": 1240,
+      "is_interactive": true,
+      "title": "Plan review + approval",
+      "w": 1440,
+      "x": 0,
+      "y": 4760
+    },
+    "Run.dc.html": {
+      "expand": "fill",
+      "h": 1120,
+      "is_interactive": true,
+      "title": "Run detail + logs",
+      "w": 1440,
+      "x": 1520,
+      "y": 2000
+    },
+    "Scaffold.dc.html": {
+      "expand": "fill",
+      "h": 1400,
+      "is_interactive": true,
+      "title": "First run — empty repo",
+      "w": 1440,
+      "x": 1520,
+      "y": 3240
+    },
+    "Troubleshoot.dc.html": {
+      "expand": "fill",
+      "h": 1160,
+      "is_interactive": true,
+      "title": "Troubleshoot",
+      "w": 1440,
+      "x": 0,
+      "y": 3240
+    },
+    "Variables.dc.html": {
+      "expand": "fill",
+      "h": 1160,
+      "is_interactive": true,
+      "title": "Variables + secrets",
+      "w": 1440,
+      "x": 3040,
+      "y": 4760
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-07T09:00:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "dirs": {
+      "kind": "title1",
+      "maxW": 2960,
+      "text": "Overview dashboard — two directions",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "gaps": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Plan, inventory, variables",
+      "w": 240,
+      "x": 0,
+      "y": 4460
+    },
+    "screens": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Option A — app screens",
+      "w": 240,
+      "x": 0,
+      "y": 1700
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Light.dc.html",
+    "Code.dc.html",
+    "CodeVisual.dc.html",
+    "Run.dc.html",
+    "Graph.dc.html",
+    "Troubleshoot.dc.html",
+    "Scaffold.dc.html",
+    "Detect.dc.html",
+    "Plan.dc.html",
+    "Inventory.dc.html",
+    "Variables.dc.html"
+  ],
+  "pages": [],
+  "title": "Groundwork — IaC Console"
+}

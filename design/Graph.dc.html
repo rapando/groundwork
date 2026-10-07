@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Groundwork — Resource graph</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0;background:#0D1012}
+a{color:#B8F36B}a:hover{color:#D6FF9E}
+.mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.st-ok{color:#5FD38D;background:rgba(95,211,141,.10)}
+.st-warn{color:#F5B647;background:rgba(245,182,71,.10)}
+.st-run{color:#7CC0FF;background:rgba(124,192,255,.12)}
+.nav{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;color:#AEB7BD;text-decoration:none;font-size:14px}
+.nav:hover{background:#1A1F23;color:#E6E9EB}
+.nav.on{background:#1C2226;color:#E6E9EB;box-shadow:inset 0 0 0 1px #2A3238}
+.btn{font:inherit;font-size:13px;font-weight:500;border-radius:6px;padding:0 14px;height:36px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;border:1px solid #2A3238;background:#161B1E;color:#E6E9EB;text-decoration:none}
+.btn.primary{background:#B8F36B;border-color:#B8F36B;color:#0D1012}
+.seg{font:inherit;font-size:13px;height:32px;padding:0 12px;border:0;border-radius:5px;background:transparent;color:#9AA4AB;cursor:pointer}
+.seg.on{background:#232A2F;color:#E6E9EB}
+.gridbg{background-color:#0A0C0E;background-image:radial-gradient(#1C2226 1px,transparent 1px);background-size:20px 20px}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #0D1012; color: #E6E9EB; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px">
+
+<aside style="flex: 1 1 232px; max-width: 100%; box-sizing: border-box; padding: 20px 14px; border-right: 1px solid #1E2428; display: flex; flex-direction: column; gap: 24px; background: #0B0E10">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 6px">
+<div style="width: 28px; height: 28px; border-radius: 6px; background: #B8F36B; display: grid; place-items: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1012" stroke-width="2.4" stroke-linecap="round"><path d="M3 20h18"></path><path d="M5 16h14"></path><path d="M8 12h8"></path><path d="M11 8h2"></path></svg></div>
+<div style="display: flex; flex-direction: column"><span class="mono" style="font-weight: 700; font-size: 14px">groundwork</span><span class="mono" style="font-size: 11px; color: #8B959C">v0.1.0 · :7420</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid #1E2428; border-radius: 8px; background: #111518">
+<span style="font-size: 11px; color: #8B959C; text-transform: uppercase; letter-spacing: .08em">Repository</span>
+<span class="mono" style="font-size: 13px; font-weight: 500">infra-platform</span>
+<span class="mono" style="font-size: 12px; color: #9AA4AB">main · 2 uncommitted</span>
+</div>
+<nav aria-label="Primary" style="display: flex; flex-direction: column; gap: 2px">
+<a class="nav" href="Main.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>Overview</a>
+<a class="nav" href="Code.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 4h6l2 2h8v14H4z"></path></svg>Code<span class="mono" style="margin-left: auto; font-size: 11px; color: #FF7A7A">1</span></a>
+<a class="nav" href="Run.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 3l14 9-14 9z"></path></svg>Runs<span class="mono" style="margin-left: auto; font-size: 11px; color: #7CC0FF">1 live</span></a>
+<a class="nav on" href="Graph.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="2.5"></circle><circle cx="19" cy="5" r="2.5"></circle><circle cx="19" cy="19" r="2.5"></circle><path d="M7.3 11l9.4-5M7.3 13l9.4 5"></path></svg>Graph</a>
+<a class="nav" href="Troubleshoot.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"></path><path d="M12 10v4M12 17h.01"></path></svg>Troubleshoot<span class="mono" style="margin-left: auto; font-size: 11px; color: #F5B647">3</span></a>
+<a class="nav" href="Inventory.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"></path></svg>Inventory</a>
+<a class="nav" href="Variables.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4c-2 0-3 1-3 3v2c0 1.5-1 3-2 3 1 0 2 1.5 2 3v2c0 2 1 3 3 3"></path><path d="M16 4c2 0 3 1 3 3v2c0 1.5 1 3 2 3-1 0-2 1.5-2 3v2c0 2-1 3-3 3"></path></svg>Variables</a>
+</nav>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 11px; color: #8B959C; text-transform: uppercase; letter-spacing: .08em; padding: 0 12px 4px">Environments</span>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5FD38D"></span>dev</a>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #F5B647"></span>staging<span class="mono" style="margin-left: auto; font-size: 11px; color: #F5B647">drift</span></a>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5FD38D"></span>prod</a>
+</div>
+</aside>
+
+<main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 24px; border-bottom: 1px solid #1E2428">
+<h1 style="margin: 0; font-size: 18px; font-weight: 600">Graph</h1>
+<div role="group" aria-label="Graph type" style="display: flex; gap: 2px; padding: 2px; border: 1px solid #2A3238; border-radius: 7px; background: #111518">
+<button class="seg on" type="button">Resources</button>
+<button class="seg" type="button">Modules</button>
+<button class="seg" type="button">Ansible plays</button>
+<button class="seg" type="button">Inventory</button>
+</div>
+<label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #9AA4AB">Stack
+<select aria-label="Stack" style="height: 32px; background: #111518; color: #E6E9EB; border: 1px solid #2A3238; border-radius: 6px; padding: 0 8px; font: inherit; font-size: 13px">
+<option>staging / network</option><option>prod / network</option><option>dev / app</option>
+</select>
+</label>
+<div style="margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 14px; font-size: 12px; color: #9AA4AB">
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 10px; border: 1px solid #3A444B; border-radius: 3px"></span>unchanged</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 10px; border: 1px dashed #F5B647; border-radius: 3px"></span>drift</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 10px; border: 1px solid #7CC0FF; border-radius: 3px"></span>~ update</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 10px; border: 1px solid #5FD38D; border-radius: 3px"></span>+ create</span>
+</div>
+</header>
+
+<div style="padding: 24px; display: flex; flex-direction: column; gap: 20px">
+<section aria-label="Dependency graph" style="border: 1px solid #1E2428; border-radius: 10px; overflow: hidden">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #1E2428; background: #12161A">
+<span class="mono" style="font-size: 12px; color: #9AA4AB">8 resources · 9 edges · from <span style="color: #E6E9EB">terraform graph</span> + last plan</span>
+<div style="margin-left: auto; display: flex; gap: 6px">
+<button class="btn" type="button" aria-label="Zoom in" style="height: 30px; width: 30px; padding: 0; justify-content: center">+</button>
+<button class="btn" type="button" aria-label="Zoom out" style="height: 30px; width: 30px; padding: 0; justify-content: center">−</button>
+<button class="btn" type="button" style="height: 30px; font-size: 12px">Fit</button>
+<button class="btn" type="button" style="height: 30px; font-size: 12px">Export SVG</button>
+</div>
+</div>
+<div class="gridbg" style="overflow-x: auto; padding: 24px">
+<div style="position: relative; width: 1040px; height: 416px">
+<svg width="32" height="8" viewBox="0 0 32 8" preserveAspectRatio="none" style="position: absolute; left: 224px; top: 204px; width: 32px; height: 8px; overflow: visible; fill: none; stroke: #4A555C; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M 0 4 L 32 4"></path></svg>
+<svg width="8" height="288" viewBox="0 0 8 288" preserveAspectRatio="none" style="position: absolute; left: 252px; top: 64px; width: 8px; height: 288px; overflow: visible; fill: none; stroke: #4A555C; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M 4 0 L 4 288"></path></svg>
+<svg width="31" height="8" viewBox="0 0 31 8" preserveAspectRatio="none" style="position: absolute; left: 256px; top: 60px; width: 31px; height: 8px; overflow: visible; fill: none; stroke: #4A555C; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-1" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#4A555C" stroke="none" style="stroke: none; fill: #4A555C; fill: context-stroke"/></marker></defs><path d="M 0 4 L 27 4" marker-end="url(#dc-arrow-head-filled-1)"></path></svg>
+<svg width="31" height="8" viewBox="0 0 31 8" preserveAspectRatio="none" style="position: absolute; left: 256px; top: 204px; width: 31px; height: 8px; overflow: visible; fill: none; stroke: #4A555C; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-2" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#4A555C" stroke="none" style="stroke: none; fill: #4A555C; fill: context-stroke"/></marker></defs><path d="M 0 4 L 27 4" marker-end="url(#dc-arrow-head-filled-2)"></path></svg>
+<svg width="31" height="8" viewBox="0 0 31 8" preserveAspectRatio="none" style="position: absolute; left: 256px; top: 348px; width: 31px; height: 8px; overflow: visible; fill: none; stroke: #4A555C; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-3" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#4A555C" stroke="none" style="stroke: none; fill: #4A555C; fill: context-stroke"/></marker></defs><path d="M 0 4 L 27 4" marker-end="url(#dc-arrow-head-filled-3)"></path></svg>
+<svg width="63" height="8" viewBox="0 0 63 8" preserveAspectRatio="none" style="position: absolute; left: 488px; top: 60px; width: 63px; height: 8px; overflow: visible; fill: none; stroke: #4A555C; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-4" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#4A555C" stroke="none" style="stroke: none; fill: #4A555C; fill: context-stroke"/></marker></defs><path d="M 0 4 L 59 4" marker-end="url(#dc-arrow-head-filled-4)"></path></svg>
+<svg width="63" height="8" viewBox="0 0 63 8" preserveAspectRatio="none" style="position: absolute; left: 488px; top: 204px; width: 63px; height: 8px; overflow: visible; fill: none; stroke: #4A555C; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-5" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#4A555C" stroke="none" style="stroke: none; fill: #4A555C; fill: context-stroke"/></marker></defs><path d="M 0 4 L 59 4" marker-end="url(#dc-arrow-head-filled-5)"></path></svg>
+<svg width="63" height="8" viewBox="0 0 63 8" preserveAspectRatio="none" style="position: absolute; left: 488px; top: 348px; width: 63px; height: 8px; overflow: visible; fill: none; stroke: #4A555C; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-6" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#4A555C" stroke="none" style="stroke: none; fill: #4A555C; fill: context-stroke"/></marker></defs><path d="M 0 4 L 59 4" marker-end="url(#dc-arrow-head-filled-6)"></path></svg>
+<svg width="63" height="8" viewBox="0 0 63 8" preserveAspectRatio="none" style="position: absolute; left: 752px; top: 204px; width: 63px; height: 8px; overflow: visible; fill: none; stroke: #4A555C; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-7" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#4A555C" stroke="none" style="stroke: none; fill: #4A555C; fill: context-stroke"/></marker></defs><path d="M 0 4 L 59 4" marker-end="url(#dc-arrow-head-filled-7)"></path></svg>
+<svg width="8" height="112" viewBox="0 0 8 112" preserveAspectRatio="none" style="position: absolute; left: 912px; top: 240px; width: 8px; height: 112px; overflow: visible; fill: none; stroke: #4A555C; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M 4 0 L 4 112"></path></svg>
+<svg width="163" height="8" viewBox="0 0 163 8" preserveAspectRatio="none" style="position: absolute; left: 753px; top: 348px; width: 163px; height: 8px; overflow: visible; fill: none; stroke: #4A555C; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-8" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#4A555C" stroke="none" style="stroke: none; fill: #4A555C; fill: context-stroke"/></marker></defs><path d="M 163 4 L 4 4" marker-end="url(#dc-arrow-head-filled-8)"></path></svg>
+
+<div class="mono" style="position: absolute; left: 24px; top: 176px; width: 200px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; align-items: center; background: #12161A; border: 1px solid #3A444B; border-radius: 8px; font-size: 13px; line-height: 20px"><span><span style="font-size: 11px; color: #8B959C">aws_vpc</span><br><b>main</b></span></div>
+<div class="mono" style="position: absolute; left: 288px; top: 32px; width: 200px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; align-items: center; background: #12161A; border: 1px solid #3A444B; border-radius: 8px; font-size: 13px; line-height: 20px"><span><span style="font-size: 11px; color: #8B959C">aws_internet_gateway</span><br><b>gw</b></span></div>
+<div class="mono" style="position: absolute; left: 288px; top: 176px; width: 200px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; align-items: center; background: #12161A; border: 1px solid #3A444B; border-radius: 8px; font-size: 13px; line-height: 20px"><span><span style="font-size: 11px; color: #8B959C">aws_subnet</span><br><b>public</b> <span style="color: #8B959C">×3</span></span></div>
+<div class="mono" style="position: absolute; left: 288px; top: 320px; width: 200px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; align-items: center; background: #121A22; border: 1px solid #7CC0FF; border-radius: 8px; font-size: 13px; line-height: 20px"><span><span style="font-size: 11px; color: #7CC0FF">aws_subnet · ~ update</span><br><b>private</b> <span style="color: #8B959C">×3</span></span></div>
+<div class="mono" style="position: absolute; left: 552px; top: 32px; width: 200px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; align-items: center; background: #1A1610; border: 1px dashed #F5B647; border-radius: 8px; box-shadow: 0 0 0 4px rgba(245,182,71,.18); font-size: 13px; line-height: 20px"><span><span style="font-size: 11px; color: #F5B647">aws_route_table · drift</span><br><b>public</b></span></div>
+<div class="mono" style="position: absolute; left: 552px; top: 176px; width: 200px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; align-items: center; background: #12161A; border: 1px solid #3A444B; border-radius: 8px; font-size: 13px; line-height: 20px"><span><span style="font-size: 11px; color: #8B959C">aws_nat_gateway</span><br><b>nat</b></span></div>
+<div class="mono" style="position: absolute; left: 552px; top: 320px; width: 200px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; align-items: center; background: #101A14; border: 1px solid #5FD38D; border-radius: 8px; font-size: 13px; line-height: 20px"><span><span style="font-size: 11px; color: #5FD38D">aws_route_table_assoc · +</span><br><b>private</b> <span style="color: #8B959C">×2</span></span></div>
+<div class="mono" style="position: absolute; left: 816px; top: 176px; width: 200px; height: 64px; box-sizing: border-box; padding: 10px 14px; display: flex; align-items: center; background: #12161A; border: 1px solid #3A444B; border-radius: 8px; font-size: 13px; line-height: 20px"><span><span style="font-size: 11px; color: #8B959C">aws_route_table</span><br><b>private</b></span></div>
+</div>
+</div>
+</section>
+
+<section aria-label="Selected resource" style="border: 1px solid #3A3220; border-radius: 10px; background: #12161A; display: flex; flex-wrap: wrap">
+<div style="flex: 1 1 300px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; border-right: 1px solid #1E2428">
+<span style="font-size: 11px; color: #8B959C; text-transform: uppercase; letter-spacing: .08em">Selected</span>
+<span class="mono" style="font-size: 15px; font-weight: 700">aws_route_table.public</span>
+<span class="pill st-warn" style="align-self: flex-start">drifted · detected 1h ago</span>
+<div class="mono" style="display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: 12px; color: #9AA4AB">
+<span>id</span><span style="color: #E6E9EB">rtb-0d91f2a7c3</span>
+<span>module</span><span style="color: #E6E9EB">modules/network</span>
+<span>defined</span><a href="Code.dc.html">routes.tf:18</a>
+<span>depends on</span><span style="color: #E6E9EB">aws_internet_gateway.gw</span>
+</div>
+</div>
+<div style="flex: 2 1 420px; min-width: 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+<span style="font-size: 11px; color: #8B959C; text-transform: uppercase; letter-spacing: .08em">Code vs. real infrastructure</span>
+<div style="overflow-x: auto">
+<table class="mono" style="width: 100%; min-width: 460px; border-collapse: collapse; font-size: 12.5px">
+<thead><tr style="color: #8B959C; text-align: left"><th style="font-weight: 500; padding: 6px 0">attribute</th><th style="font-weight: 500; padding: 6px 0">in code</th><th style="font-weight: 500; padding: 6px 0">actual</th></tr></thead>
+<tbody>
+<tr style="border-top: 1px solid #1E2428"><td style="padding: 8px 0">route[1].cidr_block</td><td style="padding: 8px 0; color: #8B959C">—</td><td style="padding: 8px 0; color: #F5B647">10.20.0.0/16</td></tr>
+<tr style="border-top: 1px solid #1E2428"><td style="padding: 8px 0">route[1].vpc_peering_id</td><td style="padding: 8px 0; color: #8B959C">—</td><td style="padding: 8px 0; color: #F5B647">pcx-04be1a</td></tr>
+<tr style="border-top: 1px solid #1E2428"><td style="padding: 8px 0">tags.ManagedBy</td><td style="padding: 8px 0">"terraform"</td><td style="padding: 8px 0; color: #F5B647">"console"</td></tr>
+</tbody>
+</table>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button class="btn" type="button">Copy change into code</button>
+<a class="btn primary" href="Run.dc.html">Revert with apply</a>
+<button class="btn" type="button">Ignore attribute</button>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1120}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

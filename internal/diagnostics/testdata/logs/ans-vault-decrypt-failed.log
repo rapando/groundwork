@@ -1,0 +1,37 @@
+
+PLAY [local-1] *****************************************************************
+
+TASK [ansible.builtin.debug] ***************************************************
+[ERROR]: Task failed: Finalization of task args for 'ansible.builtin.debug' failed: Error while resolving value for 'msg': Error rendering template: Attempt to use undecryptable variable: Decryption failed (no vault secrets were found that could decrypt).
+
+Task failed: Finalization of task args for 'ansible.builtin.debug' failed.
+Origin: /home/dev/infra/ansible/v.yml:4:7
+
+2   gather_facts: false
+3   tasks:
+4     - ansible.builtin.debug: { msg: "{{ api_token | length }}" }
+        ^ column 7
+
+<<< caused by >>>
+
+Error while resolving value for 'msg': Error rendering template.
+Origin: /home/dev/infra/ansible/v.yml:4:37
+
+2   gather_facts: false
+3   tasks:
+4     - ansible.builtin.debug: { msg: "{{ api_token | length }}" }
+                                      ^ column 37
+
+<<< caused by >>>
+
+Attempt to use undecryptable variable: Decryption failed (no vault secrets were found that could decrypt).
+Origin: /home/dev/infra/ansible/group_vars/all.yml:1:12
+
+1 api_token: !vault |
+             ^ column 12
+
+fatal: [local-1]: FAILED! => {"msg": "Task failed: Finalization of task args for 'ansible.builtin.debug' failed: Error while resolving value for 'msg': Error rendering template: Attempt to use undecryptable variable: Decryption failed (no vault secrets were found that could decrypt)."}
+
+PLAY RECAP *********************************************************************
+local-1                    : ok=0    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+

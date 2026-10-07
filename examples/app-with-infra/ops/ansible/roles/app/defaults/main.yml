@@ -1,0 +1,4 @@
+---
+app_binary: "{{ playbook_dir }}/../../../bin/app"
+app_port: 8080
+app_env: dev

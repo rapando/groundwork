@@ -1,0 +1,5 @@
+warn.yml:1:1: [warning] missing document start "---" (document-start)
+warn.yml:1:7: [error] too many spaces after colon (colons)
+bad.yml:1:1: [warning] missing document start "---" (document-start)
+bad.yml:3:3: [error] syntax error: expected <block end>, but found '<block mapping start>' (syntax)
+bad.yml:4:7: [error] too few spaces after comma (commas)

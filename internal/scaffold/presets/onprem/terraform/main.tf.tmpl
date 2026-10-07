@@ -1,0 +1,10 @@
+terraform {
+  required_version = ">= 1.5"
+}
+
+locals {
+  environment = {{ if eq .Layout "workspaces" }}terraform.workspace{{ else }}"{{ .Env }}"{{ end }}
+}
+
+# No cloud provider: hosts are declared as data and exposed to Ansible.
+# Replace with a provider of your choice (vsphere, libvirt, proxmox, ...).

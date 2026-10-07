@@ -1,0 +1,11 @@
+{
+  "mode": "embedded",
+  "empty": false,
+  "file_count": 2,
+  "iac_ratio": 0,
+  "terraform_roots": [],
+  "terraform_modules": [],
+  "ansible": [],
+  "ci": [],
+  "envs": []
+}

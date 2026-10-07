@@ -1,0 +1,47 @@
+# Lint rules explain a finding; they open and close with the check result.
+- id: yamllint-indentation
+  scope: any
+  category: lint
+  severity: warning
+  match:
+    any:
+      - diagnostic: { tool: yamllint, code: '^indentation$' }
+  title: 'Indentation in {{ .file }}'
+  explain: >
+    YAML nesting is set by indentation, so a wrong indent can silently move a key into (or out of) a block — a host into the wrong group, a var out of `vars:`.
+    yamllint expects consistent indentation ({{ .message }}).
+  steps:
+    - title: Fix the indentation
+      action: { kind: open, label: 'Open {{ .file }}:{{ .line }}', href: '/code/{{ .file }}?line={{ .line }}' }
+  resolve: diagnostic
+
+- id: ansible-lint-no-changed-when
+  scope: any
+  category: lint
+  severity: warning
+  match:
+    any:
+      - diagnostic: { tool: ansible-lint, code: '^no-changed-when$' }
+  title: 'Command task always reports "changed" ({{ .file }})'
+  explain: >
+    command and shell tasks can't tell whether they changed anything, so Ansible reports "changed" every run and handlers fire every time.
+    Add `changed_when:` (often `false` for read-only commands), or use `creates:` / `removes:`.
+  steps:
+    - title: Add changed_when
+      action: { kind: open, label: 'Open {{ .file }}:{{ .line }}', href: '/code/{{ .file }}?line={{ .line }}' }
+  resolve: diagnostic
+
+- id: ansible-lint-name-casing
+  scope: any
+  category: lint
+  severity: info
+  match:
+    any:
+      - diagnostic: { tool: ansible-lint, code: '^name\[casing\]$' }
+  title: 'Task name should start with a capital ({{ .file }})'
+  explain: >
+    ansible-lint wants task and play names to start with an uppercase letter, so run output reads consistently. Cosmetic; it doesn't affect what runs.
+  steps:
+    - title: Rename the task
+      action: { kind: open, label: 'Open {{ .file }}:{{ .line }}', href: '/code/{{ .file }}?line={{ .line }}' }
+  resolve: diagnostic

@@ -1,0 +1,10 @@
+- name: Baseline for all hosts
+  hosts: all
+  become: true
+  roles:
+{{- range .Roles }}
+    - {{ . }}
+{{- end }}
+{{- if not .Roles }}
+    []
+{{- end }}

@@ -1,0 +1,55 @@
+
+PLAY [Configure web] ***********************************************************
+
+TASK [web : Write config] ******************************************************
+--- before
++++ after: /tmp/lab/web-1.conf
+@@ -0,0 +1 @@
++workers=4 port=8080
+
+changed: [web-1]
+--- before
++++ after: /tmp/lab/web-2.conf
+@@ -0,0 +1 @@
++workers=3 port=8080
+
+changed: [web-2]
+
+TASK [Say hello] ***************************************************************
+ok: [web-1] => {
+    "msg": "hello web-1"
+}
+ok: [web-2] => {
+    "msg": "hello web-2"
+}
+
+TASK [Fail on canary] **********************************************************
+skipping: [web-1]
+[ERROR]: Task failed: Action failed: canary refuses
+Origin: /repo/ansible-lab/site.yml:11:7
+
+ 9       ansible.builtin.debug:
+10         msg: "hello {{ inventory_hostname }}"
+11     - name: Fail on canary
+         ^ column 7
+
+fatal: [web-2]: FAILED! => {"changed": false, "msg": "canary refuses"}
+
+PLAY [Reach the flaky host] ****************************************************
+
+TASK [Ping] ********************************************************************
+[ERROR]: Task failed: Failed to connect to the host via ssh: ssh: connect to host 127.0.0.1 port 1: Connection refused
+Origin: /repo/ansible-lab/site.yml:20:7
+
+18   gather_facts: false
+19   tasks:
+20     - name: Ping
+         ^ column 7
+
+fatal: [down-1]: UNREACHABLE! => {"changed": false, "msg": "Task failed: Failed to connect to the host via ssh: ssh: connect to host 127.0.0.1 port 1: Connection refused", "unreachable": true}
+
+PLAY RECAP *********************************************************************
+down-1                     : ok=0    changed=0    unreachable=1    failed=0    skipped=0    rescued=0    ignored=0   
+web-1                      : ok=2    changed=1    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+web-2                      : ok=2    changed=1    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+

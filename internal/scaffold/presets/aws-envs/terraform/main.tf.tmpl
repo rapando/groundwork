@@ -1,0 +1,25 @@
+terraform {
+  required_version = ">= 1.5"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+locals {
+  environment = {{ if eq .Layout "workspaces" }}terraform.workspace{{ else }}"{{ .Env }}"{{ end }}
+}
+
+provider "aws" {
+  region = var.region
+}
+
+module "network" {
+  source = "{{ .ModuleSource }}"
+
+  name = "${var.project}-${local.environment}"
+  cidr = var.vpc_cidr
+}

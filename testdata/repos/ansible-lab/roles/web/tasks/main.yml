@@ -1,0 +1,6 @@
+---
+- name: Write config
+  ansible.builtin.copy:
+    dest: "{{ lab_dir }}/{{ inventory_hostname }}.conf"
+    content: "workers={{ nginx_workers }} port={{ app_port }}\n"
+    mode: "0644"

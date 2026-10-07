@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Groundwork — Variables and secrets</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0;background:#0D1012}
+a{color:#B8F36B}a:hover{color:#D6FF9E}
+.mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+.lbl{font-size:11px;color:#8B959C;text-transform:uppercase;letter-spacing:.08em}
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.st-ok{color:#5FD38D;background:rgba(95,211,141,.10)}
+.st-warn{color:#F5B647;background:rgba(245,182,71,.10)}
+.st-fail{color:#FF7A7A;background:rgba(255,122,122,.10)}
+.st-idle{color:#9AA4AB;background:rgba(154,164,171,.10)}
+.nav{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;color:#AEB7BD;text-decoration:none;font-size:14px}
+.nav:hover{background:#1A1F23;color:#E6E9EB}
+.nav.on{background:#1C2226;color:#E6E9EB;box-shadow:inset 0 0 0 1px #2A3238}
+.btn{font:inherit;font-size:13px;font-weight:500;border-radius:6px;padding:0 14px;height:36px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;border:1px solid #2A3238;background:#161B1E;color:#E6E9EB;text-decoration:none}
+.btn.primary{background:#B8F36B;border-color:#B8F36B;color:#0D1012}
+.seg{font:inherit;font-size:13px;height:30px;padding:0 12px;border:0;border-radius:5px;background:transparent;color:#9AA4AB;cursor:pointer}
+.seg.on{background:#2A3238;color:#E6E9EB}
+.vr{display:grid;grid-template-columns:minmax(170px,1.1fr) repeat(3,minmax(150px,1fr));gap:0;border-top:1px solid #1A1F23}
+.vr>*{padding:10px 14px;min-width:0}
+.vr.sel{background:#1A1213;box-shadow:inset 3px 0 0 #FF7A7A}
+.cv{display:flex;flex-direction:column;gap:2px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12.5px}
+.cv small{font-size:11px;color:#7E8A91;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-set{color:#E6E9EB}.c-def{color:#8B959C;font-style:italic}.c-miss{color:#FF8A8A;font-weight:700}.c-sec{color:#F5B647}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #0D1012; color: #E6E9EB; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px">
+
+<aside style="flex: 1 1 232px; max-width: 100%; box-sizing: border-box; padding: 20px 14px; border-right: 1px solid #1E2428; display: flex; flex-direction: column; gap: 24px; background: #0B0E10">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 6px">
+<div style="width: 28px; height: 28px; border-radius: 6px; background: #B8F36B; display: grid; place-items: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1012" stroke-width="2.4" stroke-linecap="round"><path d="M3 20h18"></path><path d="M5 16h14"></path><path d="M8 12h8"></path><path d="M11 8h2"></path></svg></div>
+<div style="display: flex; flex-direction: column"><span class="mono" style="font-weight: 700; font-size: 14px">groundwork</span><span class="mono" style="font-size: 11px; color: #8B959C">v0.1.0 · :7420</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid #1E2428; border-radius: 8px; background: #111518">
+<span class="lbl">Repository</span>
+<span class="mono" style="font-size: 13px; font-weight: 500">infra-platform</span>
+<span class="mono" style="font-size: 12px; color: #9AA4AB">main · 2 uncommitted</span>
+</div>
+<nav aria-label="Primary" style="display: flex; flex-direction: column; gap: 2px">
+<a class="nav" href="Main.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>Overview</a>
+<a class="nav" href="Code.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 4h6l2 2h8v14H4z"></path></svg>Code<span class="mono" style="margin-left: auto; font-size: 11px; color: #FF7A7A">1</span></a>
+<a class="nav" href="Run.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 3l14 9-14 9z"></path></svg>Runs<span class="mono" style="margin-left: auto; font-size: 11px; color: #7CC0FF">1 live</span></a>
+<a class="nav" href="Graph.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="2.5"></circle><circle cx="19" cy="5" r="2.5"></circle><circle cx="19" cy="19" r="2.5"></circle><path d="M7.3 11l9.4-5M7.3 13l9.4 5"></path></svg>Graph</a>
+<a class="nav" href="Troubleshoot.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"></path><path d="M12 10v4M12 17h.01"></path></svg>Troubleshoot<span class="mono" style="margin-left: auto; font-size: 11px; color: #F5B647">3</span></a>
+<a class="nav" href="Inventory.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"></path></svg>Inventory</a>
+<a class="nav on" href="Variables.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4c-2 0-3 1-3 3v2c0 1.5-1 3-2 3 1 0 2 1.5 2 3v2c0 2 1 3 3 3"></path><path d="M16 4c2 0 3 1 3 3v2c0 1.5 1 3 2 3-1 0-2 1.5-2 3v2c0 2-1 3-3 3"></path></svg>Variables<span class="mono" style="margin-left: auto; font-size: 11px; color: #FF7A7A">1</span></a>
+</nav>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span class="lbl" style="padding: 0 12px 4px">Environments</span>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5FD38D"></span>dev</a>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #F5B647"></span>staging<span class="mono" style="margin-left: auto; font-size: 11px; color: #F5B647">drift</span></a>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5FD38D"></span>prod</a>
+</div>
+</aside>
+
+<main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 24px; border-bottom: 1px solid #1E2428">
+<h1 style="margin: 0; font-size: 18px; font-weight: 600">Variables</h1>
+<div role="group" aria-label="Source" style="display: flex; gap: 2px; padding: 2px; border: 1px solid #2A3238; border-radius: 7px; background: #111518">
+<button class="seg on" type="button">Terraform · 24</button>
+<button class="seg" type="button">Ansible · 61</button>
+<button class="seg" type="button">Secrets · 4</button>
+</div>
+<label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #9AA4AB">Stack
+<select aria-label="Stack" style="height: 32px; background: #111518; color: #E6E9EB; border: 1px solid #2A3238; border-radius: 6px; padding: 0 8px; font: inherit; font-size: 13px"><option>k8s-cluster</option><option>network</option><option>database</option></select>
+</label>
+<label style="flex: 1 1 200px; max-width: 320px; margin-left: auto; display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border: 1px solid #2A3238; border-radius: 6px; color: #8B959C">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+<input type="search" placeholder="Find variable" aria-label="Find variable" style="flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: #E6E9EB; font: inherit; font-size: 13px">
+</label>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; flex: 1">
+<div style="flex: 999 1 600px; min-width: 0; display: flex; flex-direction: column; gap: 20px; padding: 20px 24px 28px">
+<div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: #9AA4AB">
+<span><span class="mono c-set">value</span> set in tfvars</span>
+<span><span class="mono c-def">default</span> from variables.tf</span>
+<span><span class="mono c-sec">••••</span> secret</span>
+<span><span class="mono c-miss">missing</span> required, no value</span>
+<label style="margin-left: auto; display: flex; align-items: center; gap: 6px"><input type="checkbox" style="accent-color: #B8F36B">Only rows that differ</label>
+</div>
+
+<section aria-label="Variables by environment" style="border: 1px solid #1E2428; border-radius: 10px; background: #12161A; overflow-x: auto">
+<div style="min-width: 720px">
+<div class="vr" style="border-top: 0; color: #8B959C; font-size: 12px"><span>variable</span><span class="mono">dev</span><span class="mono">staging</span><span class="mono">prod</span></div>
+<sc-for list="{{vars}}" as="v" hint-placeholder-count="8">
+<div class="vr {{v.sel}}">
+<span class="cv"><span style="color: #E6E9EB">{{v.name}}</span><small>{{v.type}}</small></span>
+<sc-for list="{{v.cells}}" as="c" hint-placeholder-count="3">
+<span class="cv"><span class="{{c.cls}}">{{c.val}}</span><small>{{c.src}}</small></span>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section aria-label="Secrets" style="border: 1px solid #1E2428; border-radius: 10px; background: #12161A">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid #1E2428">
+<h2 style="margin: 0; font-size: 14px; font-weight: 600">Secrets</h2>
+<span style="font-size: 12px; color: #8B959C">decrypted only in memory, only when you ask</span>
+<button class="btn" type="button" style="margin-left: auto; height: 30px; font-size: 12px">Scan for plaintext secrets</button>
+</div>
+<div style="overflow-x: auto">
+<div style="min-width: 680px">
+<sc-for list="{{secrets}}" as="s" hint-placeholder-count="4">
+<div style="display: grid; grid-template-columns: minmax(130px, 1fr) minmax(200px, 1.6fr) 150px 120px; gap: 12px; align-items: center; padding: 11px 18px; border-top: 1px solid #1A1F23">
+<span class="mono" style="font-size: 12.5px">{{s.name}}</span>
+<span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12.5px">{{s.store}}</span><span class="mono" style="font-size: 11px; color: #8B959C">{{s.path}}</span></span>
+<span class="pill {{s.cls}}" style="justify-self: start">{{s.state}}</span>
+<button class="btn" type="button" style="height: 28px; font-size: 12px; justify-self: end">{{s.action}}</button>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 18px; border-top: 1px solid #3A2626; background: #161011; border-radius: 0 0 10px 10px">
+<span class="pill st-fail">plaintext</span>
+<span class="mono" style="font-size: 12.5px">envs/dev/terraform.tfvars:14</span>
+<span style="font-size: 12.5px; color: #B8C0C5">datadog_api_key looks like an API key committed in plain text.</span>
+<button class="btn" type="button" style="margin-left: auto; height: 30px; font-size: 12px">Move to SOPS</button>
+</div>
+</section>
+</div>
+
+<aside aria-label="Variable detail" style="flex: 1 1 300px; max-width: 100%; box-sizing: border-box; border-left: 1px solid #1E2428; padding: 20px; display: flex; flex-direction: column; gap: 18px; background: #0F1315">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span class="lbl">Selected</span>
+<span class="mono" style="font-size: 16px; font-weight: 700">alert_email</span>
+<span class="pill st-fail" style="align-self: flex-start">missing in staging</span>
+</div>
+<div class="mono" style="display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: 12px; color: #9AA4AB">
+<span>type</span><span style="color: #E6E9EB">string</span>
+<span>required</span><span style="color: #E6E9EB">yes (no default)</span>
+<span>validation</span><span style="color: #E6E9EB; overflow-wrap: anywhere">can(regex("@", var.alert_email))</span>
+<span>declared</span><a href="Code.dc.html">variables.tf:31</a>
+<span>used in</span><a href="Code.dc.html">monitoring.tf:8, :22</a>
+</div>
+<p style="margin: 0; font-size: 13px; color: #B8C0C5; line-height: 1.5">"Where CloudWatch alarms are sent." Plans for staging will fail until this is set.</p>
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid #1E2428; border-radius: 10px; background: #12161A">
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #9AA4AB">Value for staging
+<input type="text" placeholder="ops-staging@[YOUR DOMAIN]" style="height: 36px; background: #0A0C0E; border: 1px solid #2A3238; border-radius: 6px; color: #E6E9EB; padding: 0 10px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px">
+</label>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #9AA4AB">Write to
+<select style="height: 36px; background: #0A0C0E; border: 1px solid #2A3238; border-radius: 6px; color: #E6E9EB; padding: 0 8px; font-family: 'JetBrains Mono', monospace; font-size: 12px"><option>envs/staging/terraform.tfvars</option><option>secrets/staging.enc.yaml (SOPS)</option></select>
+</label>
+<button class="btn primary" type="button">Save and validate</button>
+</div>
+</aside>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1160}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const S = (val, src) => ({ val, src, cls: 'c-set' });
+    const D = (val) => ({ val, src: 'default', cls: 'c-def' });
+    const X = (src) => ({ val: '••••••••', src, cls: 'c-sec' });
+    const M = () => ({ val: 'missing', src: 'required', cls: 'c-miss' });
+    return {
+      vars: [
+        { name: 'environment', type: 'string', sel: '', cells: [S('"dev"', 'dev.tfvars'), S('"staging"', 'staging.tfvars'), S('"prod"', 'prod.tfvars')] },
+        { name: 'vpc_cidr', type: 'string', sel: '', cells: [S('10.10.0.0/16', 'dev.tfvars'), S('10.20.0.0/16', 'staging.tfvars'), S('10.30.0.0/16', 'prod.tfvars')] },
+        { name: 'node_count', type: 'number', sel: '', cells: [S('2', 'dev.tfvars'), S('3', 'staging.tfvars'), S('6', 'prod.tfvars')] },
+        { name: 'instance_type', type: 'string', sel: '', cells: [D('"t3.medium"'), S('"t3.large"', 'staging.tfvars'), S('"m6i.large"', 'prod.tfvars')] },
+        { name: 'k8s_version', type: 'string', sel: '', cells: [D('"[VERSION]"'), D('"[VERSION]"'), D('"[VERSION]"')] },
+        { name: 'deletion_protection', type: 'bool', sel: '', cells: [D('false'), D('false'), S('true', 'prod.tfvars')] },
+        { name: 'alert_email', type: 'string · required', sel: 'sel', cells: [S('"ops-dev@…"', 'dev.tfvars'), M(), S('"ops@…"', 'prod.tfvars')] },
+        { name: 'db_password', type: 'string · sensitive', sel: '', cells: [X('sops: dev.enc.yaml'), X('sops: staging.enc.yaml'), X('sops: prod.enc.yaml')] }
+      ],
+      secrets: [
+        { name: 'db_password', store: 'SOPS (age key)', path: 'secrets/*.enc.yaml', state: 'can decrypt', cls: 'st-ok', action: 'Reveal' },
+        { name: 'tls_cert_key', store: 'ansible-vault', path: 'group_vars/prod/vault.yml', state: 'can decrypt', cls: 'st-ok', action: 'Reveal' },
+        { name: 'ghcr_token', store: 'ansible-vault · vault-id ci', path: 'group_vars/all/vault.yml', state: 'wrong password', cls: 'st-fail', action: 'Set password file' },
+        { name: 'AWS credentials', store: 'not in repo · AWS profile', path: '~/.aws/config [staging]', state: 'from env', cls: 'st-idle', action: 'Check' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

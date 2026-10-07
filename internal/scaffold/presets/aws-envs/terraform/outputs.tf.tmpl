@@ -1,0 +1,10 @@
+output "vpc_id" {
+  value = module.network.vpc_id
+}
+
+# Hosts for Ansible. Populate with your instances, e.g.
+#   { web = [{ name = "web-1", ip = aws_instance.web[0].private_ip }] }
+output "ansible_hosts" {
+  description = "Map of Ansible group to list of {name, ip}."
+  value       = {}
+}

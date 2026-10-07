@@ -1,0 +1,8 @@
+
+PLAY [web] *********************************************************************
+
+TASK [Gathering Facts] *********************************************************
+fatal: [web-2]: UNREACHABLE! => {"changed": false, "msg": "Failed to connect to the host via ssh: @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\r\n@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @\r\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\r\nIT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!\r\nSomeone could be eavesdropping on you right now (man-in-the-middle attack)!\r\nIt is also possible that a host key has just been changed.\r\nThe fingerprint for the ED25519 key sent by the remote host is\nSHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA.\r\nPlease contact your system administrator.\r\nAdd correct host key in /home/dev/.ssh/known_hosts to get rid of this message.\r\nOffending ED25519 key in /home/dev/.ssh/known_hosts:14\r\nHost key for 10.0.1.12 has changed and you have requested strict checking.\r\nHost key verification failed.", "unreachable": true}
+
+PLAY RECAP *********************************************************************
+web-2                      : ok=0    changed=0    unreachable=1    failed=0    skipped=0    rescued=0    ignored=0

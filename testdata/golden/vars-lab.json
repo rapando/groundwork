@@ -1,0 +1,54 @@
+{
+  "mode": "standalone",
+  "empty": false,
+  "file_count": 7,
+  "iac_ratio": 1,
+  "terraform_roots": [
+    {
+      "path": "envs/dev",
+      "kind": "root",
+      "score": 2,
+      "tfvars": [
+        "envs/dev/override.auto.tfvars",
+        "envs/dev/terraform.tfvars"
+      ],
+      "evidence": [
+        {
+          "file": "envs/dev/override.auto.tfvars",
+          "note": "tfvars file present"
+        }
+      ]
+    },
+    {
+      "path": "envs/prod",
+      "kind": "root",
+      "score": 2,
+      "tfvars": [
+        "envs/prod/terraform.tfvars"
+      ],
+      "evidence": [
+        {
+          "file": "envs/prod/terraform.tfvars",
+          "note": "tfvars file present"
+        }
+      ]
+    }
+  ],
+  "terraform_modules": [],
+  "ansible": [],
+  "ci": [],
+  "envs": [
+    {
+      "name": "dev",
+      "terraform": [
+        "envs/dev"
+      ]
+    },
+    {
+      "name": "prod",
+      "terraform": [
+        "envs/prod"
+      ]
+    }
+  ]
+}

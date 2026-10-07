@@ -1,0 +1,8 @@
+{"playbook": "__adhoc_playbook__", "type": "playbook_start", "t": 1791385157.379997}
+{"play": "Ansible Ad-Hoc", "type": "play_start", "t": 1791385157.3803608}
+{"play": "Ansible Ad-Hoc", "task": "ping", "action": "ping", "type": "task_start", "t": 1791385157.386879}
+{"play": "Ansible Ad-Hoc", "task": "ping", "action": "ping", "host": "down-1", "status": "unreachable", "changed": false, "msg": "Task failed: Failed to connect to the host via ssh: ssh: connect to host 127.0.0.1 port 1: Connection refused", "diff": null, "duration": 0.064, "type": "host_result", "t": 1791385157.451127}
+{"play": "Ansible Ad-Hoc", "task": "ping", "action": "ping", "host": "web-1", "status": "ok", "changed": false, "msg": null, "diff": null, "duration": 0.329, "type": "host_result", "t": 1791385157.716038}
+{"play": "Ansible Ad-Hoc", "task": "ping", "action": "ping", "host": "db-1", "status": "ok", "changed": false, "msg": null, "diff": null, "duration": 0.329, "type": "host_result", "t": 1791385157.716154}
+{"play": "Ansible Ad-Hoc", "task": "ping", "action": "ping", "host": "web-2", "status": "ok", "changed": false, "msg": null, "diff": null, "duration": 0.329, "type": "host_result", "t": 1791385157.716238}
+{"hosts": {"db-1": {"ok": 1, "changed": 0, "failures": 0, "unreachable": 0, "skipped": 0, "rescued": 0, "ignored": 0}, "down-1": {"ok": 0, "changed": 0, "failures": 0, "unreachable": 1, "skipped": 0, "rescued": 0, "ignored": 0}, "web-1": {"ok": 1, "changed": 0, "failures": 0, "unreachable": 0, "skipped": 0, "rescued": 0, "ignored": 0}, "web-2": {"ok": 1, "changed": 0, "failures": 0, "unreachable": 0, "skipped": 0, "rescued": 0, "ignored": 0}}, "type": "stats", "t": 1791385157.716694}

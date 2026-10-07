@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Groundwork — Code explorer</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0;background:#0D1012}
+a{color:#B8F36B}a:hover{color:#D6FF9E}
+.mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.st-ok{color:#5FD38D;background:rgba(95,211,141,.10)}
+.st-warn{color:#F5B647;background:rgba(245,182,71,.10)}
+.st-fail{color:#FF7A7A;background:rgba(255,122,122,.10)}
+.st-run{color:#7CC0FF;background:rgba(124,192,255,.12)}
+.st-idle{color:#9AA4AB;background:rgba(154,164,171,.10)}
+.nav{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;color:#AEB7BD;text-decoration:none;font-size:14px}
+.nav:hover{background:#1A1F23;color:#E6E9EB}
+.nav.on{background:#1C2226;color:#E6E9EB;box-shadow:inset 0 0 0 1px #2A3238}
+.btn{font:inherit;font-size:13px;font-weight:500;border-radius:6px;padding:0 14px;height:36px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;border:1px solid #2A3238;background:#161B1E;color:#E6E9EB;text-decoration:none}
+.btn.primary{background:#B8F36B;border-color:#B8F36B;color:#0D1012}
+.tree{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:4px;color:#C3CBD0;text-decoration:none;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12.5px;white-space:nowrap}
+.tree:hover{background:#1A1F23;color:#E6E9EB}
+.tree.on{background:#1F2A1A;color:#E6E9EB}
+.cnt{margin-left:auto;font-size:11px}
+.ln{display:grid;grid-template-columns:52px minmax(0,1fr);font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;line-height:22px;white-space:pre}
+.ln>span:first-child{color:#5B666D;text-align:right;padding-right:16px}
+.k{color:#7CC0FF}.s{color:#B8F36B}.v{color:#F5B647}.c{color:#6E7A82}
+.tab{font:inherit;font-size:12px;background:transparent;border:0;border-bottom:2px solid transparent;color:#9AA4AB;height:38px;padding:0 4px;cursor:pointer}
+.tab.on{color:#E6E9EB;border-bottom-color:#B8F36B}
+.seg{font:inherit;font-size:13px;height:30px;padding:0 12px;border:0;border-radius:5px;background:transparent;color:#9AA4AB;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.seg.on{background:#2A3238;color:#E6E9EB}
+.gridbg{background-color:#0A0C0E;background-image:radial-gradient(#1C2226 1px,transparent 1px);background-size:20px 20px}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #0D1012; color: #E6E9EB; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px">
+
+<aside style="flex: 1 1 232px; max-width: 100%; box-sizing: border-box; padding: 20px 14px; border-right: 1px solid #1E2428; display: flex; flex-direction: column; gap: 24px; background: #0B0E10">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 6px">
+<div style="width: 28px; height: 28px; border-radius: 6px; background: #B8F36B; display: grid; place-items: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1012" stroke-width="2.4" stroke-linecap="round"><path d="M3 20h18"></path><path d="M5 16h14"></path><path d="M8 12h8"></path><path d="M11 8h2"></path></svg></div>
+<div style="display: flex; flex-direction: column"><span class="mono" style="font-weight: 700; font-size: 14px">groundwork</span><span class="mono" style="font-size: 11px; color: #8B959C">v0.1.0 · :7420</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid #1E2428; border-radius: 8px; background: #111518">
+<span style="font-size: 11px; color: #8B959C; text-transform: uppercase; letter-spacing: .08em">Repository</span>
+<span class="mono" style="font-size: 13px; font-weight: 500">infra-platform</span>
+<span class="mono" style="font-size: 12px; color: #9AA4AB">main · 2 uncommitted</span>
+</div>
+<nav aria-label="Primary" style="display: flex; flex-direction: column; gap: 2px">
+<a class="nav" href="Main.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>Overview</a>
+<a class="nav on" href="Code.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 4h6l2 2h8v14H4z"></path></svg>Code<span class="mono" style="margin-left: auto; font-size: 11px; color: #FF7A7A">1</span></a>
+<a class="nav" href="Run.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 3l14 9-14 9z"></path></svg>Runs<span class="mono" style="margin-left: auto; font-size: 11px; color: #7CC0FF">1 live</span></a>
+<a class="nav" href="Graph.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="2.5"></circle><circle cx="19" cy="5" r="2.5"></circle><circle cx="19" cy="19" r="2.5"></circle><path d="M7.3 11l9.4-5M7.3 13l9.4 5"></path></svg>Graph</a>
+<a class="nav" href="Troubleshoot.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"></path><path d="M12 10v4M12 17h.01"></path></svg>Troubleshoot<span class="mono" style="margin-left: auto; font-size: 11px; color: #F5B647">3</span></a>
+<a class="nav" href="Inventory.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"></path></svg>Inventory</a>
+<a class="nav" href="Variables.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4c-2 0-3 1-3 3v2c0 1.5-1 3-2 3 1 0 2 1.5 2 3v2c0 2 1 3 3 3"></path><path d="M16 4c2 0 3 1 3 3v2c0 1.5 1 3 2 3-1 0-2 1.5-2 3v2c0 2-1 3-3 3"></path></svg>Variables</a>
+</nav>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 11px; color: #8B959C; text-transform: uppercase; letter-spacing: .08em; padding: 0 12px 4px">Environments</span>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5FD38D"></span>dev</a>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #F5B647"></span>staging<span class="mono" style="margin-left: auto; font-size: 11px; color: #F5B647">drift</span></a>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5FD38D"></span>prod</a>
+</div>
+</aside>
+
+<main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 24px; border-bottom: 1px solid #1E2428">
+<nav aria-label="Breadcrumb" class="mono" style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; color: #8B959C">
+<a href="#" style="color: #9AA4AB; text-decoration: none">terraform</a><span>/</span><a href="#" style="color: #9AA4AB; text-decoration: none">modules</a><span>/</span><a href="#" style="color: #9AA4AB; text-decoration: none">k8s-cluster</a><span>/</span><span style="color: #E6E9EB">main.tf</span>
+<span style="margin-left: 6px; font-size: 11px; color: #F5B647">● modified</span>
+</nav>
+<div style="margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<div role="group" aria-label="View" style="display: flex; gap: 2px; padding: 2px; border: 1px solid #2A3238; border-radius: 7px; background: #111518">
+<button class="seg {{codeCls}}" type="button" onClick="{{setCode}}" aria-pressed="{{codeOn}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"></path></svg>Code</button>
+<button class="seg {{splitCls}}" type="button" onClick="{{setSplit}}" aria-pressed="{{splitOn}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M12 4v16"></path></svg>Split</button>
+<button class="seg {{visualCls}}" type="button" onClick="{{setVisual}}" aria-pressed="{{visualOn}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="8" height="6" rx="1"></rect><rect x="13" y="15" width="8" height="6" rx="1"></rect><path d="M7 9v6h6"></path></svg>Visualize</button>
+</div>
+<button class="btn" type="button">Save <span class="mono" style="font-size: 11px; color: #8B959C">⌘S</span></button>
+<button class="btn" type="button">Format</button>
+<button class="btn" type="button">Validate</button>
+<button class="btn" type="button" aria-label="Open in external editor"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-9 9"></path><path d="M18 14v6H4V6h6"></path></svg>Open in editor</button>
+<a class="btn primary" href="Plan.dc.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"></path></svg>Plan…</a>
+</div>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; flex: 1; min-height: 0">
+
+<section aria-label="Repository files" style="flex: 1 1 248px; max-width: 100%; box-sizing: border-box; border-right: 1px solid #1E2428; padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; background: #0F1315">
+<label style="display: flex; align-items: center; gap: 8px; height: 32px; margin: 0 4px 8px; padding: 0 10px; border: 1px solid #2A3238; border-radius: 6px; color: #8B959C">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+<input type="search" placeholder="Filter files" aria-label="Filter files" style="flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: #E6E9EB; font: inherit; font-size: 12px">
+</label>
+<div role="group" aria-label="Files shown" style="display: flex; gap: 2px; padding: 2px; margin: 0 4px 8px; border: 1px solid #2A3238; border-radius: 7px; background: #111518">
+<button class="seg on" type="button" style="flex: 1; justify-content: center; height: 26px; font-size: 12px">IaC only</button>
+<button class="seg" type="button" style="flex: 1; justify-content: center; height: 26px; font-size: 12px">All files</button>
+</div>
+<span style="font-size: 11px; color: #8B959C; text-transform: uppercase; letter-spacing: .08em; padding: 6px 10px">Terraform</span>
+<a class="tree" href="#">▾ envs/</a>
+<a class="tree" href="#" style="padding-left: 26px">▸ dev/<span class="cnt" style="color: #5FD38D">✓</span></a>
+<a class="tree" href="#" style="padding-left: 26px">▸ staging/<span class="cnt" style="color: #F5B647">drift</span></a>
+<a class="tree" href="#" style="padding-left: 26px">▸ prod/<span class="cnt" style="color: #8B959C">locked</span></a>
+<a class="tree" href="#">▾ modules/</a>
+<a class="tree" href="#" style="padding-left: 26px">▸ network/</a>
+<a class="tree" href="#" style="padding-left: 26px">▾ k8s-cluster/<span class="cnt" style="color: #FF7A7A">1</span></a>
+<a class="tree on" href="#" style="padding-left: 42px">main.tf<span class="cnt" style="color: #FF7A7A">1 err</span></a>
+<a class="tree" href="#" style="padding-left: 42px">variables.tf</a>
+<a class="tree" href="#" style="padding-left: 42px">outputs.tf</a>
+<a class="tree" href="#" style="padding-left: 42px">versions.tf</a>
+<a class="tree" href="#" style="padding-left: 26px">▸ database/</a>
+<span style="font-size: 11px; color: #8B959C; text-transform: uppercase; letter-spacing: .08em; padding: 14px 10px 6px">Ansible</span>
+<a class="tree" href="#">▸ inventory/<span class="cnt" style="color: #8B959C">22 hosts</span></a>
+<a class="tree" href="#">▾ playbooks/</a>
+<a class="tree" href="#" style="padding-left: 26px">site.yml</a>
+<a class="tree" href="#" style="padding-left: 26px">db.yml</a>
+<a class="tree" href="#">▾ roles/</a>
+<a class="tree" href="#" style="padding-left: 26px">▸ common/</a>
+<a class="tree" href="#" style="padding-left: 26px">▸ postgres/<span class="cnt" style="color: #F5B647">5 warn</span></a>
+<a class="tree" href="#" style="padding-left: 26px">▸ nginx/</a>
+<span style="height: 1px; background: #1E2428; margin: 10px 6px"></span>
+<a class="tree" href="#">groundwork.yaml</a>
+</section>
+
+<div style="flex: 999 1 480px; min-width: 0; display: flex; flex-direction: column">
+<div style="display: flex; flex-wrap: wrap; min-height: 0; flex: 1">
+
+<sc-if value="{{showCode}}" hint-placeholder-val="{{ true }}">
+<section aria-label="Editor" style="flex: 999 1 420px; min-width: 0; padding: 14px 0; overflow-x: auto; background: #0D1012">
+<div class="ln"><span>34</span><span><span class="k">module</span> <span class="s">"labels"</span> {</span></div>
+<div class="ln"><span>35</span><span>  source = <span class="s">"../labels"</span></span></div>
+<div class="ln"><span>36</span><span>  env    = <span class="v">var.environment</span></span></div>
+<div class="ln"><span>37</span><span>}</span></div>
+<div class="ln"><span>38</span><span> </span></div>
+<div class="ln"><span>39</span><span><span class="k">resource</span> <span class="s">"aws_vpc"</span> <span class="s">"cluster"</span> {</span></div>
+<div class="ln"><span>40</span><span>  cidr_block           = <span class="v">var.vpc_cidr</span></span></div>
+<div class="ln"><span>41</span><span>  enable_dns_support   = <span class="k">true</span></span></div>
+<div class="ln" style="background: rgba(255,122,122,.08); box-shadow: inset 3px 0 0 #FF7A7A"><span style="color: #FF7A7A">42</span><span>  <span style="text-decoration: underline wavy #FF7A7A; text-underline-offset: 4px">enable_dns_hostname</span>  = <span class="k">true</span></span></div>
+<div style="margin: 2px 16px 6px 52px; padding: 10px 12px; border: 1px solid #4A2A2A; border-radius: 6px; background: #1A1213; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px">
+<span class="pill st-fail">validate</span>
+<span class="mono" style="font-size: 12.5px">Unsupported argument "enable_dns_hostname".</span>
+<button class="btn" type="button" style="height: 28px; font-size: 12px; margin-left: auto">Replace with enable_dns_hostnames</button>
+</div>
+<div class="ln"><span>43</span><span>  tags                 = <span class="v">module.labels.tags</span></span></div>
+<div class="ln"><span>44</span><span>}</span></div>
+<div class="ln"><span>45</span><span> </span></div>
+<div class="ln"><span>46</span><span><span class="k">resource</span> <span class="s">"aws_eks_cluster"</span> <span class="s">"this"</span> {</span></div>
+<div class="ln"><span>47</span><span>  name     = <span class="s">"${var.environment}-k8s"</span></span></div>
+<div class="ln"><span>48</span><span>  role_arn = <span class="v">aws_iam_role.cluster.arn</span></span></div>
+<div class="ln"><span>49</span><span>  version  = <span class="v">var.k8s_version</span></span></div>
+<div class="ln"><span>50</span><span> </span></div>
+<div class="ln"><span>51</span><span>  vpc_config {</span></div>
+<div class="ln"><span>52</span><span>    subnet_ids = <span class="v">aws_subnet.private[*].id</span></span></div>
+<div class="ln"><span>53</span><span>  }</span></div>
+<div class="ln"><span>54</span><span>}</span></div>
+<div class="ln" style="margin-top: 10px; border-top: 1px solid #1A1F23; padding-top: 6px; color: #6E7A82; font-size: 11.5px"><span> </span><span>Ln 42, Col 21 · HCL · edits re-validate on save</span></div>
+</section>
+</sc-if>
+
+<sc-if value="{{showVisual}}" hint-placeholder-val="{{ false }}">
+<section aria-label="Infrastructure view" style="flex: 999 1 480px; min-width: 0; border-left: 1px solid #1E2428; display: flex; flex-direction: column; background: #0A0C0E">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #1E2428; background: #0F1315">
+<span class="mono" style="font-size: 12.5px; font-weight: 700">module.k8s-cluster</span>
+<label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #9AA4AB">as used by
+<select aria-label="Environment" style="height: 28px; background: #111518; color: #E6E9EB; border: 1px solid #2A3238; border-radius: 6px; padding: 0 6px; font: inherit; font-size: 12px"><option>envs/staging</option><option>envs/dev</option><option>envs/prod</option></select>
+</label>
+<div role="group" aria-label="Diagram type" style="margin-left: auto; display: flex; gap: 2px; padding: 2px; border: 1px solid #2A3238; border-radius: 7px; background: #111518">
+<button class="seg on" type="button" style="height: 26px; font-size: 12px">Architecture</button>
+<a class="seg" href="Graph.dc.html" style="height: 26px; font-size: 12px; text-decoration: none">Dependencies</a>
+</div>
+</div>
+<div class="gridbg" style="flex: 1; overflow: auto; padding: 16px">
+<div class="mono" style="position: relative; width: 472px; height: 520px; font-size: 12.5px">
+<div style="position: absolute; left: 16px; top: 16px; width: 440px; height: 488px; box-sizing: border-box; border: 1px dashed #3A444B; border-radius: 12px"></div>
+<div style="position: absolute; left: 40px; top: 56px; width: 392px; height: 304px; box-sizing: border-box; border: 1px dashed #FF7A7A; border-radius: 10px; background: rgba(255,122,122,.04)"></div>
+<svg width="8" height="63" viewBox="0 0 8 63" preserveAspectRatio="none" style="position: absolute; left: 232px; top: 153px; width: 8px; height: 63px; overflow: visible; fill: none; stroke: #5B666D; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-1" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5B666D" stroke="none" style="stroke: none; fill: #5B666D; fill: context-stroke"/></marker></defs><path d="M 4 63 L 4 4" marker-end="url(#dc-arrow-head-filled-1)"></path></svg>
+<svg width="8" height="119" viewBox="0 0 8 119" preserveAspectRatio="none" style="position: absolute; left: 232px; top: 280px; width: 8px; height: 119px; overflow: visible; fill: none; stroke: #5B666D; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-2" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#5B666D" stroke="none" style="stroke: none; fill: #5B666D; fill: context-stroke"/></marker></defs><path d="M 4 0 L 4 115" marker-end="url(#dc-arrow-head-filled-2)"></path></svg>
+<a href="#" style="position: absolute; left: 64px; top: 96px; width: 344px; height: 56px; box-sizing: border-box; padding: 8px 14px; display: flex; align-items: center; background: #12161A; border: 1px solid #3A444B; border-radius: 8px; color: #E6E9EB; text-decoration: none"><span><span style="font-size: 11px; color: #8B959C">aws_subnet · private ×3</span><br><b>10.0.1.0/24 · .2 · .3</b></span></a>
+<a href="#" style="position: absolute; left: 64px; top: 216px; width: 344px; height: 64px; box-sizing: border-box; padding: 8px 14px; display: flex; align-items: center; background: #12161A; border: 1px solid #B8F36B; border-radius: 8px; box-shadow: 0 0 0 4px rgba(184,243,107,.12); color: #E6E9EB; text-decoration: none"><span><span style="font-size: 11px; color: #8B959C">aws_eks_cluster · this</span><br><b>staging-k8s</b> <span style="color: #8B959C">· k8s [VERSION]</span></span></a>
+<a href="#" style="position: absolute; left: 64px; top: 400px; width: 344px; height: 64px; box-sizing: border-box; padding: 8px 14px; display: flex; align-items: center; background: #12161A; border: 1px solid #3A444B; border-radius: 8px; color: #E6E9EB; text-decoration: none"><span><span style="font-size: 11px; color: #8B959C">aws_iam_role · cluster</span><br><b>staging-k8s-cluster</b></span></a>
+<div style="position: absolute; left: 32px; top: 24px; font-size: 11px; color: #8B959C">aws · [YOUR REGION]</div>
+<div style="position: absolute; left: 56px; top: 66px; font-size: 11px; color: #FF8A8A">aws_vpc.cluster · var.vpc_cidr · ! line 42</div>
+<div style="position: absolute; left: 248px; top: 176px; width: 80px; font-size: 11px; line-height: 16px; color: #8B959C">subnet_ids</div>
+<div style="position: absolute; left: 248px; top: 368px; width: 64px; font-size: 11px; line-height: 16px; color: #8B959C">role_arn</div>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 14px; border-top: 1px solid #1E2428; font-size: 12px; color: #8B959C">
+<span>Drawn from the HCL as you type · click a box to jump to its code</span>
+<span style="margin-left: auto; display: flex; align-items: center; gap: 6px"><span style="width: 12px; height: 8px; border: 1px solid #B8F36B; border-radius: 2px"></span>at cursor</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 12px; height: 8px; border: 1px dashed #FF7A7A; border-radius: 2px"></span>has errors</span>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{showInspector}}" hint-placeholder-val="{{ true }}">
+<aside aria-label="Module details" style="flex: 1 1 280px; max-width: 100%; box-sizing: border-box; border-left: 1px solid #1E2428; padding: 18px; display: flex; flex-direction: column; gap: 20px; background: #0F1315">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 11px; color: #8B959C; text-transform: uppercase; letter-spacing: .08em">Module</span>
+<span class="mono" style="font-size: 16px; font-weight: 700">k8s-cluster</span>
+<span style="font-size: 12px; color: #9AA4AB">aws ~&gt; 5.70 · 9 inputs · 4 outputs</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 11px; color: #8B959C; text-transform: uppercase; letter-spacing: .08em">Used by</span>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<a class="btn" href="#" style="height: 28px; font-size: 12px; padding: 0 10px">envs/dev</a>
+<a class="btn" href="#" style="height: 28px; font-size: 12px; padding: 0 10px">envs/staging</a>
+<a class="btn" href="#" style="height: 28px; font-size: 12px; padding: 0 10px">envs/prod</a>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 11px; color: #8B959C; text-transform: uppercase; letter-spacing: .08em">Checks · this module</span>
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 8px; align-items: center">
+<span class="mono" style="font-size: 12.5px">fmt</span><span class="pill st-ok">pass</span>
+<span class="mono" style="font-size: 12.5px">validate</span><span class="pill st-fail">1 error</span>
+<span class="mono" style="font-size: 12.5px">tflint</span><span class="pill st-warn">1 warn</span>
+<span class="mono" style="font-size: 12.5px">checkov</span><span class="pill st-idle">skipped</span>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 11px; color: #8B959C; text-transform: uppercase; letter-spacing: .08em">Uncommitted</span>
+<div class="mono" style="font-size: 12px; display: flex; flex-direction: column; gap: 4px; color: #9AA4AB">
+<span><span style="color: #F5B647">M</span>  modules/k8s-cluster/main.tf</span>
+<span><span style="color: #F5B647">M</span>  envs/staging/terraform.tfvars</span>
+</div>
+<button class="btn" type="button" style="align-self: flex-start">View diff</button>
+</div>
+</aside>
+</sc-if>
+</div>
+
+<section aria-label="Problems" style="border-top: 1px solid #1E2428; background: #0F1315">
+<div role="tablist" style="display: flex; gap: 20px; padding: 0 18px; border-bottom: 1px solid #1E2428">
+<button class="tab on" type="button" role="tab" aria-selected="true">Problems · 9</button>
+<button class="tab" type="button" role="tab" aria-selected="false">Output</button>
+<button class="tab" type="button" role="tab" aria-selected="false">Terminal</button>
+<label style="margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 12px; color: #9AA4AB"><input type="checkbox" checked>Errors</label>
+<label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #9AA4AB"><input type="checkbox" checked>Warnings</label>
+</div>
+<div style="overflow-x: auto">
+<div style="min-width: 640px; display: flex; flex-direction: column; padding: 6px 0">
+<sc-for list="{{problems}}" as="p" hint-placeholder-count="5">
+<a href="#" style="display: grid; grid-template-columns: 84px minmax(0, 1fr) 260px 100px; gap: 12px; align-items: center; padding: 7px 18px; color: inherit; text-decoration: none">
+<span class="pill {{p.cls}}" style="justify-self: start">{{p.sev}}</span>
+<span class="mono" style="font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{p.msg}}</span>
+<span class="mono" style="font-size: 12px; color: #9AA4AB; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{p.loc}}</span>
+<span class="mono" style="font-size: 12px; color: #8B959C; text-align: right">{{p.tool}}</span>
+</a>
+</sc-for>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"startView":{"editor":"enum","options":["code","split","visual"],"default":"code"},"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { view: null };
+  }
+  renderVals() {
+    const view = this.state.view || this.props.startView || 'code';
+    return {
+      showCode: view !== 'visual',
+      showVisual: view !== 'code',
+      showInspector: view === 'code',
+      codeCls: view === 'code' ? 'on' : '',
+      splitCls: view === 'split' ? 'on' : '',
+      visualCls: view === 'visual' ? 'on' : '',
+      codeOn: view === 'code' ? 'true' : 'false',
+      splitOn: view === 'split' ? 'true' : 'false',
+      visualOn: view === 'visual' ? 'true' : 'false',
+      setCode: () => this.setState({ view: 'code' }),
+      setSplit: () => this.setState({ view: 'split' }),
+      setVisual: () => this.setState({ view: 'visual' }),
+      problems: [
+        { sev: 'error', cls: 'st-fail', msg: 'Unsupported argument "enable_dns_hostname"', loc: 'modules/k8s-cluster/main.tf:42', tool: 'validate' },
+        { sev: 'warn', cls: 'st-warn', msg: 'variable "node_count" is declared but not used', loc: 'modules/k8s-cluster/variables.tf:18', tool: 'tflint' },
+        { sev: 'warn', cls: 'st-warn', msg: 'aws_instance type t2.micro is previous generation', loc: 'modules/network/bastion.tf:7', tool: 'tflint' },
+        { sev: 'warn', cls: 'st-warn', msg: 'name[casing]: All names should start with an uppercase letter', loc: 'roles/postgres/tasks/main.yml:12', tool: 'ansible-lint' },
+        { sev: 'warn', cls: 'st-warn', msg: 'no-changed-when: Commands should not change things if nothing needs doing', loc: 'roles/postgres/tasks/init.yml:31', tool: 'ansible-lint' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

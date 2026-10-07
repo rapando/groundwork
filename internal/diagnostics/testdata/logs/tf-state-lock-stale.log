@@ -1,0 +1,18 @@
+
+Error: Error acquiring the state lock
+
+Error message: resource temporarily unavailable
+Lock Info:
+  ID:        f1e1e064-b652-a5d3-66a4-7c5053b5f0f2
+  Path:      terraform.tfstate
+  Operation: OperationTypeApply
+  Who:       dev@workstation.local
+  Version:   1.16.5
+  Created:   2026-10-07 16:19:08.247597 +0000 UTC
+  Info:      
+
+
+Terraform acquires a state lock to protect the state from being written
+by multiple users at the same time. Please resolve the issue above and try
+again. For most commands, you can disable locking with the "-lock=false"
+flag, but this is not recommended.

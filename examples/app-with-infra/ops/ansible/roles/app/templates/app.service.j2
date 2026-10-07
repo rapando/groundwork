@@ -1,0 +1,12 @@
+[Unit]
+Description=app ({{ app_env }})
+After=network.target
+
+[Service]
+Environment=PORT={{ app_port }} APP_ENV={{ app_env }}
+ExecStart=/usr/local/bin/app
+Restart=on-failure
+DynamicUser=yes
+
+[Install]
+WantedBy=multi-user.target

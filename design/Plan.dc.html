@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Groundwork — Review plan</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0;background:#0D1012}
+a{color:#B8F36B}a:hover{color:#D6FF9E}
+input{accent-color:#B8F36B}
+.mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+.lbl{font-size:11px;color:#8B959C;text-transform:uppercase;letter-spacing:.08em}
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.st-ok{color:#5FD38D;background:rgba(95,211,141,.10)}
+.st-warn{color:#F5B647;background:rgba(245,182,71,.10)}
+.st-fail{color:#FF7A7A;background:rgba(255,122,122,.10)}
+.nav{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;color:#AEB7BD;text-decoration:none;font-size:14px}
+.nav:hover{background:#1A1F23;color:#E6E9EB}
+.nav.on{background:#1C2226;color:#E6E9EB;box-shadow:inset 0 0 0 1px #2A3238}
+.btn{font:inherit;font-size:13px;font-weight:500;border-radius:6px;padding:0 14px;height:36px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;border:1px solid #2A3238;background:#161B1E;color:#E6E9EB;text-decoration:none}
+.btn.apply{background:#FF7A7A;border-color:#FF7A7A;color:#1A0B0B;font-weight:600}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.tile{display:flex;flex-direction:column;gap:2px;padding:12px 16px;border:1px solid #1E2428;border-radius:8px;background:#12161A;min-width:110px}
+.res{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border-radius:6px;color:inherit;text-decoration:none}
+.res:hover{background:#151A1E}
+.res.on{background:#1C1515;box-shadow:inset 0 0 0 1px #4A2A2A}
+.sym{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:700;font-size:14px;text-align:center}
+.a-add{color:#5FD38D}.a-chg{color:#7CC0FF}.a-rep{color:#FF7A7A}
+.df{display:grid;grid-template-columns:24px minmax(160px,.9fr) minmax(0,1.6fr);gap:10px;padding:5px 16px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12.5px;line-height:20px}
+.seg{font:inherit;font-size:12px;height:28px;padding:0 10px;border:0;border-radius:5px;background:transparent;color:#9AA4AB;cursor:pointer}
+.seg.on{background:#2A3238;color:#E6E9EB}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #0D1012; color: #E6E9EB; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px">
+
+<aside style="flex: 1 1 232px; max-width: 100%; box-sizing: border-box; padding: 20px 14px; border-right: 1px solid #1E2428; display: flex; flex-direction: column; gap: 24px; background: #0B0E10">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 6px">
+<div style="width: 28px; height: 28px; border-radius: 6px; background: #B8F36B; display: grid; place-items: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1012" stroke-width="2.4" stroke-linecap="round"><path d="M3 20h18"></path><path d="M5 16h14"></path><path d="M8 12h8"></path><path d="M11 8h2"></path></svg></div>
+<div style="display: flex; flex-direction: column"><span class="mono" style="font-weight: 700; font-size: 14px">groundwork</span><span class="mono" style="font-size: 11px; color: #8B959C">v0.1.0 · :7420</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid #1E2428; border-radius: 8px; background: #111518">
+<span class="lbl">Repository</span>
+<span class="mono" style="font-size: 13px; font-weight: 500">infra-platform</span>
+<span class="mono" style="font-size: 12px; color: #9AA4AB">main · 2 uncommitted</span>
+</div>
+<nav aria-label="Primary" style="display: flex; flex-direction: column; gap: 2px">
+<a class="nav" href="Main.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>Overview</a>
+<a class="nav" href="Code.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 4h6l2 2h8v14H4z"></path></svg>Code<span class="mono" style="margin-left: auto; font-size: 11px; color: #FF7A7A">1</span></a>
+<a class="nav on" href="Run.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 3l14 9-14 9z"></path></svg>Runs<span class="mono" style="margin-left: auto; font-size: 11px; color: #7CC0FF">1 live</span></a>
+<a class="nav" href="Graph.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="2.5"></circle><circle cx="19" cy="5" r="2.5"></circle><circle cx="19" cy="19" r="2.5"></circle><path d="M7.3 11l9.4-5M7.3 13l9.4 5"></path></svg>Graph</a>
+<a class="nav" href="Troubleshoot.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"></path><path d="M12 10v4M12 17h.01"></path></svg>Troubleshoot<span class="mono" style="margin-left: auto; font-size: 11px; color: #F5B647">3</span></a>
+<a class="nav" href="Inventory.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"></path></svg>Inventory</a>
+<a class="nav" href="Variables.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4c-2 0-3 1-3 3v2c0 1.5-1 3-2 3 1 0 2 1.5 2 3v2c0 2 1 3 3 3"></path><path d="M16 4c2 0 3 1 3 3v2c0 1.5 1 3 2 3-1 0-2 1.5-2 3v2c0 2-1 3-3 3"></path></svg>Variables</a>
+</nav>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span class="lbl" style="padding: 0 12px 4px">Environments</span>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5FD38D"></span>dev</a>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #F5B647"></span>staging<span class="mono" style="margin-left: auto; font-size: 11px; color: #F5B647">drift</span></a>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5FD38D"></span>prod</a>
+</div>
+</aside>
+
+<main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+<header style="padding: 20px 24px; border-bottom: 1px solid #1E2428; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<h1 class="mono" style="margin: 0; font-size: 20px; font-weight: 700">#483 plan · prod/database</h1>
+<span class="pill st-warn">waiting for approval</span>
+</div>
+<span style="font-size: 13px; color: #9AA4AB">commit <span class="mono">9be0f17</span> · state serial <span class="mono">214</span> · planned 3m ago by sam · saved to <span class="mono">.groundwork/runs/483/tfplan</span></span>
+</div>
+<div style="margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px">
+<button class="btn" type="button">Re-plan</button>
+<button class="btn" type="button">Raw output</button>
+<button class="btn" type="button">Discard</button>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px">
+<div class="tile"><span class="mono" style="font-size: 22px; color: #5FD38D">+1</span><span style="font-size: 12px; color: #9AA4AB">to add</span></div>
+<div class="tile"><span class="mono" style="font-size: 22px; color: #7CC0FF">~2</span><span style="font-size: 12px; color: #9AA4AB">to change</span></div>
+<div class="tile" style="border-color: #5A2E2E; background: #1A1213"><span class="mono" style="font-size: 22px; color: #FF7A7A">±1</span><span style="font-size: 12px; color: #FFB3B3">to replace</span></div>
+<div class="tile"><span class="mono" style="font-size: 22px; color: #8B959C">-0</span><span style="font-size: 12px; color: #9AA4AB">to destroy</span></div>
+</div>
+<div role="alert" style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 16px; border: 1px solid #5A2E2E; border-radius: 8px; background: #1A1213">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF7A7A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"></path><path d="M12 10v4M12 17h.01"></path></svg>
+<span style="font-size: 13.5px"><b>aws_db_instance.main will be destroyed and recreated.</b> <span style="color: #D9B8B8">Data in the current database is lost unless you take a snapshot first.</span></span>
+<button class="btn" type="button" style="margin-left: auto; height: 32px">Snapshot first</button>
+</div>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; flex: 1">
+<section aria-label="Resources in plan" style="flex: 1 1 300px; max-width: 100%; box-sizing: border-box; padding: 16px 10px; border-right: 1px solid #1E2428; display: flex; flex-direction: column; gap: 10px; background: #0F1315">
+<div role="group" aria-label="Filter by action" style="display: flex; gap: 2px; padding: 2px; margin: 0 4px; border: 1px solid #2A3238; border-radius: 7px; background: #111518; align-self: flex-start">
+<button class="seg on" type="button">All 4</button>
+<button class="seg" type="button">Replace 1</button>
+<button class="seg" type="button">Change 2</button>
+<button class="seg" type="button">Add 1</button>
+</div>
+<a class="res on" href="#"><span class="sym a-rep">±</span><span class="mono" style="font-size: 12.5px; overflow-wrap: anywhere">aws_db_instance.main</span><span style="font-size: 11px; color: #FF8A8A">replace</span></a>
+<a class="res" href="#"><span class="sym a-chg">~</span><span class="mono" style="font-size: 12.5px; overflow-wrap: anywhere">aws_db_parameter_group.main</span><span style="font-size: 11px; color: #8B959C">1 attr</span></a>
+<a class="res" href="#"><span class="sym a-chg">~</span><span class="mono" style="font-size: 12.5px; overflow-wrap: anywhere">aws_security_group.db</span><span style="font-size: 11px; color: #8B959C">1 rule</span></a>
+<a class="res" href="#"><span class="sym a-add">+</span><span class="mono" style="font-size: 12.5px; overflow-wrap: anywhere">aws_kms_key.db</span><span style="font-size: 11px; color: #8B959C">new</span></a>
+<div style="margin: 8px 6px 0; padding-top: 12px; border-top: 1px solid #1E2428; display: flex; flex-direction: column; gap: 8px">
+<span class="lbl">Also affected</span>
+<span style="font-size: 12.5px; color: #9AA4AB; line-height: 1.5">3 resources depend on <span class="mono">aws_db_instance.main</span> and will read new values.</span>
+<a href="Graph.dc.html" style="font-size: 12px">Show in graph →</a>
+</div>
+</section>
+
+<section aria-label="Resource diff" style="flex: 999 1 440px; min-width: 0; display: flex; flex-direction: column">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #1E2428">
+<span class="sym a-rep">±</span>
+<span class="mono" style="font-size: 14px; font-weight: 700">aws_db_instance.main</span>
+<span style="font-size: 12px; color: #9AA4AB">must be replaced</span>
+<a href="Code.dc.html" style="margin-left: auto; font-size: 12px">modules/database/main.tf:12</a>
+</div>
+<div style="padding: 10px 0; overflow-x: auto">
+<div style="min-width: 520px">
+<div class="df" style="color: #8B959C; font-size: 11.5px"><span></span><span>attribute</span><span>before → after</span></div>
+<div class="df" style="background: rgba(255,122,122,.07)"><span class="a-rep">±</span><span>storage_encrypted</span><span>false → <b>true</b> <span style="color: #FF8A8A"># forces replacement</span></span></div>
+<div class="df"><span class="a-chg">~</span><span>kms_key_id</span><span><span style="color: #8B959C">null</span> → <span style="color: #8B959C">(known after apply)</span></span></div>
+<div class="df"><span class="a-chg">~</span><span>engine_version</span><span>"15.4" → "15.7"</span></div>
+<div class="df"><span class="a-chg">~</span><span>id</span><span>"prod-db" → <span style="color: #8B959C">(known after apply)</span></span></div>
+<div class="df"><span class="a-chg">~</span><span>endpoint</span><span>"prod-db.c9x…:5432" → <span style="color: #8B959C">(known after apply)</span></span></div>
+<div class="df"><span class="a-add">+</span><span>tags.Encrypted</span><span>"true"</span></div>
+<div class="df" style="color: #6E7A82"><span></span><span>23 unchanged attributes</span><span><button class="btn" type="button" style="height: 24px; font-size: 11px; padding: 0 8px">Show</button></span></div>
+</div>
+</div>
+<div style="margin: 6px 16px 16px; padding: 14px 16px; border: 1px solid #1E2428; border-radius: 8px; background: #12161A; display: flex; flex-direction: column; gap: 8px">
+<span class="lbl">Why it's replaced</span>
+<span style="font-size: 13px; color: #C3CBD0; line-height: 1.55">RDS cannot turn on encryption for an existing instance. Two safer options: restore an encrypted copy from a snapshot and switch traffic over, or add <span class="mono">lifecycle &#123; prevent_destroy = true &#125;</span> so this can never be applied by accident.</span>
+<div style="display: flex; flex-wrap: wrap; gap: 8px"><button class="btn" type="button" style="height: 30px; font-size: 12px">Add prevent_destroy</button><button class="btn" type="button" style="height: 30px; font-size: 12px">Copy snapshot command</button></div>
+</div>
+</section>
+
+<aside aria-label="Approve" style="flex: 1 1 300px; max-width: 100%; box-sizing: border-box; border-left: 1px solid #1E2428; padding: 18px; display: flex; flex-direction: column; gap: 18px; background: #0F1315">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<span class="lbl">Checks on this plan</span>
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 8px; align-items: center">
+<span class="mono" style="font-size: 12.5px">validate</span><span class="pill st-ok">pass</span>
+<span class="mono" style="font-size: 12.5px">tflint</span><span class="pill st-ok">pass</span>
+<span class="mono" style="font-size: 12.5px">plan age</span><span class="pill st-ok">3m</span>
+<span class="mono" style="font-size: 12.5px">state changed since</span><span class="pill st-ok">no</span>
+<span class="mono" style="font-size: 12.5px">replaces a database</span><span class="pill st-fail">yes</span>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid #3A2626; border-radius: 10px; background: #141011">
+<span style="font-weight: 600">Apply to prod</span>
+<span style="font-size: 12.5px; color: #B8C0C5; line-height: 1.5">Applies exactly this saved plan. If the state changes first, you'll have to re-plan.</span>
+<label style="display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.45"><input type="checkbox" checked="{{ack}}" onChange="{{onAck}}" style="margin-top: 3px">I understand aws_db_instance.main will be destroyed and recreated</label>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #9AA4AB">Type <span class="mono" style="color: #E6E9EB">prod/database</span> to confirm
+<input type="text" value="{{typed}}" onChange="{{onType}}" autocomplete="off" style="height: 36px; background: #0A0C0E; border: 1px solid #2A3238; border-radius: 6px; color: #E6E9EB; padding: 0 10px; font-family: 'JetBrains Mono', monospace; font-size: 13px">
+</label>
+<button class="btn apply" type="button" disabled="{{locked}}">Apply plan #483</button>
+<span style="font-size: 12px; color: #8B959C">{{hint}}</span>
+</div>
+</aside>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { typed: '', ack: false };
+  }
+  renderVals() {
+    const ok = this.state.ack && this.state.typed.trim() === 'prod/database';
+    return {
+      typed: this.state.typed,
+      ack: this.state.ack,
+      locked: !ok,
+      hint: ok ? 'Ready. Logs will stream to run #483.' : 'Tick the box and type the stack name to unlock.',
+      onType: (e) => this.setState({ typed: e.target.value }),
+      onAck: (e) => this.setState({ ack: e.target.checked })
+    };
+  }
+}
+</script>
+</body>
+</html>

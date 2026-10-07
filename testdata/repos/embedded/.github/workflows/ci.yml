@@ -1,0 +1,10 @@
+name: ci
+on: [push]
+jobs:
+  tf:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: deploy/terraform
+    steps:
+      - run: terraform fmt -check

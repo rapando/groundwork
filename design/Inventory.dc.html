@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Groundwork — Inventory</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0;background:#0D1012}
+a{color:#B8F36B}a:hover{color:#D6FF9E}
+input{accent-color:#B8F36B}
+.mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+.lbl{font-size:11px;color:#8B959C;text-transform:uppercase;letter-spacing:.08em}
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.st-ok{color:#5FD38D;background:rgba(95,211,141,.10)}
+.st-warn{color:#F5B647;background:rgba(245,182,71,.10)}
+.st-fail{color:#FF7A7A;background:rgba(255,122,122,.10)}
+.nav{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;color:#AEB7BD;text-decoration:none;font-size:14px}
+.nav:hover{background:#1A1F23;color:#E6E9EB}
+.nav.on{background:#1C2226;color:#E6E9EB;box-shadow:inset 0 0 0 1px #2A3238}
+.btn{font:inherit;font-size:13px;font-weight:500;border-radius:6px;padding:0 14px;height:36px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;border:1px solid #2A3238;background:#161B1E;color:#E6E9EB;text-decoration:none}
+.btn.primary{background:#B8F36B;border-color:#B8F36B;color:#0D1012}
+.seg{font:inherit;font-size:13px;height:30px;padding:0 12px;border:0;border-radius:5px;background:transparent;color:#9AA4AB;cursor:pointer}
+.seg.on{background:#2A3238;color:#E6E9EB}
+.grp{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:5px;color:#C3CBD0;text-decoration:none;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12.5px}
+.grp:hover{background:#1A1F23}
+.grp.on{background:#1C2226;color:#E6E9EB}
+.hr{display:grid;grid-template-columns:28px minmax(130px,1.2fr) 120px minmax(120px,1fr) 120px 96px;gap:12px;align-items:center;padding:9px 16px;border-top:1px solid #1A1F23;font-size:12.5px}
+.hr.sel{background:#161D12;box-shadow:inset 3px 0 0 #B8F36B}
+.ov{text-decoration:line-through;color:#6E7A82}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #0D1012; color: #E6E9EB; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px">
+
+<aside style="flex: 1 1 232px; max-width: 100%; box-sizing: border-box; padding: 20px 14px; border-right: 1px solid #1E2428; display: flex; flex-direction: column; gap: 24px; background: #0B0E10">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 6px">
+<div style="width: 28px; height: 28px; border-radius: 6px; background: #B8F36B; display: grid; place-items: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1012" stroke-width="2.4" stroke-linecap="round"><path d="M3 20h18"></path><path d="M5 16h14"></path><path d="M8 12h8"></path><path d="M11 8h2"></path></svg></div>
+<div style="display: flex; flex-direction: column"><span class="mono" style="font-weight: 700; font-size: 14px">groundwork</span><span class="mono" style="font-size: 11px; color: #8B959C">v0.1.0 · :7420</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid #1E2428; border-radius: 8px; background: #111518">
+<span class="lbl">Repository</span>
+<span class="mono" style="font-size: 13px; font-weight: 500">infra-platform</span>
+<span class="mono" style="font-size: 12px; color: #9AA4AB">main · 2 uncommitted</span>
+</div>
+<nav aria-label="Primary" style="display: flex; flex-direction: column; gap: 2px">
+<a class="nav" href="Main.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>Overview</a>
+<a class="nav" href="Code.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 4h6l2 2h8v14H4z"></path></svg>Code<span class="mono" style="margin-left: auto; font-size: 11px; color: #FF7A7A">1</span></a>
+<a class="nav" href="Run.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 3l14 9-14 9z"></path></svg>Runs<span class="mono" style="margin-left: auto; font-size: 11px; color: #7CC0FF">1 live</span></a>
+<a class="nav" href="Graph.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="2.5"></circle><circle cx="19" cy="5" r="2.5"></circle><circle cx="19" cy="19" r="2.5"></circle><path d="M7.3 11l9.4-5M7.3 13l9.4 5"></path></svg>Graph</a>
+<a class="nav" href="Troubleshoot.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"></path><path d="M12 10v4M12 17h.01"></path></svg>Troubleshoot<span class="mono" style="margin-left: auto; font-size: 11px; color: #F5B647">3</span></a>
+<a class="nav on" href="Inventory.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"></path></svg>Inventory</a>
+<a class="nav" href="Variables.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4c-2 0-3 1-3 3v2c0 1.5-1 3-2 3 1 0 2 1.5 2 3v2c0 2 1 3 3 3"></path><path d="M16 4c2 0 3 1 3 3v2c0 1.5 1 3 2 3-1 0-2 1.5-2 3v2c0 2-1 3-3 3"></path></svg>Variables</a>
+</nav>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span class="lbl" style="padding: 0 12px 4px">Environments</span>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5FD38D"></span>dev</a>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #F5B647"></span>staging<span class="mono" style="margin-left: auto; font-size: 11px; color: #F5B647">drift</span></a>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5FD38D"></span>prod</a>
+</div>
+</aside>
+
+<main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 24px; border-bottom: 1px solid #1E2428">
+<h1 style="margin: 0; font-size: 18px; font-weight: 600">Inventory</h1>
+<div role="group" aria-label="Environment" style="display: flex; gap: 2px; padding: 2px; border: 1px solid #2A3238; border-radius: 7px; background: #111518">
+<button class="seg" type="button">dev · 4</button>
+<button class="seg" type="button">staging · 6</button>
+<button class="seg on" type="button">prod · 12</button>
+</div>
+<span class="mono" style="font-size: 12px; color: #8B959C">source: terraform outputs (envs/prod) + inventory/prod.yml</span>
+<div style="margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px">
+<button class="btn" type="button">Ping all</button>
+<button class="btn" type="button">Gather facts</button>
+<button class="btn" type="button">Ad-hoc command…</button>
+<a class="btn primary" href="Run.dc.html">Run playbook on 1 host</a>
+</div>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; flex: 1">
+<section aria-label="Groups" style="flex: 1 1 200px; max-width: 100%; box-sizing: border-box; padding: 16px 10px; border-right: 1px solid #1E2428; display: flex; flex-direction: column; gap: 2px; background: #0F1315">
+<span class="lbl" style="padding: 4px 10px 8px">Groups</span>
+<a class="grp" href="#">all<span style="margin-left: auto; color: #8B959C">12</span></a>
+<a class="grp on" href="#" style="padding-left: 22px">web<span style="margin-left: auto; color: #F5B647">4 · 1 down</span></a>
+<a class="grp" href="#" style="padding-left: 22px">db<span style="margin-left: auto; color: #8B959C">2</span></a>
+<a class="grp" href="#" style="padding-left: 22px">k8s_nodes<span style="margin-left: auto; color: #8B959C">5</span></a>
+<a class="grp" href="#" style="padding-left: 22px">bastion<span style="margin-left: auto; color: #8B959C">1</span></a>
+<span class="lbl" style="padding: 18px 10px 8px">Files</span>
+<a class="grp" href="Code.dc.html">inventory/prod.yml</a>
+<a class="grp" href="Code.dc.html">group_vars/web.yml</a>
+<a class="grp" href="Code.dc.html">host_vars/web-01.yml</a>
+</section>
+
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+<section aria-label="Hosts" style="overflow-x: auto">
+<div style="min-width: 720px">
+<div class="hr" style="border-top: 0; color: #8B959C; font-size: 12px"><span><input type="checkbox" aria-label="Select all"></span><span>host</span><span>address</span><span>os</span><span>reachable</span><span>last play</span></div>
+<sc-for list="{{hosts}}" as="h" hint-placeholder-count="4">
+<div class="hr {{h.sel}}">
+<span><input type="checkbox" checked="{{h.checked}}" aria-label="Select {{h.name}}"></span>
+<a class="mono" href="#" style="color: #E6E9EB; text-decoration: none; font-weight: 500">{{h.name}}</a>
+<span class="mono" style="color: #9AA4AB">{{h.ip}}</span>
+<span style="color: #9AA4AB">{{h.os}}</span>
+<span class="pill {{h.cls}}" style="justify-self: start">{{h.ping}}</span>
+<span class="mono" style="color: #9AA4AB; font-size: 12px">{{h.play}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section aria-label="Host detail" style="margin: 16px 24px 28px; border: 1px solid #1E2428; border-radius: 10px; background: #12161A; display: flex; flex-wrap: wrap">
+<div style="flex: 1 1 260px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid #1E2428">
+<div style="display: flex; align-items: center; gap: 10px"><span class="mono" style="font-size: 16px; font-weight: 700">web-01</span><span class="pill st-ok">up · 18 ms</span></div>
+<span class="lbl">Facts · gathered 18m ago</span>
+<div class="mono" style="display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: 12px; color: #9AA4AB">
+<span>os</span><span style="color: #E6E9EB">Ubuntu 24.04 LTS</span>
+<span>kernel</span><span style="color: #E6E9EB">6.8.0-45-generic</span>
+<span>cpu / mem</span><span style="color: #E6E9EB">2 vCPU · 3.8 GiB</span>
+<span>python</span><span style="color: #E6E9EB">3.12.3</span>
+<span>instance</span><span style="color: #E6E9EB">aws_instance.web[0]</span>
+</div>
+<a href="Graph.dc.html" style="font-size: 12px">Show Terraform resource →</a>
+</div>
+<div style="flex: 2 1 420px; min-width: 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px">
+<span class="lbl">Variables on this host · winner first</span>
+<a href="Variables.dc.html" style="font-size: 12px">All variables →</a>
+</div>
+<div style="overflow-x: auto">
+<table class="mono" style="width: 100%; min-width: 480px; border-collapse: collapse; font-size: 12.5px">
+<thead><tr style="color: #8B959C; text-align: left"><th style="font-weight: 500; padding: 6px 0">variable</th><th style="font-weight: 500; padding: 6px 0">value</th><th style="font-weight: 500; padding: 6px 0">from</th></tr></thead>
+<tbody>
+<tr style="border-top: 1px solid #1E2428"><td style="padding: 8px 0">nginx_worker_processes</td><td style="padding: 8px 0">4</td><td style="padding: 8px 0; color: #B8F36B">host_vars/web-01.yml</td></tr>
+<tr><td style="padding: 2px 0 8px"></td><td class="ov" style="padding: 2px 0 8px">2</td><td class="ov" style="padding: 2px 0 8px">group_vars/web.yml</td></tr>
+<tr><td style="padding: 2px 0 8px"></td><td class="ov" style="padding: 2px 0 8px">auto</td><td class="ov" style="padding: 2px 0 8px">roles/nginx/defaults</td></tr>
+<tr style="border-top: 1px solid #1E2428"><td style="padding: 8px 0">app_port</td><td style="padding: 8px 0">8080</td><td style="padding: 8px 0; color: #9AA4AB">group_vars/all.yml</td></tr>
+<tr style="border-top: 1px solid #1E2428"><td style="padding: 8px 0">db_host</td><td style="padding: 8px 0">prod-db.c9x…</td><td style="padding: 8px 0; color: #9AA4AB">terraform output db_endpoint</td></tr>
+<tr style="border-top: 1px solid #1E2428"><td style="padding: 8px 0">tls_cert_key</td><td style="padding: 8px 0">••••••••</td><td style="padding: 8px 0; color: #F5B647">group_vars/prod/vault.yml</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1120}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      hosts: [
+        { name: 'web-01', ip: '10.0.2.11', os: 'Ubuntu 24.04', ping: 'up · 18ms', cls: 'st-ok', play: '#481 ok 41 · chg 3', sel: 'sel', checked: true },
+        { name: 'web-02', ip: '10.0.2.12', os: 'Ubuntu 24.04', ping: 'up · 21ms', cls: 'st-ok', play: '#481 ok 41 · chg 3', sel: '', checked: false },
+        { name: 'web-03', ip: '10.0.2.13', os: 'Ubuntu 24.04', ping: 'timeout', cls: 'st-fail', play: '#481 unreachable', sel: '', checked: false },
+        { name: 'web-04', ip: '10.0.2.14', os: 'Ubuntu 22.04', ping: 'up · 19ms', cls: 'st-ok', play: '#481 ok 40 · chg 4', sel: '', checked: false }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+Initializing the backend...
+
+Initializing modules...
+- net in
+
+Error: Unreadable module directory
+
+Unable to evaluate directory symlink: lstat modules: no such file or
+directory
+
+Error: Unreadable module directory
+
+The directory  could not be read for module "net" at main.tf:1.

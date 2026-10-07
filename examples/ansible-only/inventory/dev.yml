@@ -1,0 +1,9 @@
+---
+all:
+  children:
+    dev:
+      children:
+        web:
+          hosts:
+            web-dev-1:
+              ansible_host: 10.1.0.11

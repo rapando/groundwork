@@ -1,0 +1,56 @@
+{
+  "mode": "standalone",
+  "empty": false,
+  "file_count": 9,
+  "iac_ratio": 1,
+  "terraform_roots": [],
+  "terraform_modules": [],
+  "ansible": [
+    {
+      "path": ".",
+      "config": "ansible.cfg",
+      "playbooks": [
+        "site.yml"
+      ],
+      "roles": [
+        "roles/web"
+      ],
+      "inventories": [
+        "inventory/dev.yml"
+      ],
+      "vars_dirs": [
+        "group_vars",
+        "inventory/group_vars",
+        "inventory/host_vars"
+      ],
+      "evidence": [
+        {
+          "file": "ansible.cfg",
+          "note": "ansible.cfg"
+        },
+        {
+          "file": "inventory/dev.yml",
+          "note": "inventory"
+        },
+        {
+          "file": "roles/web/tasks/main.yml",
+          "note": "role web"
+        },
+        {
+          "file": "site.yml",
+          "line": 2,
+          "note": "playbook (hosts + tasks/roles)"
+        }
+      ]
+    }
+  ],
+  "ci": [],
+  "envs": [
+    {
+      "name": "dev",
+      "ansible": [
+        "inventory/dev.yml"
+      ]
+    }
+  ]
+}

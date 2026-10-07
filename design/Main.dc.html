@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Groundwork — Overview (dark)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0;background:#0D1012}
+a{color:#B8F36B}a:hover{color:#D6FF9E}
+.mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.st-ok{color:#5FD38D;background:rgba(95,211,141,.10)}
+.st-warn{color:#F5B647;background:rgba(245,182,71,.10)}
+.st-fail{color:#FF7A7A;background:rgba(255,122,122,.10)}
+.st-run{color:#7CC0FF;background:rgba(124,192,255,.12)}
+.nav{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;color:#AEB7BD;text-decoration:none;font-size:14px}
+.nav:hover{background:#1A1F23;color:#E6E9EB}
+.nav.on{background:#1C2226;color:#E6E9EB;box-shadow:inset 0 0 0 1px #2A3238}
+.btn{font:inherit;font-size:13px;font-weight:500;border-radius:6px;padding:0 14px;height:36px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;border:1px solid #2A3238;background:#161B1E;color:#E6E9EB}
+.btn.primary{background:#B8F36B;border-color:#B8F36B;color:#0D1012}
+.row:hover{background:#171C20}
+.hl{position:relative;z-index:6;outline:2px solid #B8F36B;outline-offset:6px;border-radius:10px;background-color:#0D1012}
+.kbd{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;border:1px solid #3A444B;border-bottom-width:2px;border-radius:4px;padding:1px 6px;color:#E6E9EB}
+.tdot{width:6px;height:6px;border-radius:50%;background:#3A444B}
+.tdot.on{background:#B8F36B;width:18px;border-radius:3px}
+.chk{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid #1E2428;font-size:13px}
+.tick{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;border:1px solid #3A444B;color:#8B959C}
+.tick.done{background:#B8F36B;border-color:#B8F36B;color:#0D1012;font-weight:700}
+</style>
+</helmet>
+<div style="position: relative; min-height: 100vh; display: flex; flex-wrap: wrap; background: #0D1012; color: #E6E9EB; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px">
+
+<aside style="flex: 1 1 232px; max-width: 100%; box-sizing: border-box; padding: 20px 14px; border-right: 1px solid #1E2428; display: flex; flex-direction: column; gap: 24px; background: #0B0E10">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 6px">
+<div style="width: 28px; height: 28px; border-radius: 6px; background: #B8F36B; display: grid; place-items: center">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1012" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18"></path><path d="M5 16h14"></path><path d="M8 12h8"></path><path d="M11 8h2"></path></svg>
+</div>
+<div style="display: flex; flex-direction: column">
+<span class="mono" style="font-weight: 700; font-size: 14px; letter-spacing: -.01em">groundwork</span>
+<span class="mono" style="font-size: 11px; color: #8B959C">v0.1.0 · :7420</span>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid #1E2428; border-radius: 8px; background: #111518">
+<span style="font-size: 11px; color: #8B959C; text-transform: uppercase; letter-spacing: .08em">Repository</span>
+<span class="mono" style="font-size: 13px; font-weight: 500">infra-platform</span>
+<span class="mono" style="font-size: 12px; color: #9AA4AB; display: flex; align-items: center; gap: 6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"></circle><circle cx="6" cy="18" r="2.5"></circle><circle cx="18" cy="8" r="2.5"></circle><path d="M6 8.5v7"></path><path d="M18 10.5c0 4-6 3-11 5.5"></path></svg>main · 2 uncommitted</span>
+</div>
+
+<nav class="{{hlNav}}" aria-label="Primary" style="display: flex; flex-direction: column; gap: 2px">
+<a class="nav on" href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>Overview</a>
+<a class="nav" href="Code.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6l2 2h8v14H4z"></path></svg>Code<span class="mono" style="margin-left: auto; font-size: 11px; color: #FF7A7A">1</span></a>
+<a class="nav" href="Run.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9z"></path></svg>Runs<span class="mono" style="margin-left: auto; font-size: 11px; color: #7CC0FF">1 live</span></a>
+<a class="nav" href="Graph.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="2.5"></circle><circle cx="19" cy="5" r="2.5"></circle><circle cx="19" cy="19" r="2.5"></circle><path d="M7.3 11l9.4-5M7.3 13l9.4 5"></path></svg>Graph</a>
+<a class="nav" href="Troubleshoot.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"></path><path d="M12 10v4M12 17h.01"></path></svg>Troubleshoot<span class="mono" style="margin-left: auto; font-size: 11px; color: #F5B647">3</span></a>
+<a class="nav" href="Inventory.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"></path></svg>Inventory</a>
+<a class="nav" href="Variables.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4c-2 0-3 1-3 3v2c0 1.5-1 3-2 3 1 0 2 1.5 2 3v2c0 2 1 3 3 3"></path><path d="M16 4c2 0 3 1 3 3v2c0 1.5 1 3 2 3-1 0-2 1.5-2 3v2c0 2-1 3-3 3"></path></svg>Variables</a>
+</nav>
+
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 11px; color: #8B959C; text-transform: uppercase; letter-spacing: .08em; padding: 0 12px 4px">Environments</span>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5FD38D"></span>dev</a>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #F5B647"></span>staging<span class="mono" style="margin-left: auto; font-size: 11px; color: #F5B647">drift</span></a>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5FD38D"></span>prod<svg style="margin-left: auto" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B959C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg></a>
+</div>
+
+<div style="margin-top: auto; display: flex; flex-direction: column; gap: 6px; padding: 12px; border-top: 1px solid #1E2428">
+<span style="font-size: 11px; color: #8B959C; text-transform: uppercase; letter-spacing: .08em">Toolchain</span>
+<div class="mono" style="display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; font-size: 12px; color: #AEB7BD">
+<span>terraform</span><span>1.9.8</span>
+<span>ansible-core</span><span>2.17.5</span>
+<span>tflint</span><span>0.53.0</span>
+<span>checkov</span><span style="color: #F5B647">missing</span>
+</div>
+</div>
+</aside>
+
+<main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+<header class="{{hlHeader}}" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 28px; border-bottom: 1px solid #1E2428">
+<span class="mono" style="font-size: 12px; color: #8B959C">~/code/infra-platform</span>
+<label style="flex: 1 1 280px; max-width: 440px; margin-left: auto; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid #2A3238; border-radius: 6px; background: #111518; color: #8B959C">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+<input type="search" placeholder="Jump to module, resource, host, run…" aria-label="Search" style="flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: #E6E9EB; font: inherit; font-size: 13px">
+<span class="mono" style="font-size: 11px; border: 1px solid #2A3238; border-radius: 4px; padding: 1px 5px">⌘K</span>
+</label>
+<button class="btn" type="button" aria-label="Show tips" onClick="{{openTour}}" style="width: 36px; padding: 0; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"></path><path d="M12 17h.01"></path></svg></button>
+<button class="btn" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>Verify all</button>
+<button class="btn primary" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"></path></svg>New run</button>
+</header>
+
+<div style="padding: 28px; display: flex; flex-direction: column; gap: 24px; box-sizing: border-box; width: 100%; max-width: 1240px">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -.01em">Overview</h1>
+<span style="color: #9AA4AB">3 environments · 14 Terraform stacks · 9 Ansible playbooks · last scan 40s ago</span>
+</div>
+<span class="pill st-run">1 run in progress</span>
+</div>
+
+<sc-if value="{{showChecklist}}" hint-placeholder-val="{{ true }}">
+<section aria-label="Getting started" style="border: 1px solid #2E3A22; border-radius: 10px; background: #121710; padding: 16px 20px; display: flex; flex-wrap: wrap; gap: 12px 32px">
+<div style="flex: 1 1 240px; display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 11px; color: #B8F36B; text-transform: uppercase; letter-spacing: .08em">Getting started · 2 of 5</span>
+<h2 style="margin: 0; font-size: 17px; font-weight: 600">Five things to try first</h2>
+<span style="font-size: 13px; color: #9AA4AB; line-height: 1.5">Nothing here changes your infrastructure until you approve an apply.</span>
+<div style="height: 6px; border-radius: 3px; background: #1E2428; overflow: hidden; margin-top: 4px" role="img" aria-label="2 of 5 done"><div style="width: 40%; height: 100%; background: #B8F36B"></div></div>
+<div style="display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap">
+<button class="btn" type="button" onClick="{{openTour}}" style="height: 32px; font-size: 12px">Replay tour</button>
+<button class="btn" type="button" onClick="{{hideChecklist}}" style="height: 32px; font-size: 12px; border-color: transparent; background: transparent; color: #9AA4AB">Hide</button>
+</div>
+</div>
+<div style="flex: 2 1 420px; display: flex; flex-direction: column">
+<div class="chk" style="border-top: 0"><span class="tick done">✓</span><span>Repo scanned: <span class="mono">14 stacks, 9 playbooks</span> found</span><span></span></div>
+<div class="chk"><span class="tick done">✓</span><span>Checks ran. 1 error is waiting in Code</span><a href="Code.dc.html" style="font-size: 12px">Open →</a></div>
+<div class="chk"><span class="tick">3</span><span>Run your first plan. It only previews changes</span><a href="Plan.dc.html" style="font-size: 12px">Plan dev →</a></div>
+<div class="chk"><span class="tick">4</span><span>Open a .tf file and press <span class="kbd">Visualize</span></span><a href="CodeVisual.dc.html" style="font-size: 12px">Try it →</a></div>
+<div class="chk"><span class="tick">5</span><span>Run doctor to check credentials and SSH</span><a href="Troubleshoot.dc.html" style="font-size: 12px">Run doctor →</a></div>
+</div>
+</section>
+</sc-if>
+
+<section class="{{hlEnvs}}" aria-label="Environments" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 16px">
+<sc-for list="{{envs}}" as="env" hint-placeholder-count="3">
+<article style="border: 1px solid #1E2428; border-radius: 10px; background: #12161A; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<span class="mono" style="font-size: 16px; font-weight: 700">{{env.name}}</span>
+<span class="pill {{env.cls}}">{{env.status}}</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; color: #8B959C; text-transform: uppercase; letter-spacing: .06em">Resources</span><span class="mono" style="font-size: 18px">{{env.resources}}</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; color: #8B959C; text-transform: uppercase; letter-spacing: .06em">Hosts</span><span class="mono" style="font-size: 18px">{{env.hosts}}</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 11px; color: #8B959C; text-transform: uppercase; letter-spacing: .06em">Pending</span><span class="mono" style="font-size: 18px">{{env.pending}}</span></div>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 12px; border-top: 1px solid #1E2428; font-size: 12px; color: #9AA4AB">
+<span>{{env.last}}</span>
+<a href="Plan.dc.html" style="font-size: 12px">{{env.action}} →</a>
+</div>
+</article>
+</sc-for>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 16px; align-items: start">
+<section aria-label="Recent runs" style="border: 1px solid #1E2428; border-radius: 10px; background: #12161A; overflow: hidden">
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid #1E2428">
+<h2 style="margin: 0; font-size: 14px; font-weight: 600">Recent runs</h2>
+<a href="Run.dc.html" style="font-size: 12px">All runs →</a>
+</div>
+<div style="overflow-x: auto">
+<div style="min-width: 520px; display: flex; flex-direction: column">
+<sc-for list="{{runs}}" as="run" hint-placeholder-count="6">
+<a class="row" href="Run.dc.html" style="display: grid; grid-template-columns: 52px minmax(0, 1fr) 96px 64px; gap: 12px; align-items: center; padding: 11px 18px; border-bottom: 1px solid #1A1F23; color: inherit; text-decoration: none">
+<span class="mono" style="font-size: 12px; color: #8B959C">#{{run.id}}</span>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<span class="mono" style="font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{run.cmd}}</span>
+<span style="font-size: 12px; color: #8B959C">{{run.target}} · {{run.when}}</span>
+</span>
+<span class="pill {{run.cls}}" style="justify-self: start">{{run.status}}</span>
+<span class="mono" style="font-size: 12px; color: #9AA4AB; text-align: right">{{run.dur}}</span>
+</a>
+</sc-for>
+</div>
+</div>
+</section>
+
+<div style="display: flex; flex-direction: column; gap: 16px">
+<section class="{{hlChecks}}" aria-label="Verification" style="border: 1px solid #1E2428; border-radius: 10px; background: #12161A">
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid #1E2428">
+<h2 style="margin: 0; font-size: 14px; font-weight: 600">Verification</h2>
+<span class="mono" style="font-size: 12px; color: #8B959C">on save · 12s ago</span>
+</div>
+<div style="display: flex; flex-direction: column; padding: 6px 0">
+<sc-for list="{{checks}}" as="c" hint-placeholder-count="6">
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 8px 18px">
+<span class="mono" style="font-size: 13px">{{c.tool}}</span>
+<span style="font-size: 12px; color: #9AA4AB">{{c.detail}}</span>
+<span class="pill {{c.cls}}">{{c.status}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section class="{{hlIssues}}" aria-label="Needs attention" style="border: 1px solid #3A2A22; border-radius: 10px; background: #15110F">
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid #2B211C">
+<h2 style="margin: 0; font-size: 14px; font-weight: 600">Needs attention</h2>
+<a href="Troubleshoot.dc.html" style="font-size: 12px">Troubleshoot →</a>
+</div>
+<div style="display: flex; flex-direction: column">
+<sc-for list="{{issues}}" as="i" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 12px 18px; border-bottom: 1px solid #221A16">
+<div style="display: flex; align-items: center; gap: 8px"><span class="pill {{i.cls}}">{{i.kind}}</span><span class="mono" style="font-size: 12px; color: #9AA4AB">{{i.where}}</span></div>
+<span class="mono" style="font-size: 13px; color: #F1E6DF">{{i.msg}}</span>
+<span style="font-size: 12px; color: #B8C0C5">{{i.hint}} <a href="#">{{i.fix}}</a></span>
+</div>
+</sc-for>
+</div>
+</section>
+</div>
+</div>
+</div>
+</main>
+
+<sc-if value="{{showTour}}" hint-placeholder-val="{{ true }}">
+<div aria-hidden="true" style="position: absolute; inset: 0; z-index: 5; background: rgba(5,7,8,.62); pointer-events: none"></div>
+<div role="dialog" aria-label="Tips" style="{{tipStyle}}">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+<span class="mono" style="font-size: 11px; color: #B8F36B; text-transform: uppercase; letter-spacing: .08em">Tip {{stepNo}} of {{stepCount}}</span>
+<button type="button" aria-label="Close tips" onClick="{{closeTour}}" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: #9AA4AB; cursor: pointer; font-size: 16px">×</button>
+</div>
+<h2 style="margin: 0; font-size: 17px; font-weight: 600; line-height: 1.3">{{tip.title}}</h2>
+<p style="margin: 0; font-size: 13.5px; color: #C3CBD0; line-height: 1.55">{{tip.body}}</p>
+<sc-if value="{{tip.keys}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 12px; color: #9AA4AB">
+<span><span class="kbd">⌘K</span> jump anywhere</span>
+<span><span class="kbd">?</span> all shortcuts</span>
+<span><span class="kbd">g</span> <span class="kbd">r</span> runs</span>
+</div>
+</sc-if>
+<div style="display: flex; align-items: center; gap: 10px; padding-top: 4px">
+<div style="display: flex; align-items: center; gap: 5px">
+<sc-for list="{{dots}}" as="d" hint-placeholder-count="6"><span class="tdot {{d.cls}}"></span></sc-for>
+</div>
+<div style="margin-left: auto; display: flex; gap: 8px">
+<sc-if value="{{canBack}}" hint-placeholder-val="{{ false }}"><button class="btn" type="button" onClick="{{back}}" style="height: 32px; font-size: 12px">Back</button></sc-if>
+<button class="btn primary" type="button" onClick="{{next}}" style="height: 32px; font-size: 12px">{{nextLabel}}</button>
+</div>
+</div>
+<sc-if value="{{isFirst}}" hint-placeholder-val="{{ true }}">
+<button type="button" onClick="{{closeTour}}" style="align-self: flex-start; border: 0; background: transparent; color: #8B959C; font: inherit; font-size: 12px; padding: 0; cursor: pointer; text-decoration: underline">Skip tour. You can reopen it from the ? button</button>
+</sc-if>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"firstRun":{"editor":"boolean","default":true},"$preview":{"width":1440,"height":1460}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const first = props.firstRun ?? true;
+    this.state = { tour: first, step: 0, checklist: first };
+  }
+  renderVals() {
+    const steps = [
+      { title: 'Welcome to groundwork', body: 'It scanned this repo and found 3 environments, 14 Terraform stacks and 9 Ansible playbooks. Here is a one-minute tour of where things live.', hl: '', pos: 'top: 132px; right: 28px' },
+      { title: 'Everything is one click away', body: 'Code is where you edit and visualize. Runs shows every plan, apply and playbook with live logs. Graph draws how resources connect. Troubleshoot explains errors.', hl: 'nav', pos: 'top: 250px; left: 262px' },
+      { title: 'Each environment at a glance', body: 'See drift and pending changes per environment. Plan only previews changes. Nothing is applied until you review the plan and approve it.', hl: 'envs', pos: 'top: 640px; right: 28px' },
+      { title: 'Checks run on every save', body: 'fmt, validate, tflint, ansible-lint and yamllint re-run when a file changes, in the editor or in your own IDE.', hl: 'checks', pos: 'top: 670px; left: 262px' },
+      { title: 'Problems come with a fix', body: 'Errors, stuck state locks and unreachable hosts land here with a suggested next step. Open Troubleshoot for the full walkthrough.', hl: 'issues', pos: 'top: 950px; left: 262px' },
+      { title: 'Move fast with the keyboard', body: 'Search jumps to any module, resource, host or run. Start a plan or playbook from New run. Reopen these tips any time with the ? button.', hl: 'header', pos: 'top: 84px; right: 28px', keys: true }
+    ];
+    const i = Math.min(this.state.step, steps.length - 1);
+    const t = steps[i];
+    const on = this.state.tour;
+    const hl = (k) => (on && t.hl === k ? 'hl' : '');
+    const last = i === steps.length - 1;
+    return {
+      showTour: on,
+      showChecklist: this.state.checklist,
+      tip: { title: t.title, body: t.body, keys: !!t.keys },
+      tipStyle: 'position: absolute; z-index: 10; ' + t.pos + '; width: 360px; max-width: calc(100% - 32px); box-sizing: border-box; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; border: 1px solid #3A4A2A; border-radius: 12px; background: #151A13; box-shadow: 0 18px 48px rgba(0,0,0,.55)',
+      stepNo: i + 1,
+      stepCount: steps.length,
+      dots: steps.map((_, k) => ({ cls: k === i ? 'on' : '' })),
+      canBack: i > 0,
+      isFirst: i === 0,
+      nextLabel: last ? 'Done' : (i === 0 ? 'Show me around' : 'Next'),
+      hlNav: hl('nav'), hlEnvs: hl('envs'), hlChecks: hl('checks'), hlIssues: hl('issues'), hlHeader: hl('header'),
+      next: () => last ? this.setState({ tour: false, step: 0 }) : this.setState({ step: i + 1 }),
+      back: () => this.setState({ step: Math.max(0, i - 1) }),
+      closeTour: () => this.setState({ tour: false, step: 0 }),
+      openTour: () => this.setState({ tour: true, step: 0 }),
+      hideChecklist: () => this.setState({ checklist: false }),
+      envs: [
+        { name: 'dev', status: 'in sync', cls: 'st-ok', resources: 142, hosts: 4, pending: '0', last: 'Applied 2h ago by sam', action: 'Plan' },
+        { name: 'staging', status: 'drift', cls: 'st-warn', resources: 207, hosts: 6, pending: '+2 ~1', last: '3 resources drifted · detected 1h ago', action: 'Review drift' },
+        { name: 'prod', status: 'in sync', cls: 'st-ok', resources: 318, hosts: 12, pending: '0', last: 'Applied 3d ago · approval required', action: 'Plan' }
+      ],
+      runs: [
+        { id: 482, cmd: 'terraform apply', target: 'staging/network', when: 'now', status: 'running', cls: 'st-run', dur: '1m 12s' },
+        { id: 481, cmd: 'ansible-playbook site.yml --limit web', target: 'prod/web', when: '18m ago', status: 'success', cls: 'st-ok', dur: '4m 03s' },
+        { id: 480, cmd: 'terraform plan', target: 'prod/database', when: '41m ago', status: 'success', cls: 'st-ok', dur: '38s' },
+        { id: 479, cmd: 'terraform validate', target: 'modules/k8s-cluster', when: '52m ago', status: 'failed', cls: 'st-fail', dur: '6s' },
+        { id: 478, cmd: 'ansible-lint roles/postgres', target: 'roles/postgres', when: '1h ago', status: 'warnings', cls: 'st-warn', dur: '12s' },
+        { id: 477, cmd: 'terraform plan', target: 'dev/app', when: '2h ago', status: 'success', cls: 'st-ok', dur: '29s' }
+      ],
+      checks: [
+        { tool: 'terraform fmt', detail: '48 files', status: 'pass', cls: 'st-ok' },
+        { tool: 'terraform validate', detail: '1 of 14 stacks', status: 'fail', cls: 'st-fail' },
+        { tool: 'tflint', detail: '3 warnings', status: 'warn', cls: 'st-warn' },
+        { tool: 'ansible-lint', detail: '5 warnings', status: 'warn', cls: 'st-warn' },
+        { tool: 'yamllint', detail: '31 files', status: 'pass', cls: 'st-ok' },
+        { tool: 'ansible --syntax-check', detail: '9 playbooks', status: 'pass', cls: 'st-ok' }
+      ],
+      issues: [
+        { kind: 'error', cls: 'st-fail', where: 'modules/k8s-cluster/main.tf:42', msg: 'Unsupported argument "enable_dns_hostname"', hint: 'Did you mean enable_dns_hostnames?', fix: 'Open at line' },
+        { kind: 'lock', cls: 'st-warn', where: 'staging/database', msg: 'State lock held by run #476 for 2h 04m', hint: 'Run #476 exited without releasing.', fix: 'Force unlock…' },
+        { kind: 'unreachable', cls: 'st-warn', where: 'prod · web-03', msg: 'SSH timeout to 10.0.2.13:22 after 30s', hint: 'Last seen in run #481.', fix: 'Ping host' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

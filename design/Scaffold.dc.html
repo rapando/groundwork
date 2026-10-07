@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Groundwork — Set up repository</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0;background:#0D1012}
+a{color:#B8F36B}a:hover{color:#D6FF9E}
+input{accent-color:#B8F36B}
+.mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+.lbl{font-size:11px;color:#8B959C;text-transform:uppercase;letter-spacing:.08em}
+.btn{font:inherit;font-size:13px;font-weight:500;border-radius:6px;padding:0 16px;height:40px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;border:1px solid #2A3238;background:#161B1E;color:#E6E9EB;text-decoration:none}
+.btn.primary{background:#B8F36B;border-color:#B8F36B;color:#0D1012}
+.opt{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;border:1px solid #2A3238;border-radius:8px;background:#12161A;cursor:pointer;font-size:13px}
+.opt:hover{border-color:#3A444B}
+.opt.on{border-color:#B8F36B;background:#161D12}
+.field{display:flex;flex-direction:column;gap:6px;font-size:13px;color:#B8C0C5}
+.inp{height:40px;background:#0A0C0E;border:1px solid #2A3238;border-radius:6px;color:#E6E9EB;padding:0 12px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px}
+.card{border:1px solid #1E2428;border-radius:12px;background:#111518;padding:22px;display:flex;flex-direction:column;gap:16px}
+.t-new{color:#5FD38D}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #0D1012; color: #E6E9EB; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px">
+<header style="display: flex; align-items: center; gap: 12px; padding: 16px 32px; border-bottom: 1px solid #1E2428">
+<div style="width: 28px; height: 28px; border-radius: 6px; background: #B8F36B; display: grid; place-items: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1012" stroke-width="2.4" stroke-linecap="round"><path d="M3 20h18"></path><path d="M5 16h14"></path><path d="M8 12h8"></path><path d="M11 8h2"></path></svg></div>
+<span class="mono" style="font-weight: 700">groundwork</span>
+<span style="color: #4A545B">/</span>
+<span style="color: #9AA4AB">Set up repository</span>
+<span class="mono" style="margin-left: auto; font-size: 12px; color: #8B959C">~/code/infra-platform · empty git repo</span>
+</header>
+
+<div style="max-width: 1280px; margin: 0 auto; padding: 32px; box-sizing: border-box; display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start">
+
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.01em">Scaffold an IaC repo</h1>
+<p style="margin: 0; color: #9AA4AB; line-height: 1.55; max-width: 640px">No <span class="mono">groundwork.yaml</span> here yet. Pick a layout and groundwork writes the Terraform and Ansible skeleton, check config and a CI workflow. Nothing touches your cloud until you run a plan.</p>
+</div>
+
+<pre class="mono" style="margin: 0; padding: 16px 18px; border: 1px solid #1E2428; border-radius: 10px; background: #0A0C0E; font-size: 12.5px; line-height: 1.7; color: #C3CBD0; overflow-x: auto">$ groundwork
+<span style="color: #5FD38D">✓</span> terraform 1.9.8   <span style="color: #5FD38D">✓</span> ansible-core 2.17.5   <span style="color: #F5B647">!</span> tflint not found
+No groundwork.yaml in ~/code/infra-platform — starting setup
+→ <span style="color: #B8F36B">http://localhost:7420/setup</span>  (opened in your browser)</pre>
+
+<section class="card" aria-labelledby="s-cloud">
+<h2 id="s-cloud" style="margin: 0; font-size: 15px; font-weight: 600">1 · Cloud and state</h2>
+<fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px">
+<legend class="lbl" style="padding: 0; margin-bottom: 10px">Provider</legend>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 8px">
+<label class="opt on"><input type="radio" name="prov" checked>AWS</label>
+<label class="opt"><input type="radio" name="prov">Google Cloud</label>
+<label class="opt"><input type="radio" name="prov">Azure</label>
+<label class="opt"><input type="radio" name="prov">Hetzner</label>
+<label class="opt"><input type="radio" name="prov">DigitalOcean</label>
+<label class="opt"><input type="radio" name="prov">None / on-prem</label>
+</div>
+</fieldset>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 14px">
+<label class="field">State backend
+<select class="inp"><option>S3 + DynamoDB lock</option><option>Local file</option><option>HTTP backend</option></select>
+</label>
+<label class="field">Bucket name
+<input class="inp" type="text" value="infra-platform-tfstate">
+</label>
+<label class="field">Default region
+<input class="inp" type="text" value="[YOUR REGION]">
+</label>
+</div>
+</section>
+
+<section class="card" aria-labelledby="s-env">
+<h2 id="s-env" style="margin: 0; font-size: 15px; font-weight: 600">2 · Environments</h2>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<label class="opt on"><input type="checkbox" checked>dev</label>
+<label class="opt on"><input type="checkbox" checked>staging</label>
+<label class="opt on"><input type="checkbox" checked>prod<span style="font-size: 12px; color: #8B959C">requires approval</span></label>
+<button class="btn" type="button" style="height: 44px">+ Add environment</button>
+</div>
+<fieldset style="border: 0; margin: 0; padding: 0">
+<legend class="lbl" style="padding: 0; margin-bottom: 10px">Layout</legend>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 8px">
+<label class="opt on" style="padding: 12px 14px; align-items: flex-start"><input type="radio" name="lay" checked style="margin-top: 3px"><span style="display: flex; flex-direction: column; gap: 4px"><span>Directory per environment</span><span class="mono" style="font-size: 12px; color: #8B959C">envs/dev, envs/staging, envs/prod</span></span></label>
+<label class="opt" style="padding: 12px 14px; align-items: flex-start"><input type="radio" name="lay" style="margin-top: 3px"><span style="display: flex; flex-direction: column; gap: 4px"><span>Workspaces</span><span class="mono" style="font-size: 12px; color: #8B959C">one root, terraform workspace per env</span></span></label>
+</div>
+</fieldset>
+</section>
+
+<section class="card" aria-labelledby="s-ans">
+<h2 id="s-ans" style="margin: 0; font-size: 15px; font-weight: 600">3 · Ansible</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 14px">
+<label class="field">Inventory
+<select class="inp"><option>Generated from Terraform outputs</option><option>Static YAML per environment</option><option>Dynamic (cloud plugin)</option></select>
+</label>
+<label class="field">Starter roles
+<input class="inp" type="text" value="common, nginx, postgres">
+</label>
+</div>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 13px"><input type="checkbox" checked>Encrypt group_vars/*/vault.yml with ansible-vault</label>
+</section>
+
+<section class="card" aria-labelledby="s-chk">
+<h2 id="s-chk" style="margin: 0; font-size: 15px; font-weight: 600">4 · Checks and CI</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 10px 16px; font-size: 13px">
+<label style="display: flex; align-items: center; gap: 10px"><input type="checkbox" checked>terraform fmt + validate</label>
+<label style="display: flex; align-items: center; gap: 10px"><input type="checkbox" checked>tflint</label>
+<label style="display: flex; align-items: center; gap: 10px"><input type="checkbox">checkov</label>
+<label style="display: flex; align-items: center; gap: 10px"><input type="checkbox" checked>ansible-lint</label>
+<label style="display: flex; align-items: center; gap: 10px"><input type="checkbox" checked>yamllint</label>
+<label style="display: flex; align-items: center; gap: 10px"><input type="checkbox" checked>pre-commit hook</label>
+<label style="display: flex; align-items: center; gap: 10px"><input type="checkbox" checked>GitHub Actions: plan on PR</label>
+</div>
+</section>
+</div>
+
+<aside aria-label="Files to be created" style="flex: 1 1 340px; max-width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; position: sticky; top: 24px">
+<div class="card" style="gap: 12px">
+<div style="display: flex; align-items: baseline; justify-content: space-between">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Preview</h2>
+<span class="mono" style="font-size: 12px; color: #5FD38D">+38 files</span>
+</div>
+<pre class="mono" style="margin: 0; font-size: 12.5px; line-height: 1.75; color: #C3CBD0; overflow-x: auto"><span class="t-new">groundwork.yaml</span>
+terraform/
+  envs/
+    dev/      <span style="color: #8B959C">main.tf backend.tf *.tfvars</span>
+    staging/  <span style="color: #8B959C">…</span>
+    prod/     <span style="color: #8B959C">…</span>
+  modules/
+    network/  <span style="color: #8B959C">main variables outputs</span>
+ansible/
+  ansible.cfg
+  inventory/  <span style="color: #8B959C">tf_outputs.yml</span>
+  playbooks/site.yml
+  roles/
+    common/ nginx/ postgres/
+  group_vars/<span style="color: #8B959C">{dev,staging,prod}</span>/
+.tflint.hcl
+.ansible-lint
+.yamllint
+.pre-commit-config.yaml
+.github/workflows/plan.yml
+.gitignore</pre>
+</div>
+<div class="card" style="gap: 12px; padding: 18px">
+<label style="display: flex; align-items: center; gap: 10px; font-size: 13px"><input type="checkbox" checked>Make an initial git commit</label>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 13px"><input type="checkbox">Install missing tools (tflint)</label>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px">
+<a class="btn primary" href="Main.dc.html" style="flex: 1; justify-content: center">Create files</a>
+<button class="btn" type="button">Download as zip</button>
+</div>
+<span style="font-size: 12px; color: #8B959C">Same as <span class="mono">groundwork init --preset aws-envs</span></span>
+</div>
+</aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1400}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

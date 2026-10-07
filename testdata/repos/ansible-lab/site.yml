@@ -1,0 +1,21 @@
+---
+- name: Configure web
+  hosts: web
+  gather_facts: false
+  roles:
+    - web
+  tasks:
+    - name: Say hello
+      ansible.builtin.debug:
+        msg: "hello {{ inventory_hostname }}"
+    - name: Fail on canary
+      ansible.builtin.fail:
+        msg: canary refuses
+      when: tier is defined and tier == 'canary'
+
+- name: Reach the flaky host
+  hosts: flaky
+  gather_facts: false
+  tasks:
+    - name: Ping
+      ansible.builtin.ping:

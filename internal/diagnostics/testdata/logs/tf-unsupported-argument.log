@@ -1,0 +1,8 @@
+
+Error: Unsupported argument
+
+  on main.tf line 2, in resource "terraform_data" "x":
+   2:   triggers_replac = "a"
+
+An argument named "triggers_replac" is not expected here. Did you mean
+"triggers_replace"?

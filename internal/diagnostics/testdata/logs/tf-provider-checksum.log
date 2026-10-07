@@ -1,0 +1,13 @@
+Initializing the backend...
+
+Initializing provider plugins...
+- Reusing previous version of hashicorp/random from the dependency lock file
+- Installing hashicorp/random v3.6.3...
+
+Error: Failed to install provider
+
+Error while installing hashicorp/random v3.6.3: the current package for
+registry.terraform.io/hashicorp/random 3.6.3 doesn't match any of the
+checksums previously recorded in the dependency lock file; for more
+information:
+https://developer.hashicorp.com/terraform/language/files/dependency-lock#checksum-verification

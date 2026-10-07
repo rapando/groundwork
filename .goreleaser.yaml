@@ -1,0 +1,93 @@
+# Release: automatic from Conventional Commits on main (see docs/releasing.md);
+# .github/workflows/release.yml tags vX.Y.Z and runs `goreleaser release`.
+# Local dry run: goreleaser release --snapshot --clean  (artifacts in dist/)
+version: 2
+project_name: groundwork
+
+before:
+  hooks:
+    - go mod verify
+    # the SPA is committed in internal/server/dist; CI checks it matches web/
+
+builds:
+  - id: groundwork
+    main: ./cmd/groundwork
+    binary: groundwork
+    env: [CGO_ENABLED=0]
+    goos: [darwin, linux] # Windows isn't supported
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w
+      - -X github.com/rapando/groundwork/internal/cli.Version={{ .Version }}
+      - -X github.com/rapando/groundwork/internal/cli.Commit={{ .ShortCommit }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    name_template: "groundwork_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - docs/*.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude: ['^(docs|test|chore|ci|build|style)(\(.*\))?:', "^Merge "]
+  groups:
+    - title: Breaking changes
+      regexp: '^.*?\w+(\(.+\))?!:.+$'
+      order: 0
+    - title: Features
+      regexp: '^.*?feat(\(.+\))?:.+$'
+      order: 1
+    - title: Bug fixes
+      regexp: '^.*?fix(\(.+\))?:.+$'
+      order: 2
+    - title: Performance
+      regexp: '^.*?perf(\(.+\))?:.+$'
+      order: 3
+    - title: Other changes
+      order: 999
+
+release:
+  prerelease: auto # vX.Y.Z-rc.N tags are marked pre-release, not "latest"
+  github:
+    owner: rapando
+    name: groundwork
+  footer: |
+    Install: `brew install rapando/tap/groundwork`, or
+    `curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | sh`.
+    Verify downloads against checksums.txt.
+
+# Homebrew cask (works on macOS and Linux Homebrew): brew install rapando/tap/groundwork
+homebrew_casks:
+  - name: groundwork
+    repository:
+      owner: rapando
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    homepage: https://github.com/rapando/groundwork
+    description: Local web console for Terraform and Ansible
+    commit_author:
+      name: groundwork-release
+      email: noreply@github.com
+    caveats: |
+      groundwork drives the terraform (or tofu) and ansible already on your PATH.
+      Run it inside a repository: `groundwork`.
+    hooks:
+      post:
+        # the binary isn't notarized: clear the download quarantine on macOS
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/groundwork"]
+          end

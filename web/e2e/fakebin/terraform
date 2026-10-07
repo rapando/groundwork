@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Minimal stand-in for terraform so browser tests are deterministic and need no
+# network. `validate -json` flags the typo `enable_dns_hostname =` (the same
+# shape real terraform 1.x emits); everything else succeeds.
+set -u
+dir="."
+args=()
+for a in "$@"; do
+  case "$a" in
+    -chdir=*) dir="${a#-chdir=}" ;;
+    *) args+=("$a") ;;
+  esac
+done
+cmd="${args[0]:-}"
+
+# Everything except `validate -json` (used by the Code screen's checks) is the
+# scriptable fake that the runner tests use: plan/show/apply with real captured output.
+wants_json=0; for a in "${args[@]}"; do [ "$a" = "-json" ] && wants_json=1; done
+if [ "$cmd" != validate ] || [ "$wants_json" = 0 ]; then
+  here="$(cd "$(dirname "$0")" && pwd)"
+  export FAKE_DATA="${FAKE_DATA:-$here/../../../testdata/terraform}"
+  exec "$here/../../../testdata/fake-terraform/terraform" "$@"
+fi
+
+case "$cmd" in
+  version) echo "Terraform v1.9.8"; exit 0 ;;
+  init) exit 0 ;;
+  fmt) exit 0 ;;
+  validate)
+    hit=$(grep -n 'enable_dns_hostname *=' "$dir"/*.tf 2>/dev/null | head -1)
+    if [ -z "$hit" ]; then
+      echo '{"format_version":"1.0","valid":true,"error_count":0,"warning_count":0,"diagnostics":[]}'
+      exit 0
+    fi
+    file=$(basename "${hit%%:*}")
+    rest="${hit#*:}"; line="${rest%%:*}"
+    text=$(sed -n "${line}p" "$dir/$file")
+    pre="${text%%enable_dns_hostname*}"; col=$(( ${#pre} + 1 )); endcol=$(( col + 19 ))
+    cat <<JSON
+{"format_version":"1.0","valid":false,"error_count":1,"warning_count":0,"diagnostics":[{"severity":"error","summary":"Unsupported argument","detail":"An argument named \"enable_dns_hostname\" is not expected here. Did you mean \"enable_dns_hostnames\"?","range":{"filename":"$file","start":{"line":$line,"column":$col,"byte":0},"end":{"line":$line,"column":$endcol,"byte":0}}}]}
+JSON
+    exit 1 ;;
+esac
+exit 0

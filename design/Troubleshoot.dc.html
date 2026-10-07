@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Groundwork — Troubleshoot</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0;background:#0D1012}
+a{color:#B8F36B}a:hover{color:#D6FF9E}
+.mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.st-ok{color:#5FD38D;background:rgba(95,211,141,.10)}
+.st-warn{color:#F5B647;background:rgba(245,182,71,.10)}
+.st-fail{color:#FF7A7A;background:rgba(255,122,122,.10)}
+.st-idle{color:#9AA4AB;background:rgba(154,164,171,.10)}
+.nav{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;color:#AEB7BD;text-decoration:none;font-size:14px}
+.nav:hover{background:#1A1F23;color:#E6E9EB}
+.nav.on{background:#1C2226;color:#E6E9EB;box-shadow:inset 0 0 0 1px #2A3238}
+.btn{font:inherit;font-size:13px;font-weight:500;border-radius:6px;padding:0 14px;height:36px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;border:1px solid #2A3238;background:#161B1E;color:#E6E9EB;text-decoration:none}
+.btn.primary{background:#B8F36B;border-color:#B8F36B;color:#0D1012}
+.btn.danger{border-color:#6A3434;color:#FF9A9A}
+.iss{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:8px;color:inherit;text-decoration:none;border:1px solid transparent}
+.iss:hover{background:#151A1E}
+.iss.on{background:#1A1712;border-color:#4A3A20}
+.lbl{font-size:11px;color:#8B959C;text-transform:uppercase;letter-spacing:.08em}
+.step{display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px}
+.num{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;border:1px solid #2A3238;color:#9AA4AB}
+.num.done{background:rgba(95,211,141,.12);border-color:#2C5A3E;color:#5FD38D}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #0D1012; color: #E6E9EB; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px">
+
+<aside style="flex: 1 1 232px; max-width: 100%; box-sizing: border-box; padding: 20px 14px; border-right: 1px solid #1E2428; display: flex; flex-direction: column; gap: 24px; background: #0B0E10">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 6px">
+<div style="width: 28px; height: 28px; border-radius: 6px; background: #B8F36B; display: grid; place-items: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1012" stroke-width="2.4" stroke-linecap="round"><path d="M3 20h18"></path><path d="M5 16h14"></path><path d="M8 12h8"></path><path d="M11 8h2"></path></svg></div>
+<div style="display: flex; flex-direction: column"><span class="mono" style="font-weight: 700; font-size: 14px">groundwork</span><span class="mono" style="font-size: 11px; color: #8B959C">v0.1.0 · :7420</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid #1E2428; border-radius: 8px; background: #111518">
+<span class="lbl">Repository</span>
+<span class="mono" style="font-size: 13px; font-weight: 500">infra-platform</span>
+<span class="mono" style="font-size: 12px; color: #9AA4AB">main · 2 uncommitted</span>
+</div>
+<nav aria-label="Primary" style="display: flex; flex-direction: column; gap: 2px">
+<a class="nav" href="Main.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>Overview</a>
+<a class="nav" href="Code.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 4h6l2 2h8v14H4z"></path></svg>Code<span class="mono" style="margin-left: auto; font-size: 11px; color: #FF7A7A">1</span></a>
+<a class="nav" href="Run.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 3l14 9-14 9z"></path></svg>Runs<span class="mono" style="margin-left: auto; font-size: 11px; color: #7CC0FF">1 live</span></a>
+<a class="nav" href="Graph.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="2.5"></circle><circle cx="19" cy="5" r="2.5"></circle><circle cx="19" cy="19" r="2.5"></circle><path d="M7.3 11l9.4-5M7.3 13l9.4 5"></path></svg>Graph</a>
+<a class="nav on" href="Troubleshoot.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"></path><path d="M12 10v4M12 17h.01"></path></svg>Troubleshoot<span class="mono" style="margin-left: auto; font-size: 11px; color: #F5B647">3</span></a>
+<a class="nav" href="Inventory.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"></path></svg>Inventory</a>
+<a class="nav" href="Variables.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4c-2 0-3 1-3 3v2c0 1.5-1 3-2 3 1 0 2 1.5 2 3v2c0 2 1 3 3 3"></path><path d="M16 4c2 0 3 1 3 3v2c0 1.5 1 3 2 3-1 0-2 1.5-2 3v2c0 2-1 3-3 3"></path></svg>Variables</a>
+</nav>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span class="lbl" style="padding: 0 12px 4px">Environments</span>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5FD38D"></span>dev</a>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #F5B647"></span>staging<span class="mono" style="margin-left: auto; font-size: 11px; color: #F5B647">drift</span></a>
+<a class="nav" href="#"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5FD38D"></span>prod</a>
+</div>
+</aside>
+
+<main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 24px; border-bottom: 1px solid #1E2428">
+<h1 style="margin: 0; font-size: 18px; font-weight: 600">Troubleshoot</h1>
+<span style="font-size: 13px; color: #9AA4AB">3 open · 14 resolved this week</span>
+<div style="margin-left: auto; display: flex; gap: 8px">
+<button class="btn" type="button">Export report</button>
+<button class="btn primary" type="button">Run doctor</button>
+</div>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; align-items: stretch">
+<section aria-label="Open issues" style="flex: 1 1 300px; max-width: 100%; box-sizing: border-box; padding: 16px 12px; border-right: 1px solid #1E2428; display: flex; flex-direction: column; gap: 6px; background: #0F1315">
+<span class="lbl" style="padding: 4px 8px">Open</span>
+<a class="iss" href="Code.dc.html">
+<span style="display: flex; align-items: center; gap: 8px"><span class="pill st-fail">error</span><span style="font-size: 12px; color: #8B959C">52m ago</span></span>
+<span class="mono" style="font-size: 13px">Unsupported argument</span>
+<span class="mono" style="font-size: 12px; color: #9AA4AB">modules/k8s-cluster/main.tf:42</span>
+</a>
+<a class="iss on" href="#">
+<span style="display: flex; align-items: center; gap: 8px"><span class="pill st-warn">state lock</span><span style="font-size: 12px; color: #8B959C">2h ago</span></span>
+<span class="mono" style="font-size: 13px">Stale lock on staging/database</span>
+<span class="mono" style="font-size: 12px; color: #9AA4AB">held by run #476</span>
+</a>
+<a class="iss" href="#">
+<span style="display: flex; align-items: center; gap: 8px"><span class="pill st-warn">unreachable</span><span style="font-size: 12px; color: #8B959C">18m ago</span></span>
+<span class="mono" style="font-size: 13px">SSH timeout · web-03</span>
+<span class="mono" style="font-size: 12px; color: #9AA4AB">inventory/prod.yml</span>
+</a>
+<span class="lbl" style="padding: 16px 8px 4px">Recently resolved</span>
+<a class="iss" href="#" style="opacity: .75">
+<span class="mono" style="font-size: 13px">Provider checksum mismatch</span>
+<span style="font-size: 12px; color: #9AA4AB">fixed by <span class="mono">init -upgrade</span> · yesterday</span>
+</a>
+<a class="iss" href="#" style="opacity: .75">
+<span class="mono" style="font-size: 13px">Vault password not found</span>
+<span style="font-size: 12px; color: #9AA4AB">fixed by setting vault_password_file · Mon</span>
+</a>
+</section>
+
+<section aria-label="Issue detail" style="flex: 999 1 520px; min-width: 0; padding: 24px; display: flex; flex-direction: column; gap: 22px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px"><span class="pill st-warn">state lock</span><span class="mono" style="font-size: 12px; color: #9AA4AB">envs/staging · stack database</span></div>
+<h2 style="margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.01em">A crashed run left the state locked</h2>
+<p style="margin: 0; color: #B8C0C5; line-height: 1.55; max-width: 720px">Run #476 was interrupted during <span class="mono">terraform apply</span> and exited before releasing the lock. Every plan and apply on this stack will fail until it is released.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px">
+<div style="border: 1px solid #1E2428; border-radius: 10px; background: #12161A; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+<span class="lbl">Lock info</span>
+<div class="mono" style="display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: 12.5px; color: #9AA4AB">
+<span>ID</span><span style="color: #E6E9EB; overflow-wrap: anywhere">6f1c2e0a-91b4-7d3e-a5c8-04e7b2f19d61</span>
+<span>Who</span><span style="color: #E6E9EB">sam@sams-macbook-air</span>
+<span>Operation</span><span style="color: #E6E9EB">OperationTypeApply</span>
+<span>Created</span><span style="color: #E6E9EB">11:58:02 · 2h 04m ago</span>
+<span>Backend</span><span style="color: #E6E9EB">s3 + dynamodb</span>
+</div>
+</div>
+<div style="border: 1px solid #1E2428; border-radius: 10px; background: #12161A; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+<span class="lbl">What happened</span>
+<ol class="mono" style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 12.5px">
+<li style="display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px"><span style="color: #8B959C">11:58:02</span><span>#476 acquired lock</span></li>
+<li style="display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px"><span style="color: #8B959C">12:01:37</span><span style="color: #FF8A8A">process exited 130 (SIGINT)</span></li>
+<li style="display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px"><span style="color: #8B959C">13:40:15</span><span>#479 plan blocked by lock</span></li>
+<li style="display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px"><span style="color: #8B959C">now</span><span>no terraform process running locally</span></li>
+</ol>
+<a href="Run.dc.html" style="font-size: 12px">Open run #476 log →</a>
+</div>
+</div>
+
+<div style="border: 1px solid #1E2428; border-radius: 10px; background: #12161A; padding: 18px; display: flex; flex-direction: column; gap: 16px">
+<span class="lbl">Fix it</span>
+<div class="step"><span class="num done">✓</span><div style="display: flex; flex-direction: column; gap: 4px"><span style="font-weight: 500">Make sure nothing is still applying</span><span style="font-size: 13px; color: #9AA4AB">Checked: no local terraform process, no running groundwork job on this stack.</span></div></div>
+<div class="step"><span class="num">2</span><div style="display: flex; flex-direction: column; gap: 10px"><span style="font-weight: 500">Release the lock</span>
+<code class="mono" style="font-size: 12.5px; background: #0A0C0E; border: 1px solid #1E2428; border-radius: 6px; padding: 10px 12px; overflow-x: auto; white-space: nowrap">terraform -chdir=envs/staging/database force-unlock 6f1c2e0a-91b4-7d3e-a5c8-04e7b2f19d61</code>
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px">
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #9AA4AB">Type <span class="mono" style="color: #E6E9EB">staging/database</span> to confirm
+<input type="text" aria-label="Confirm stack name" style="height: 34px; width: 240px; background: #0A0C0E; border: 1px solid #2A3238; border-radius: 6px; color: #E6E9EB; padding: 0 10px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px">
+</label>
+<button class="btn danger" type="button">Force unlock</button>
+<button class="btn" type="button">Copy command</button>
+</div>
+</div></div>
+<div class="step"><span class="num">3</span><div style="display: flex; flex-direction: column; gap: 4px"><span style="font-weight: 500">Re-plan to check for partial changes</span><span style="font-size: 13px; color: #9AA4AB">#476 may have changed some resources before it stopped.</span><a class="btn" href="Run.dc.html" style="align-self: flex-start; margin-top: 6px">Plan staging/database</a></div></div>
+</div>
+
+<details style="border: 1px solid #1E2428; border-radius: 10px; background: #0A0C0E">
+<summary style="padding: 12px 16px; cursor: pointer; font-size: 13px; color: #9AA4AB">Raw error from run #479</summary>
+<pre class="mono" style="margin: 0; padding: 0 16px 16px; font-size: 12px; line-height: 1.6; color: #FF9A9A; white-space: pre-wrap">Error: Error acquiring the state lock
+
+Error message: ConditionalCheckFailedException: The conditional request failed
+Lock Info:
+  ID:        6f1c2e0a-91b4-7d3e-a5c8-04e7b2f19d61
+  Path:      infra-platform-tfstate/staging/database/terraform.tfstate
+  Operation: OperationTypeApply</pre>
+</details>
+</section>
+</div>
+
+<section aria-label="Doctor" style="margin: 0 24px 28px; border: 1px solid #1E2428; border-radius: 10px; background: #12161A">
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid #1E2428">
+<h2 style="margin: 0; font-size: 14px; font-weight: 600">Doctor · environment checks</h2>
+<span class="mono" style="font-size: 12px; color: #8B959C">ran 3m ago</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 0">
+<sc-for list="{{doctor}}" as="d" hint-placeholder-count="6">
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 12px 18px; border-bottom: 1px solid #1A1F23">
+<span style="font-weight: 500; font-size: 13px">{{d.name}}</span>
+<span class="pill {{d.cls}}" style="grid-row: span 2">{{d.status}}</span>
+<span class="mono" style="font-size: 12px; color: #9AA4AB">{{d.detail}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1160}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      doctor: [
+        { name: 'AWS credentials', detail: 'profile staging · session expires in 42m', status: 'ok', cls: 'st-ok' },
+        { name: 'State backend', detail: 's3://infra-platform-tfstate reachable', status: 'ok', cls: 'st-ok' },
+        { name: 'Lock table', detail: 'dynamodb tf-locks · 1 stale lock', status: 'warn', cls: 'st-warn' },
+        { name: 'SSH agent', detail: '1 key loaded · ed25519', status: 'ok', cls: 'st-ok' },
+        { name: 'Inventory reachability', detail: '21 of 22 hosts answer ping', status: 'warn', cls: 'st-warn' },
+        { name: 'checkov', detail: 'not on PATH · pip install checkov', status: 'missing', cls: 'st-idle' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

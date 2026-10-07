@@ -1,0 +1,15 @@
+variable "name" {
+  description = "Name prefix for network resources."
+  type        = string
+}
+
+variable "cidr" {
+  description = "CIDR block of the VPC."
+  type        = string
+}
+
+variable "az_count" {
+  description = "Number of availability zones (one private subnet each)."
+  type        = number
+  default     = 2
+}

@@ -1,0 +1,12 @@
+name: iac
+on: [push]
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: plan dev
+        working-directory: terraform/envs/dev
+        run: terraform init && terraform plan
+      - name: lint
+        run: ansible-playbook --syntax-check -i ansible/inventory/dev.yml ansible/playbooks/site.yml

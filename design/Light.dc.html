@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Groundwork — Overview (light)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#F5F5F2}
+a{color:#2D49C9}a:hover{color:#1C318F}
+.mono{font-family:'Geist Mono',ui-monospace,Menlo,monospace}
+.tab{display:inline-flex;align-items:center;height:44px;padding:0 4px;color:#4E5359;text-decoration:none;font-size:14px;border-bottom:2px solid transparent}
+.tab:hover{color:#17191C}
+.tab.on{color:#17191C;font-weight:600;border-bottom-color:#17191C}
+.btn{font:inherit;font-size:14px;font-weight:500;border-radius:999px;padding:0 18px;height:40px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;border:1px solid #D8D9D4;background:#FFFFFF;color:#17191C}
+.btn.primary{background:#17191C;border-color:#17191C;color:#FFFFFF}
+.tag{font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;padding:2px 8px;border-radius:999px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.tag::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.st-ok{color:#1A7A43;background:#E3F2E8}
+.st-warn{color:#8F5600;background:#FBEFD9}
+.st-fail{color:#B42318;background:#FBE5E2}
+.st-run{color:#2D49C9;background:#E6EAFB}
+.dot{width:12px;height:12px;border-radius:50%;border:3px solid #F5F5F2;box-sizing:content-box}
+.d-ok{background:#1A7A43}.d-warn{background:#C47A0A}.d-fail{background:#B42318}.d-run{background:#2D49C9}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F5F5F2; color: #17191C; font-family: 'Geist', ui-sans-serif, system-ui, sans-serif; font-size: 15px">
+
+<header style="background: #FFFFFF; border-bottom: 1px solid #E2E3DE">
+<div style="max-width: 1240px; margin: 0 auto; padding: 0 32px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px">
+<div style="display: flex; align-items: center; gap: 10px; height: 60px">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#17191C" stroke-width="2.2" stroke-linecap="round"><path d="M3 20h18"></path><path d="M5 16h14"></path><path d="M8 12h8"></path><path d="M11 8h2"></path></svg>
+<span style="font-weight: 700; font-size: 16px; letter-spacing: -.01em">groundwork</span>
+<span style="color: #C9CAC5">/</span>
+<span class="mono" style="font-size: 14px">infra-platform</span>
+<span class="mono" style="font-size: 12px; color: #5C6166; border: 1px solid #E2E3DE; border-radius: 999px; padding: 2px 8px">main</span>
+</div>
+<nav aria-label="Primary" style="display: flex; flex-wrap: wrap; gap: 22px; align-self: flex-end">
+<a class="tab on" href="#">Overview</a>
+<a class="tab" href="#">Code</a>
+<a class="tab" href="#">Runs</a>
+<a class="tab" href="#">Graph</a>
+<a class="tab" href="#">Inventory</a>
+<a class="tab" href="#">Troubleshoot</a>
+</nav>
+<div style="margin-left: auto; display: flex; align-items: center; gap: 10px">
+<button class="btn" type="button" aria-label="Search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg><span class="mono" style="font-size: 12px; color: #5C6166">⌘K</span></button>
+<button class="btn primary" type="button">New run</button>
+</div>
+</div>
+</header>
+
+<div style="max-width: 1240px; margin: 0 auto; padding: 48px 32px 64px; display: flex; flex-direction: column; gap: 48px; box-sizing: border-box">
+
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px">
+<div style="display: flex; flex-direction: column; gap: 10px; max-width: 720px">
+<span class="mono" style="font-size: 13px; color: #5C6166">~/code/infra-platform · scanned 40s ago</span>
+<h1 style="margin: 0; font-size: 44px; line-height: 1.08; font-weight: 600; letter-spacing: -.025em; text-wrap: pretty">Staging has drifted. Everything else matches code.</h1>
+</div>
+<div style="display: flex; gap: 10px; flex-wrap: wrap">
+<button class="btn" type="button">Verify all</button>
+<button class="btn" type="button">Detect drift</button>
+</div>
+</div>
+
+<section aria-label="Promotion path" style="display: flex; flex-direction: column; gap: 16px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 500; color: #5C6166; text-transform: uppercase; letter-spacing: .08em">Promotion path</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 0; background: #FFFFFF; border: 1px solid #E2E3DE; border-radius: 16px; overflow: hidden">
+<sc-for list="{{envs}}" as="env" hint-placeholder-count="3">
+<div style="padding: 24px 26px; display: flex; flex-direction: column; gap: 18px; border-right: 1px solid #ECEDE9">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+<div style="display: flex; align-items: baseline; gap: 10px">
+<span style="font-size: 24px; font-weight: 600; letter-spacing: -.01em">{{env.name}}</span>
+<span class="mono" style="font-size: 12px; color: #5C6166">{{env.ver}}</span>
+</div>
+<span class="tag {{env.cls}}">{{env.status}}</span>
+</div>
+<p style="margin: 0; color: #3D4247; line-height: 1.5; min-height: 45px">{{env.summary}}</p>
+<div style="display: flex; gap: 20px; font-size: 13px; color: #5C6166">
+<span><span class="mono" style="color: #17191C; font-size: 14px">{{env.resources}}</span> resources</span>
+<span><span class="mono" style="color: #17191C; font-size: 14px">{{env.hosts}}</span> hosts</span>
+</div>
+<div style="display: flex; gap: 10px; flex-wrap: wrap">
+<a href="#" class="btn" style="text-decoration: none; height: 36px; font-size: 13px">{{env.action}}</a>
+<sc-if value="{{env.promote}}" hint-placeholder-val="{{ true }}">
+<a href="#" class="btn" style="text-decoration: none; height: 36px; font-size: 13px; border-color: transparent; color: #2D49C9">Promote {{env.promote}} →</a>
+</sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(460px, 100%), 1fr)); gap: 48px; align-items: start">
+
+<section aria-label="Activity" style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; align-items: baseline; justify-content: space-between">
+<h2 style="margin: 0; font-size: 13px; font-weight: 500; color: #5C6166; text-transform: uppercase; letter-spacing: .08em">Activity</h2>
+<a href="#" style="font-size: 14px">All runs</a>
+</div>
+<ol style="list-style: none; margin: 0; padding: 0 0 0 6px; display: flex; flex-direction: column; border-left: 1px solid #DCDDD8">
+<sc-for list="{{runs}}" as="run" hint-placeholder-count="6">
+<li style="position: relative; padding: 0 0 22px 24px">
+<span class="dot {{run.dot}}" style="position: absolute; left: -9px; top: 4px"></span>
+<a href="#" style="display: flex; flex-direction: column; gap: 4px; color: inherit; text-decoration: none">
+<span style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<span style="font-weight: 600">{{run.title}}</span>
+<span class="tag {{run.cls}}">{{run.status}}</span>
+</span>
+<span class="mono" style="font-size: 13px; color: #3D4247">{{run.cmd}}</span>
+<span style="font-size: 13px; color: #5C6166">#{{run.id}} · {{run.when}} · {{run.dur}}</span>
+</a>
+</li>
+</sc-for>
+</ol>
+</section>
+
+<div style="display: flex; flex-direction: column; gap: 40px">
+<section aria-label="Things to fix" style="display: flex; flex-direction: column; gap: 16px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 500; color: #5C6166; text-transform: uppercase; letter-spacing: .08em">Things to fix</h2>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<sc-for list="{{issues}}" as="i" hint-placeholder-count="3">
+<article style="background: #FFFFFF; border: 1px solid #E2E3DE; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+<span style="font-weight: 600">{{i.title}}</span>
+<span class="tag {{i.cls}}">{{i.kind}}</span>
+</div>
+<span class="mono" style="font-size: 13px; color: #3D4247; background: #F5F5F2; border-radius: 8px; padding: 8px 10px">{{i.msg}}</span>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: #5C6166">
+<span class="mono">{{i.where}}</span>
+<a href="#" style="font-weight: 500">{{i.fix}}</a>
+</div>
+</article>
+</sc-for>
+</div>
+</section>
+
+<section aria-label="Verification" style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; align-items: baseline; justify-content: space-between">
+<h2 style="margin: 0; font-size: 13px; font-weight: 500; color: #5C6166; text-transform: uppercase; letter-spacing: .08em">Verification</h2>
+<span style="font-size: 13px; color: #5C6166">runs on every save</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)); gap: 10px">
+<sc-for list="{{checks}}" as="c" hint-placeholder-count="6">
+<div style="background: #FFFFFF; border: 1px solid #E2E3DE; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px">
+<span class="mono" style="font-size: 13px">{{c.tool}}</span>
+<span class="tag {{c.cls}}" style="align-self: flex-start">{{c.detail}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+</div>
+</div>
+
+<footer style="display: flex; flex-wrap: wrap; gap: 8px 24px; padding-top: 20px; border-top: 1px solid #E2E3DE; font-size: 13px; color: #5C6166">
+<span class="mono">groundwork v0.1.0 · localhost:7420</span>
+<span class="mono">terraform 1.9.8</span>
+<span class="mono">ansible-core 2.17.5</span>
+<span class="mono">tflint 0.53.0</span>
+<span class="mono" style="color: #8F5600">checkov not installed — <a href="#">install hint</a></span>
+</footer>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      envs: [
+        { name: 'dev', ver: 'a41c9e2', status: 'in sync', cls: 'st-ok', summary: 'Matches main. Applied 2h ago by sam.', resources: 142, hosts: 4, action: 'Plan', promote: 'to staging' },
+        { name: 'staging', ver: '9be0f17', status: 'drift', cls: 'st-warn', summary: '3 resources changed outside Terraform. Apply #482 is running now.', resources: 207, hosts: 6, action: 'Review drift', promote: 'to prod' },
+        { name: 'prod', ver: '9be0f17', status: 'in sync', cls: 'st-ok', summary: 'Matches 9be0f17. Applies need approval.', resources: 318, hosts: 12, action: 'Plan', promote: '' }
+      ],
+      runs: [
+        { id: 482, title: 'Apply staging/network', cmd: 'terraform apply', when: 'now', dur: '1m 12s so far', status: 'running', cls: 'st-run', dot: 'd-run' },
+        { id: 481, title: 'Configure prod web tier', cmd: 'ansible-playbook site.yml --limit web', when: '18m ago', dur: '4m 03s', status: 'success', cls: 'st-ok', dot: 'd-ok' },
+        { id: 480, title: 'Plan prod/database', cmd: 'terraform plan  → ~2 to change', when: '41m ago', dur: '38s', status: 'success', cls: 'st-ok', dot: 'd-ok' },
+        { id: 479, title: 'Validate k8s-cluster module', cmd: 'terraform validate', when: '52m ago', dur: '6s', status: 'failed', cls: 'st-fail', dot: 'd-fail' },
+        { id: 478, title: 'Lint postgres role', cmd: 'ansible-lint roles/postgres', when: '1h ago', dur: '12s', status: '5 warnings', cls: 'st-warn', dot: 'd-warn' }
+      ],
+      issues: [
+        { title: 'Unsupported argument', kind: 'error', cls: 'st-fail', msg: 'enable_dns_hostname → did you mean enable_dns_hostnames?', where: 'modules/k8s-cluster/main.tf:42', fix: 'Open at line' },
+        { title: 'Stale state lock', kind: 'lock', cls: 'st-warn', msg: 'Held by run #476 for 2h 04m', where: 'staging/database', fix: 'Force unlock…' },
+        { title: 'Host unreachable', kind: 'ssh', cls: 'st-warn', msg: 'web-03 · 10.0.2.13:22 timed out after 30s', where: 'inventory/prod.yml', fix: 'Ping host' }
+      ],
+      checks: [
+        { tool: 'terraform fmt', detail: 'pass', cls: 'st-ok' },
+        { tool: 'terraform validate', detail: '1 failing', cls: 'st-fail' },
+        { tool: 'tflint', detail: '3 warnings', cls: 'st-warn' },
+        { tool: 'ansible-lint', detail: '5 warnings', cls: 'st-warn' },
+        { tool: 'yamllint', detail: 'pass', cls: 'st-ok' },
+        { tool: 'syntax-check', detail: 'pass', cls: 'st-ok' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

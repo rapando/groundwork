@@ -1,0 +1,28 @@
+name: pr-title
+# PRs are squash-merged, so the title becomes the commit on main that
+# scripts/next-version.sh reads: it must be a Conventional Commit.
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+permissions:
+  pull-requests: read
+jobs:
+  conventional:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            revert
+            docs
+            test
+            refactor
+            style
+            build
+            ci
+            chore

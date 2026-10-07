@@ -1,0 +1,10 @@
+
+Error: Inconsistent dependency lock file
+
+The following dependency selections recorded in the lock file are
+inconsistent with the current configuration:
+  - provider registry.terraform.io/hashicorp/random: required by this configuration but no version is selected
+
+To make the initial dependency selections that will initialize the dependency
+lock file, run:
+  terraform init

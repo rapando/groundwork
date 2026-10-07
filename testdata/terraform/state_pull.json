@@ -1,0 +1,167 @@
+{
+  "version": 4,
+  "terraform_version": "1.16.5",
+  "serial": 3,
+  "lineage": "0106d232-1652-a514-822a-2beeaefa82d0",
+  "outputs": {},
+  "resources": [
+    {
+      "mode": "managed",
+      "type": "terraform_data",
+      "name": "db",
+      "provider": "provider[\"terraform.io/builtin/terraform\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "592d7ff9-55c0-7010-2983-24871c225d2e",
+            "input": {
+              "value": {
+                "name": "app",
+                "password": "hunter2-SECRET",
+                "ports": [
+                  5432,
+                  6432
+                ],
+                "tags": {
+                  "env": "prod",
+                  "team name": "core"
+                }
+              },
+              "type": [
+                "object",
+                {
+                  "name": "string",
+                  "password": "string",
+                  "ports": [
+                    "tuple",
+                    [
+                      "number",
+                      "number"
+                    ]
+                  ],
+                  "tags": [
+                    "object",
+                    {
+                      "env": "string",
+                      "team name": "string"
+                    }
+                  ]
+                }
+              ]
+            },
+            "output": {
+              "value": {
+                "name": "app",
+                "password": "hunter2-SECRET",
+                "ports": [
+                  5432,
+                  6432
+                ],
+                "tags": {
+                  "env": "prod",
+                  "team name": "core"
+                }
+              },
+              "type": [
+                "object",
+                {
+                  "name": "string",
+                  "password": "string",
+                  "ports": [
+                    "tuple",
+                    [
+                      "number",
+                      "number"
+                    ]
+                  ],
+                  "tags": [
+                    "object",
+                    {
+                      "env": "string",
+                      "team name": "string"
+                    }
+                  ]
+                }
+              ]
+            },
+            "store": null,
+            "triggers_replace": {
+              "value": [
+                1
+              ],
+              "type": [
+                "tuple",
+                [
+                  "number"
+                ]
+              ]
+            }
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "input"
+              },
+              {
+                "type": "get_attr",
+                "value": "password"
+              }
+            ]
+          ],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "terraform_data",
+      "name": "web",
+      "provider": "provider[\"terraform.io/builtin/terraform\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "ab8d1269-9972-5523-4f5f-07b5dfc5736d",
+            "input": {
+              "value": {
+                "deps": "592d7ff9-55c0-7010-2983-24871c225d2e",
+                "size": "small"
+              },
+              "type": [
+                "object",
+                {
+                  "deps": "string",
+                  "size": "string"
+                }
+              ]
+            },
+            "output": {
+              "value": {
+                "deps": "592d7ff9-55c0-7010-2983-24871c225d2e",
+                "size": "small"
+              },
+              "type": [
+                "object",
+                {
+                  "deps": "string",
+                  "size": "string"
+                }
+              ]
+            },
+            "store": null,
+            "triggers_replace": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "dependencies": [
+            "terraform_data.db"
+          ]
+        }
+      ]
+    }
+  ],
+  "check_results": null
+}
+

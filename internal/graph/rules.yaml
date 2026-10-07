@@ -1,0 +1,25 @@
+# Which resources are drawn as containers in the architecture view, and which
+# arguments mean "this resource lives inside that one". Extend freely.
+containers:
+  - aws_vpc
+  - google_compute_network
+  - azurerm_virtual_network
+  - hcloud_network
+  - digitalocean_vpc
+via:
+  # AWS
+  vpc_id: [aws_vpc]
+  subnet_id: [aws_subnet]
+  subnet_ids: [aws_subnet]
+  subnets: [aws_subnet]
+  db_subnet_group_name: [aws_db_subnet_group]
+  # GCP
+  network: [google_compute_network]
+  subnetwork: [google_compute_subnetwork]
+  # Azure
+  virtual_network_name: [azurerm_virtual_network]
+  subnet_id_azure: [azurerm_subnet]
+  # Hetzner
+  network_id: [hcloud_network]
+  # DigitalOcean
+  vpc_uuid: [digitalocean_vpc]

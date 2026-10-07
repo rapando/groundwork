@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+"""Ansible inventory script: builds inventory from `terraform output -json`.
+
+Expects an output named `ansible_hosts`: a map of group -> [{name, ip}].
+Select the environment with GROUNDWORK_ENV (default: {{ .FirstEnv }}).
+"""
+import json
+import os
+import subprocess
+import sys
+
+ENV = os.environ.get("GROUNDWORK_ENV", "{{ .FirstEnv }}")
+{{- if eq .Layout "workspaces" }}
+TF_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "terraform")
+{{- else }}
+TF_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "terraform", "envs", ENV)
+{{- end }}
+
+
+def main():
+    if "--host" in sys.argv:
+        print("{}")
+        return
+{{- if eq .Layout "workspaces" }}
+    env = dict(os.environ, TF_WORKSPACE=ENV)
+{{- else }}
+    env = os.environ
+{{- end }}
+    out = subprocess.run(
+        ["terraform", f"-chdir={TF_DIR}", "output", "-json", "ansible_hosts"],
+        check=True, capture_output=True, text=True, env=env,
+    ).stdout
+    groups = json.loads(out)
+    inv = {"_meta": {"hostvars": {}}, ENV: {"children": list(groups)}}
+    for group, hosts in groups.items():
+        inv[group] = {"hosts": [h["name"] for h in hosts]}
+        for h in hosts:
+            inv["_meta"]["hostvars"][h["name"]] = {"ansible_host": h["ip"]}
+    print(json.dumps(inv))
+
+
+main()

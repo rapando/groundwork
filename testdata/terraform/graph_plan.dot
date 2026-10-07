@@ -1,0 +1,26 @@
+digraph {
+	compound = "true"
+	newrank = "true"
+	subgraph "root" {
+		"[root] module.service.terraform_data.service (expand)" [label = "module.service.terraform_data.service", shape = "box"]
+		"[root] provider[\"terraform.io/builtin/terraform\"]" [label = "provider[\"terraform.io/builtin/terraform\"]", shape = "diamond"]
+		"[root] var.project" [label = "var.project", shape = "note"]
+		"[root] var.replicas" [label = "var.replicas", shape = "note"]
+		"[root] module.service (close)" -> "[root] module.service.output.instances (expand)"
+		"[root] module.service.output.instances (expand)" -> "[root] module.service.terraform_data.service (expand)"
+		"[root] module.service.terraform_data.service (expand)" -> "[root] module.service.var.name (expand)"
+		"[root] module.service.terraform_data.service (expand)" -> "[root] module.service.var.port (expand)"
+		"[root] module.service.terraform_data.service (expand)" -> "[root] module.service.var.replicas (expand)"
+		"[root] module.service.terraform_data.service (expand)" -> "[root] provider[\"terraform.io/builtin/terraform\"]"
+		"[root] module.service.var.name (expand)" -> "[root] module.service (expand)"
+		"[root] module.service.var.name (expand)" -> "[root] var.project"
+		"[root] module.service.var.port (expand)" -> "[root] module.service (expand)"
+		"[root] module.service.var.replicas (expand)" -> "[root] module.service (expand)"
+		"[root] module.service.var.replicas (expand)" -> "[root] var.replicas"
+		"[root] output.instances (expand)" -> "[root] module.service.output.instances (expand)"
+		"[root] provider[\"terraform.io/builtin/terraform\"] (close)" -> "[root] module.service.terraform_data.service (expand)"
+		"[root] root" -> "[root] module.service (close)"
+		"[root] root" -> "[root] output.instances (expand)"
+		"[root] root" -> "[root] provider[\"terraform.io/builtin/terraform\"] (close)"
+	}
+}

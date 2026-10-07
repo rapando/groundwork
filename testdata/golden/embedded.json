@@ -1,0 +1,105 @@
+{
+  "mode": "embedded",
+  "empty": false,
+  "file_count": 26,
+  "iac_ratio": 0.42,
+  "terraform_roots": [
+    {
+      "path": "deploy/terraform",
+      "kind": "root",
+      "score": 10,
+      "backend": "s3",
+      "providers": [
+        "aws"
+      ],
+      "tfvars": [
+        "deploy/terraform/env/dev.tfvars",
+        "deploy/terraform/env/production.tfvars"
+      ],
+      "evidence": [
+        {
+          "file": "deploy/terraform/backend.tf",
+          "line": 2,
+          "note": "backend \"s3\" block"
+        },
+        {
+          "file": "deploy/terraform/main.tf",
+          "line": 1,
+          "note": "provider \"aws\" block"
+        },
+        {
+          "file": "deploy/terraform/env/dev.tfvars",
+          "note": "tfvars file present"
+        }
+      ]
+    }
+  ],
+  "terraform_modules": [],
+  "ansible": [
+    {
+      "path": "ops/ansible",
+      "config": "ops/ansible/ansible.cfg",
+      "playbooks": [
+        "ops/ansible/site.yml"
+      ],
+      "roles": [
+        "ops/ansible/roles/app"
+      ],
+      "inventories": [
+        "ops/ansible/inventory/dev.yml",
+        "ops/ansible/inventory/prod.yml"
+      ],
+      "evidence": [
+        {
+          "file": "ops/ansible/ansible.cfg",
+          "note": "ansible.cfg"
+        },
+        {
+          "file": "ops/ansible/inventory/dev.yml",
+          "note": "inventory"
+        },
+        {
+          "file": "ops/ansible/inventory/prod.yml",
+          "note": "inventory"
+        },
+        {
+          "file": "ops/ansible/roles/app/tasks/main.yml",
+          "note": "role app"
+        },
+        {
+          "file": "ops/ansible/site.yml",
+          "line": 1,
+          "note": "playbook (hosts + tasks/roles)"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "file": ".github/workflows/ci.yml",
+      "line": 10,
+      "tool": "terraform",
+      "working_dir": "deploy/terraform"
+    }
+  ],
+  "envs": [
+    {
+      "name": "dev",
+      "terraform": [
+        "deploy/terraform#dev"
+      ],
+      "ansible": [
+        "ops/ansible/inventory/dev.yml"
+      ]
+    },
+    {
+      "name": "prod",
+      "terraform": [
+        "deploy/terraform#prod"
+      ],
+      "ansible": [
+        "ops/ansible/inventory/prod.yml"
+      ]
+    }
+  ]
+}

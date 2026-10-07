@@ -1,0 +1,8 @@
+[ERROR]: YAML parsing failed: While scanning a simple key could not find expected ':'.
+Origin: /repo/ansible/broken.yml:6:12
+
+4     - name: bad
+5       ansible.builtin.debug
+6         msg: hi
+             ^ column 12
+

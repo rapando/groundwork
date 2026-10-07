@@ -1,0 +1,10 @@
+[ERROR]: Task failed: Failed to connect to the host via ssh: ssh: connect to host 10.255.255.1 port 22: Operation timed out
+Origin: <adhoc 'ping' task>
+
+{'action': 'ping', 'args': {}, 'timeout': 0, 'async_val': 0, 'poll': 15}
+
+web-03 | UNREACHABLE! => {
+    "changed": false,
+    "msg": "Task failed: Failed to connect to the host via ssh: ssh: connect to host 10.255.255.1 port 22: Operation timed out",
+    "unreachable": true
+}

@@ -1,0 +1,19 @@
+terraform {
+{{- if eq .Backend "s3" }}
+  backend "s3" {
+    bucket         = "{{ .Bucket }}"
+    key            = "{{ if eq .Layout "workspaces" }}terraform.tfstate{{ else }}{{ .Env }}/terraform.tfstate{{ end }}"
+    region         = "{{ .Region }}"
+    dynamodb_table = "{{ .Bucket }}-lock"
+    encrypt        = true
+  }
+{{- else if eq .Backend "http" }}
+  backend "http" {
+    # Configure with -backend-config or TF_HTTP_* environment variables.
+  }
+{{- else }}
+  backend "local" {
+    path = "{{ if eq .Layout "workspaces" }}terraform.tfstate{{ else }}{{ .Env }}.tfstate{{ end }}"
+  }
+{{- end }}
+}

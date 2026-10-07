@@ -1,0 +1,167 @@
+{
+  "mode": "standalone",
+  "empty": false,
+  "file_count": 19,
+  "iac_ratio": 0.95,
+  "terraform_roots": [
+    {
+      "path": "terraform/envs/dev",
+      "kind": "root",
+      "score": 12,
+      "backend": "s3",
+      "providers": [
+        "aws"
+      ],
+      "tfvars": [
+        "terraform/envs/dev/terraform.tfvars"
+      ],
+      "evidence": [
+        {
+          "file": "terraform/envs/dev/backend.tf",
+          "line": 5,
+          "note": "backend \"s3\" block"
+        },
+        {
+          "file": "terraform/envs/dev/main.tf",
+          "line": 1,
+          "note": "provider \"aws\" block"
+        },
+        {
+          "file": "terraform/envs/dev/backend.tf",
+          "line": 2,
+          "note": "required_providers block"
+        },
+        {
+          "file": "terraform/envs/dev/terraform.tfvars",
+          "note": "tfvars file present"
+        }
+      ]
+    },
+    {
+      "path": "terraform/envs/prod",
+      "kind": "root",
+      "score": 12,
+      "backend": "s3",
+      "providers": [
+        "aws"
+      ],
+      "tfvars": [
+        "terraform/envs/prod/terraform.tfvars"
+      ],
+      "evidence": [
+        {
+          "file": "terraform/envs/prod/backend.tf",
+          "line": 5,
+          "note": "backend \"s3\" block"
+        },
+        {
+          "file": "terraform/envs/prod/main.tf",
+          "line": 1,
+          "note": "provider \"aws\" block"
+        },
+        {
+          "file": "terraform/envs/prod/backend.tf",
+          "line": 2,
+          "note": "required_providers block"
+        },
+        {
+          "file": "terraform/envs/prod/terraform.tfvars",
+          "note": "tfvars file present"
+        }
+      ]
+    }
+  ],
+  "terraform_modules": [
+    {
+      "path": "terraform/modules/network",
+      "kind": "module",
+      "score": 0,
+      "referenced_by": [
+        "terraform/envs/dev",
+        "terraform/envs/prod"
+      ],
+      "evidence": [
+        {
+          "file": "terraform/envs/dev",
+          "note": "referenced as a module source by \"terraform/envs/dev\""
+        }
+      ]
+    }
+  ],
+  "ansible": [
+    {
+      "path": "ansible",
+      "config": "ansible/ansible.cfg",
+      "playbooks": [
+        "ansible/playbooks/site.yml"
+      ],
+      "roles": [
+        "ansible/roles/nginx"
+      ],
+      "inventories": [
+        "ansible/inventory/dev.yml",
+        "ansible/inventory/prod.yml"
+      ],
+      "vars_dirs": [
+        "ansible/inventory/group_vars"
+      ],
+      "evidence": [
+        {
+          "file": "ansible/ansible.cfg",
+          "note": "ansible.cfg"
+        },
+        {
+          "file": "ansible/inventory/dev.yml",
+          "note": "inventory"
+        },
+        {
+          "file": "ansible/inventory/prod.yml",
+          "note": "inventory"
+        },
+        {
+          "file": "ansible/playbooks/site.yml",
+          "line": 1,
+          "note": "playbook (hosts + tasks/roles)"
+        },
+        {
+          "file": "ansible/roles/nginx/tasks/main.yml",
+          "note": "role nginx"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "file": ".github/workflows/iac.yml",
+      "line": 10,
+      "tool": "terraform",
+      "working_dir": "terraform/envs/dev"
+    },
+    {
+      "file": ".github/workflows/iac.yml",
+      "line": 12,
+      "tool": "ansible-playbook",
+      "working_dir": "."
+    }
+  ],
+  "envs": [
+    {
+      "name": "dev",
+      "terraform": [
+        "terraform/envs/dev"
+      ],
+      "ansible": [
+        "ansible/inventory/dev.yml"
+      ]
+    },
+    {
+      "name": "prod",
+      "terraform": [
+        "terraform/envs/prod"
+      ],
+      "ansible": [
+        "ansible/inventory/prod.yml"
+      ]
+    }
+  ]
+}

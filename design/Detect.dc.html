@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Groundwork — Detected infrastructure</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0;background:#0D1012}
+a{color:#B8F36B}a:hover{color:#D6FF9E}
+input{accent-color:#B8F36B}
+.mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+.lbl{font-size:11px;color:#8B959C;text-transform:uppercase;letter-spacing:.08em}
+.btn{font:inherit;font-size:13px;font-weight:500;border-radius:6px;padding:0 16px;height:40px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;border:1px solid #2A3238;background:#161B1E;color:#E6E9EB;text-decoration:none}
+.btn.primary{background:#B8F36B;border-color:#B8F36B;color:#0D1012}
+.card{border:1px solid #1E2428;border-radius:12px;background:#111518;padding:20px;display:flex;flex-direction:column;gap:14px}
+.kind{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.k-tf{color:#B79CFF;background:rgba(183,156,255,.12)}
+.k-an{color:#FF9E7A;background:rgba(255,158,122,.12)}
+.k-ci{color:#9AA4AB;background:rgba(154,164,171,.12)}
+.ev{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;color:#9AA4AB;display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px}
+.ev>span:nth-child(even){color:#E6E9EB}
+td,th{padding:10px 12px;text-align:left;border-top:1px solid #1E2428}
+th{font-weight:500;color:#8B959C;font-size:12px;border-top:0}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #0D1012; color: #E6E9EB; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px">
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px 32px; border-bottom: 1px solid #1E2428">
+<div style="width: 28px; height: 28px; border-radius: 6px; background: #B8F36B; display: grid; place-items: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1012" stroke-width="2.4" stroke-linecap="round"><path d="M3 20h18"></path><path d="M5 16h14"></path><path d="M8 12h8"></path><path d="M11 8h2"></path></svg></div>
+<span class="mono" style="font-weight: 700">groundwork</span>
+<span style="color: #4A545B">/</span>
+<span style="color: #9AA4AB">Set up repository</span>
+<span class="mono" style="margin-left: auto; font-size: 12px; color: #8B959C">~/code/payments-api · Go module · 1,284 files</span>
+</header>
+
+<div style="max-width: 1280px; margin: 0 auto; padding: 32px; box-sizing: border-box; display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start">
+
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.01em">Found infrastructure code in this repo</h1>
+<p style="margin: 0; color: #9AA4AB; line-height: 1.55; max-width: 660px">This is an application repo, so groundwork leaves your layout alone. It only manages the paths below and records them in <span class="mono">groundwork.yaml</span>. Everything else stays hidden in the Code view unless you switch to All files.</p>
+</div>
+
+<pre class="mono" style="margin: 0; padding: 16px 18px; border: 1px solid #1E2428; border-radius: 10px; background: #0A0C0E; font-size: 12.5px; line-height: 1.7; color: #C3CBD0; overflow-x: auto">$ groundwork
+Scanning ~/code/payments-api … skipped vendor/ node_modules/ .terraform/ (git-ignored)
+<span style="color: #5FD38D">✓</span> Terraform  deploy/terraform           root · s3 backend · 2 workspaces
+<span style="color: #5FD38D">✓</span> Terraform  deploy/terraform/modules/queue  local module
+<span style="color: #5FD38D">✓</span> Ansible    ops/ansible                ansible.cfg · 2 playbooks · 2 roles
+<span style="color: #8B959C">·</span> CI         .github/workflows/deploy.yml  calls terraform + ansible-playbook
+→ <span style="color: #B8F36B">http://localhost:7420/setup</span></pre>
+
+<section aria-label="Detected projects" style="display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">What groundwork will manage</h2>
+<button class="btn" type="button" style="height: 34px">+ Add a path manually</button>
+</div>
+
+<article class="card">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<input type="checkbox" checked aria-label="Manage deploy/terraform">
+<span class="kind k-tf">terraform root</span>
+<span class="mono" style="font-size: 15px; font-weight: 700">deploy/terraform/</span>
+<span style="margin-left: auto; font-size: 12px; color: #8B959C">7 .tf files</span>
+</div>
+<div class="ev">
+<span>found by</span><span>backend "s3" in backend.tf · required_providers in versions.tf</span>
+<span>providers</span><span>hashicorp/aws ~&gt; 5.0 · hashicorp/random</span>
+<span>environments</span><span>terraform workspaces: default, dev, prod · vars in env/dev.tfvars, env/prod.tfvars</span>
+<span>run from</span><span>deploy/terraform (detected from deploy.yml working-directory)</span>
+</div>
+</article>
+
+<article class="card">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<input type="checkbox" checked aria-label="Manage queue module">
+<span class="kind k-tf">terraform module</span>
+<span class="mono" style="font-size: 15px; font-weight: 700">deploy/terraform/modules/queue/</span>
+</div>
+<div class="ev">
+<span>found by</span><span>source = "./modules/queue" in main.tf</span>
+<span>checks</span><span>validated through its root, linted on its own</span>
+</div>
+</article>
+
+<article class="card">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<input type="checkbox" checked aria-label="Manage ops/ansible">
+<span class="kind k-an">ansible project</span>
+<span class="mono" style="font-size: 15px; font-weight: 700">ops/ansible/</span>
+<span style="margin-left: auto; font-size: 12px; color: #8B959C">7 hosts</span>
+</div>
+<div class="ev">
+<span>found by</span><span>ansible.cfg · playbooks with hosts: + tasks:</span>
+<span>inventory</span><span>inventory/hosts.ini · groups [dev] [prod] [db]</span>
+<span>playbooks</span><span>bootstrap.yml · deploy.yml</span>
+<span>roles</span><span>app · nginx</span>
+<span>vault</span><span>group_vars/prod/vault.yml (encrypted) · password file not set</span>
+</div>
+</article>
+
+<article class="card" style="opacity: .85">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<input type="checkbox" aria-label="Show CI workflow">
+<span class="kind k-ci">ci workflow</span>
+<span class="mono" style="font-size: 15px; font-weight: 700">.github/workflows/deploy.yml</span>
+<span style="margin-left: auto; font-size: 12px; color: #8B959C">read-only</span>
+</div>
+<p style="margin: 0; font-size: 13px; color: #9AA4AB; line-height: 1.5">Shown next to runs so local and CI applies line up. groundwork never edits it.</p>
+</article>
+</section>
+
+<section class="card" aria-labelledby="map">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h2 id="map" style="margin: 0; font-size: 15px; font-weight: 600">Environments</h2>
+<span style="font-size: 13px; color: #9AA4AB">Matched by name across Terraform and Ansible. Fix anything that's wrong.</span>
+</div>
+<div style="overflow-x: auto">
+<table class="mono" style="width: 100%; min-width: 560px; border-collapse: collapse; font-size: 12.5px">
+<thead><tr><th>environment</th><th>terraform</th><th>ansible</th><th>status</th></tr></thead>
+<tbody>
+<tr><td style="font-weight: 700">dev</td><td>workspace dev · dev.tfvars</td><td>[dev]</td><td style="color: #5FD38D">matched</td></tr>
+<tr><td style="font-weight: 700">prod</td><td>workspace prod · prod.tfvars</td><td>[prod] + [db]</td><td style="color: #5FD38D">matched</td></tr>
+<tr><td style="font-weight: 700; color: #9AA4AB">default</td><td>workspace default</td><td style="color: #8B959C">—</td><td><select aria-label="What to do with default" style="height: 28px; background: #0A0C0E; color: #E6E9EB; border: 1px solid #2A3238; border-radius: 6px; font: inherit; font-size: 12px"><option>ignore</option><option>treat as dev</option></select></td></tr>
+</tbody>
+</table>
+</div>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 13px"><input type="checkbox" checked>Require approval before applying to prod</label>
+</section>
+</div>
+
+<aside aria-label="Config preview" style="flex: 1 1 360px; max-width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px">
+<div class="card" style="gap: 12px">
+<div style="display: flex; align-items: baseline; justify-content: space-between">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">groundwork.yaml</h2>
+<span class="mono" style="font-size: 12px; color: #5FD38D">only new file</span>
+</div>
+<pre class="mono" style="margin: 0; font-size: 12px; line-height: 1.7; color: #C3CBD0; overflow-x: auto"><span style="color: #8B959C"># written by groundwork — safe to edit</span>
+mode: embedded
+terraform:
+  roots:
+    - path: deploy/terraform
+      envs:
+        dev:  { workspace: dev,  var_file: env/dev.tfvars }
+        prod: { workspace: prod, var_file: env/prod.tfvars,
+                approval: true }
+  modules: [deploy/terraform/modules/queue]
+ansible:
+  - path: ops/ansible
+    inventory: inventory/hosts.ini
+    envs: { dev: [dev], prod: [prod, db] }
+checks: [fmt, validate, tflint, ansible-lint]
+ignore: [vendor/, node_modules/]</pre>
+</div>
+
+<div class="card" style="gap: 12px; padding: 18px">
+<span class="lbl">Also add (optional)</span>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 13px"><input type="checkbox">.tflint.hcl in deploy/terraform</label>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 13px"><input type="checkbox">.ansible-lint in ops/ansible</label>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 13px"><input type="checkbox">Add .groundwork/ to .gitignore</label>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px">
+<a class="btn primary" href="Main.dc.html" style="flex: 1; justify-content: center">Start managing</a>
+<a class="btn" href="Scaffold.dc.html">Scaffold instead</a>
+</div>
+<span style="font-size: 12px; color: #8B959C">Same as <span class="mono">groundwork init --detect</span></span>
+</div>
+</aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1320}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

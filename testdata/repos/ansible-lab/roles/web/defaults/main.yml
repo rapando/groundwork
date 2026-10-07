@@ -1,0 +1,3 @@
+---
+nginx_workers: auto
+log_level: warn

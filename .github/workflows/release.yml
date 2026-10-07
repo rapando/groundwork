@@ -1,0 +1,100 @@
+name: release
+# Releases are cut automatically from Conventional Commits:
+#   - every push to main whose ci run passes is checked by scripts/next-version.sh
+#     (feat: -> minor, fix:/perf:/revert: -> patch, `!` or BREAKING CHANGE -> major);
+#     if anything warrants a release, the commit is tagged vX.Y.Z and goreleaser publishes it
+#   - "Run workflow" on main forces a release, at least the chosen bump
+#   - pushing a vX.Y.Z tag by hand still releases that tag
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Minimum bump (auto = from commit messages only)
+        type: choice
+        options: [auto, patch, minor, major]
+        default: auto
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+*"]
+permissions:
+  contents: write
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    if: >-
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository) ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'push'
+    outputs:
+      tag: ${{ steps.next.outputs.tag }}
+      sha: ${{ steps.next.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+      - id: next
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          sha=$(git rev-parse HEAD)
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            tag="$GITHUB_REF_NAME"
+          elif git tag --contains "$sha" --list 'v[0-9]*' | grep -q .; then
+            # an older ci run finishing after a newer commit was already released
+            echo "::notice::$sha is already part of $(git tag --contains "$sha" --list 'v[0-9]*' | head -1); nothing to release"
+            tag=""
+          else
+            [ "${BUMP:-auto}" = auto ] && BUMP=""
+            tag=$(scripts/next-version.sh $BUMP)
+            if [ -z "$tag" ]; then
+              echo "::notice::No feat/fix/perf/breaking commits since $(git describe --tags --abbrev=0 2>/dev/null || echo the start); nothing to release"
+            elif git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+              echo "::error::$tag already exists"; exit 1
+            else
+              echo "::notice::Releasing $tag"
+            fi
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+  release:
+    needs: version
+    if: needs.version.outputs.tag != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - run: go test ./...
+      - name: Tag
+        if: github.event_name != 'push'
+        env:
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "groundwork $TAG"
+          # pushed with GITHUB_TOKEN, so this tag doesn't re-trigger this workflow
+          git push origin "refs/tags/$TAG"
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}

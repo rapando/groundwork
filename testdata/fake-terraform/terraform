@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# A scriptable stand-in for terraform, used by runner tests.
+#   FAKE_TF_LOG        file receiving "start|end <subcommand> <chdir>" and the full argv
+#   FAKE_FAIL_STAGE    init|validate|plan|show|apply -> print an error (with a secret) and exit 1
+#   FAKE_PLAN_EXIT     0 (no changes) or 2 (changes, default)
+#   FAKE_PLAN_DELAY / FAKE_APPLY_DELAY   seconds to take (interruptible)
+#   FAKE_IGNORE_INT=1  ignore SIGINT (forces the runner to escalate to SIGKILL)
+#   FAKE_DATA          directory with the captured terraform output fixtures
+#   FAKE_SHOW_JSON     file to print for `show -json` (default: FAKE_DATA/show_plan.json)
+#   FAKE_STATE_FILE    file `state pull` prints (missing = no state)
+#   FAKE_DRIFT_EXIT    refresh-only plan exit: 2 drift (default), 0 none
+#   FAKE_DRIFT_SHOW_JSON  show -json for the drift plan (default: show_drift_update.json)
+#   FAKE_LOCKED        file: while it exists, plan fails with a state-lock error; force-unlock removes it
+set -u
+dir="."; out=""; args=()
+for a in "$@"; do
+  case "$a" in
+    -chdir=*) dir="${a#-chdir=}" ;;
+    -out=*) out="${a#-out=}"; args+=("$a") ;;
+    *) args+=("$a") ;;
+  esac
+done
+sub="${args[0]:-}"
+if [ -n "${FAKE_TF_LOG:-}" ]; then echo "start $sub $dir ws=${TF_WORKSPACE:-}" >> "$FAKE_TF_LOG"; echo "argv $*" >> "$FAKE_TF_LOG"; fi
+done_() { if [ -n "${FAKE_TF_LOG:-}" ]; then echo "end $sub $dir" >> "$FAKE_TF_LOG"; fi; return 0; }
+
+if [ "${FAKE_IGNORE_INT:-}" = 1 ]; then trap '' INT; else trap 'echo "Interrupt received. Gracefully shutting down..." >&2; done_; exit 1' INT; fi
+
+nap() { # interruptible sleep of $1 seconds
+  local n; n=$(python3 -c "print(int(float('$1')*20))" 2>/dev/null || echo 0)
+  for ((i=0;i<n;i++)); do sleep 0.05; done
+}
+fail() { echo "Error: $sub failed: boom (key AKIAIOSFODNN7EXAMPLE)" >&2; done_; exit 1; }
+[ "${FAKE_FAIL_STAGE:-}" = "$sub" ] && fail
+
+case "$sub" in
+  version) echo "Terraform v1.9.8" ;;
+  init) echo "Terraform has been successfully initialized!" ;;
+  workspace) echo "Switched to workspace \"${args[3]:-}\"." ;;
+  validate) echo "Success! The configuration is valid." ;;
+  plan)
+    if printf '%s\n' "${args[@]}" | grep -qx -- '-refresh-only'; then
+      cat "$FAKE_DATA/drift_plan.jsonl"
+      code="${FAKE_DRIFT_EXIT:-2}"
+      [ "$code" = 2 ] && echo "DRIFTPLAN" > "$out"
+      done_; exit "$code"
+    fi
+    if [ -n "${FAKE_LOCKED:-}" ] && [ -f "$FAKE_LOCKED" ]; then
+      cat "$FAKE_DATA/plan_locked.jsonl"; done_; exit 1
+    fi
+    nap "${FAKE_PLAN_DELAY:-0}"
+    cat "$FAKE_DATA/plan.jsonl"
+    code="${FAKE_PLAN_EXIT:-2}"
+    [ "$code" = 2 ] && echo "PLANFILE $RANDOM" > "$out"
+    done_; exit "$code" ;;
+  show)
+    case "${args[${#args[@]}-1]}" in
+      *drift.tfplan) cat "${FAKE_DRIFT_SHOW_JSON:-$FAKE_DATA/show_drift_update.json}" ;;
+      *) cat "${FAKE_SHOW_JSON:-$FAKE_DATA/show_plan.json}" ;;
+    esac ;;
+  state)
+    # `state pull`: the state lives in $FAKE_STATE_FILE (absent = no state yet)
+    if [ -n "${FAKE_STATE_FILE:-}" ] && [ -f "$FAKE_STATE_FILE" ]; then cat "$FAKE_STATE_FILE"; fi ;;
+  force-unlock)
+    [ -n "${FAKE_LOCKED:-}" ] && rm -f "$FAKE_LOCKED"
+    echo "Terraform state has been successfully unlocked!" ;;
+  apply)
+    planfile="${args[${#args[@]}-1]}"
+    [ -f "$planfile" ] || { echo "Error: plan file missing: $planfile" >&2; done_; exit 1; }
+    echo "applying $(cat "$planfile")" >> "${FAKE_TF_LOG:-/dev/null}"
+    while IFS= read -r line; do
+      echo "$line"; nap "${FAKE_APPLY_DELAY:-0}"
+    done < "$FAKE_DATA/apply.jsonl" ;;
+  *) echo "fake terraform: unhandled $sub" >&2; done_; exit 64 ;;
+esac
+done_
+exit 0

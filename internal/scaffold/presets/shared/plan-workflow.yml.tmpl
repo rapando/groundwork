@@ -1,0 +1,25 @@
+name: plan
+on:
+  pull_request:
+    paths: ["terraform/**", "ansible/**"]
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env: [{{ range $i, $e := .Envs }}{{ if $i }}, {{ end }}{{ $e }}{{ end }}]
+    defaults:
+      run:
+        working-directory: {{ if eq .Layout "workspaces" }}terraform{{ else }}terraform/envs/${{ "{{" }} matrix.env {{ "}}" }}{{ end }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform init -input=false
+      - run: terraform fmt -check -recursive
+      - run: terraform validate
+{{- if eq .Layout "workspaces" }}
+      - run: terraform workspace select -or-create ${{ "{{" }} matrix.env {{ "}}" }}
+      - run: terraform plan -input=false -var-file=env/${{ "{{" }} matrix.env {{ "}}" }}.tfvars
+{{- else }}
+      - run: terraform plan -input=false
+{{- end }}

@@ -1,0 +1,13 @@
+# {{ .Project }}
+
+Infrastructure as code for {{ .Project }}, managed with [groundwork](https://github.com/rapando/groundwork).
+
+| Path | What |
+|---|---|
+| `terraform/` | Terraform ({{ if eq .Layout "workspaces" }}one root, a workspace per environment{{ else }}one root per environment under `envs/`{{ end }}) |
+| `ansible/` | Ansible playbooks, roles and inventory |
+| `groundwork.yaml` | groundwork configuration |
+
+Environments: {{ range $i, $e := .Envs }}{{ if $i }}, {{ end }}`{{ $e }}`{{ end }}.
+
+Run `groundwork` in this directory to open the console.

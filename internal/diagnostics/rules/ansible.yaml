@@ -1,0 +1,144 @@
+- id: ans-unreachable-timeout
+  scope: ansible
+  category: unreachable
+  severity: error
+  each: '(?m)^(?:fatal: \[)?(?P<host>[\w.-]+)(?:\]:| \|) UNREACHABLE! => \{[^}]*?(?:timed out|Connection timed out)[^}]*\}'
+  match:
+    any:
+      - log: 'UNREACHABLE![^}]*timed out'
+  extract:
+    address: 'connect to host (\S+) port'
+  title: 'SSH timeout · {{ .Host }}'
+  explain: >
+    {{ .Host }} didn't answer on SSH. It may be down, firewalled, or the inventory address or port is wrong.
+  steps:
+    - title: Check the inventory entry
+      action: { kind: open, label: Open Inventory, href: '/inventory' }
+    - title: Ping it again
+      action: { kind: run, label: 'Ping {{ .Host }}', run: { kind: ans.ping, limit: '{{ .Host }}' } }
+  resolve: success
+
+- id: ans-unreachable-refused
+  scope: ansible
+  category: unreachable
+  severity: error
+  each: '(?m)^(?:fatal: \[)?(?P<host>[\w.-]+)(?:\]:| \|) UNREACHABLE! => \{[^}]*?Connection refused[^}]*\}'
+  match:
+    any:
+      - log: 'UNREACHABLE![^}]*Connection refused'
+  title: 'SSH connection refused · {{ .Host }}'
+  explain: >
+    {{ .Host }} is up but nothing accepts SSH connections on that port. Check sshd is running and ansible_port is right.
+  steps:
+    - title: Check the inventory entry
+      action: { kind: open, label: Open Inventory, href: '/inventory' }
+    - title: Ping it again
+      action: { kind: run, label: 'Ping {{ .Host }}', run: { kind: ans.ping, limit: '{{ .Host }}' } }
+  resolve: success
+
+- id: ans-host-key-changed
+  scope: ansible
+  category: unreachable
+  severity: error
+  each: '(?m)^(?:fatal: \[)?(?P<host>[\w.-]+)(?:\]:| \|) UNREACHABLE! => \{[^}]*?REMOTE HOST IDENTIFICATION HAS CHANGED[^}]*\}'
+  match:
+    any:
+      - log: 'REMOTE HOST IDENTIFICATION HAS CHANGED'
+  extract:
+    known_hosts: 'Offending \w+ key in (\S+):\d+'
+  title: 'Host key changed · {{ .Host }}'
+  explain: >
+    {{ .Host }} presented a different SSH host key than the one in {{ or .known_hosts "known_hosts" }}. If the machine was rebuilt, remove the old key.
+    If you didn't expect a change, stop: this is what a man-in-the-middle looks like.
+  steps:
+    - title: Remove the old key (only if the host was rebuilt)
+      action: { kind: copy, label: Copy command, text: 'ssh-keygen -R {{ .Host }}' }
+  resolve: success
+
+- id: ans-ssh-auth-failed
+  scope: ansible
+  category: unreachable
+  severity: error
+  each: '(?m)^(?:fatal: \[)?(?P<host>[\w.-]+)(?:\]:| \|) UNREACHABLE! => \{[^}]*?Permission denied \([^}]*\}'
+  match:
+    any:
+      - log: 'UNREACHABLE![^}]*Permission denied \('
+  extract:
+    user: '(\S+)@[\w.-]+: Permission denied'
+  title: 'SSH login rejected · {{ .Host }}'
+  explain: >
+    {{ .Host }} rejected the login{{ if .user }} for {{ .user }}{{ end }}. Check ansible_user, that your key is loaded (`ssh-add -l`), and that it's in the host's authorized_keys.
+  steps:
+    - title: Check the SSH agent
+      action: { kind: open, label: Run doctor, href: '/troubleshoot?doctor=1' }
+  resolve: success
+
+- id: ans-vault-decrypt-failed
+  scope: ansible
+  category: vault
+  severity: error
+  match:
+    any:
+      - log: 'Decryption failed \(no vault secrets were found that could decrypt\)'
+  extract:
+    file: '(?s)Decryption failed \(no vault secrets were found that could decrypt\)\.\s*\nOrigin: (\S+?):\d+'
+  title: Vault password doesn't open a value
+  explain: >
+    A vault-encrypted value{{ if .file }} in {{ .file }}{{ end }} can't be decrypted with the configured password. It was encrypted with a different password or vault ID.
+  steps:
+    - title: See which secrets decrypt
+      action: { kind: open, label: Open Secrets, href: '/variables?tab=secrets' }
+  resolved_by: [ans.check, ans.playbook]
+  resolve: success
+
+- id: ans-vault-no-password
+  scope: ansible
+  category: vault
+  severity: error
+  match:
+    any:
+      - log: 'Attempting to decrypt but no vault secrets found'
+  title: No vault password configured
+  explain: >
+    The playbook uses vault-encrypted values but no vault password was given. Set vault_password_file on the project in groundwork.yaml.
+  steps:
+    - title: Set vault_password_file
+      action: { kind: open, label: Open groundwork.yaml, href: '/code/groundwork.yaml' }
+  resolved_by: [ans.check, ans.playbook]
+  resolve: success
+
+- id: ans-become-password
+  scope: ansible
+  category: become
+  severity: error
+  each: '(?m)^fatal: \[(?P<host>[\w.-]+)\]: FAILED! => \{[^\n]*(?:Missing sudo password|sudo: a password is required)'
+  match:
+    any:
+      - log: 'Missing sudo password'
+      - log: 'sudo: a password is required'
+  title: 'sudo needs a password · {{ .Host }}'
+  explain: >
+    The play uses become, and sudo on {{ .Host }} asks for a password. groundwork runs non-interactively, so either allow passwordless sudo for this user
+    or set ansible_become_password from a vault-encrypted variable.
+  steps:
+    - title: Store the become password in the vault
+      action: { kind: open, label: Open Secrets, href: '/variables?tab=secrets' }
+  resolved_by: [ans.check, ans.playbook]
+  resolve: success
+
+- id: ans-python-interpreter
+  scope: ansible
+  category: warning
+  severity: warning
+  each: "(?m)Host '?(?P<host>[\\w.-]+)'? is using the discovered Python interpreter at '?(?P<interpreter>[^' ,]+)"
+  match:
+    any:
+      - log: 'is using the discovered Python interpreter'
+  title: 'Python interpreter discovered · {{ .Host }}'
+  explain: >
+    Ansible guessed {{ .interpreter }} on {{ .Host }}. Installing another Python later could change which one it picks.
+    Pin it with ansible_python_interpreter in the host's or group's vars.
+  steps:
+    - title: Pin the interpreter
+      action: { kind: copy, label: Copy line, text: 'ansible_python_interpreter: {{ .interpreter }}' }
+  resolve: success

@@ -1,0 +1,8 @@
+output "environment" {
+  value = local.environment
+}
+
+output "ansible_hosts" {
+  description = "Map of Ansible group to list of {name, ip}."
+  value       = var.hosts
+}

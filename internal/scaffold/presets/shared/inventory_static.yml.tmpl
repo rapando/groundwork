@@ -1,0 +1,6 @@
+all:
+  children:
+    {{ .Env }}:
+      hosts: {}
+      # {{ .Env }}-web-1:
+      #   ansible_host: 10.{{ .Index }}.0.10

@@ -1,0 +1,26 @@
+/* Design tokens: design/README.md (Option A). */
+:root {
+  --bg: #0D1012;
+  --bg-sidebar: #0B0E10;
+  --bg-panel: #12161A;
+  --bg-card: #111518;
+  --bg-inset: #0A0C0E;
+  --line: #1E2428;
+  --line-strong: #2A3238;
+  --text: #E6E9EB;
+  --text-muted: #9AA4AB;
+  --text-label: #8B959C;
+  --text-code: #C3CBD0;
+  --accent: #B8F36B;
+  --accent-hover: #D6FF9E;
+  --accent-bg: #161D12;
+  --ok: #5FD38D;
+  --warn: #F5B647;
+  --fail: #FF7A7A;
+  --running: #7CC0FF;
+  --font-ui: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --r-control: 6px;
+  --r-card: 10px;
+  --r-panel: 12px;
+}

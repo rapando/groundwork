@@ -1,0 +1,191 @@
+# Terraform rules. Templates see: .Run (ID, Kind), .Target, .Root, .Env, .Project,
+# .Host and every `extract` name. Patterns are Go regular expressions.
+- id: tf-state-lock-stale
+  scope: terraform
+  category: state lock
+  severity: error
+  match:
+    any:
+      - log: 'Error acquiring the state lock'
+  extract:
+    lock_id: 'ID:\s+([0-9a-f-]{36})'
+    who: 'Who:\s+(\S.*)'
+    operation: 'Operation:\s+(\S+)'
+    created: 'Created:\s+(\S.*)'
+    lock_path: 'Path:\s+(\S.*)'
+  title: 'State locked on {{ .Target }}'
+  explain: >
+    Another operation holds the state lock (lock {{ .lock_id }}, {{ .operation }} by {{ .who }}, created {{ .created }}).
+    If that operation crashed or was killed, the lock is stale and every plan and apply on this stack fails until it is released.
+  checks:
+    - no_running_job_on: '{{ .Target }}'
+    - no_local_process: terraform
+  steps:
+    - title: Release the lock
+      detail: Only if nothing is still running against this state.
+      action:
+        kind: run
+        label: Force unlock
+        run: { kind: tf.unlock, lock_id: '{{ .lock_id }}' }
+        command: 'terraform -chdir={{ .Root }} force-unlock -force {{ .lock_id }}'
+        confirm: '{{ .Env }}'
+        mutating: true
+    - title: Re-plan to check for partial changes
+      detail: The interrupted run may have changed some resources before it stopped.
+      action: { kind: run, label: 'Plan {{ .Target }}', run: { kind: tf.plan } }
+  resolved_by: [tf.unlock, tf.plan, tf.drift]
+  resolve: success
+
+- id: tf-provider-checksum
+  scope: terraform
+  category: lock file
+  severity: error
+  match:
+    any:
+      - log: "doesn't match any of the\\s+checksums previously recorded in the dependency lock file"
+      - log: 'does not match any of the checksums recorded in the dependency lock file'
+  extract:
+    provider: 'installing (\S+ v\S+?):'
+  title: 'Provider checksum mismatch ({{ .provider }})'
+  explain: >
+    The provider package downloaded for {{ .provider }} doesn't match the checksums in .terraform.lock.hcl.
+    Usually the lock file was created on another platform, or the provider was re-published.
+    Re-running init with -upgrade records fresh checksums; review the lock file diff before committing it.
+  steps:
+    - title: Refresh the lock file
+      action: { kind: run, label: Run init -upgrade, run: { kind: tf.init, upgrade: 'true' } }
+    - title: Review and commit .terraform.lock.hcl
+      action: { kind: open, label: Open lock file, href: '/code/{{ path .Root ".terraform.lock.hcl" }}' }
+  resolved_by: [tf.init, tf.plan, tf.drift]
+  resolve: success
+
+- id: tf-lock-file-inconsistent
+  scope: terraform
+  category: lock file
+  severity: error
+  match:
+    any:
+      - log: 'Inconsistent dependency lock file'
+  extract:
+    provider: 'provider (\S+): required by this configuration'
+  title: 'Lock file is missing {{ or .provider "a provider" }}'
+  explain: >
+    The configuration needs a provider that .terraform.lock.hcl doesn't list yet. Run init to select a version and record it.
+  steps:
+    - title: Initialise
+      action: { kind: run, label: Run init, run: { kind: tf.init } }
+  resolved_by: [tf.init, tf.plan, tf.drift]
+  resolve: success
+
+- id: tf-unsupported-argument
+  scope: terraform
+  category: error
+  severity: error
+  match:
+    any:
+      - log: 'Error: Unsupported argument'
+      - diagnostic: { tool: validate, message: '^Unsupported argument' }
+  extract:
+    argument: 'An argument named "([^"]+)" is not expected here'
+    suggestion: 'Did you mean\s+"([^"]+)"\?'
+    file: 'on (\S+\.tf) line \d+'
+    line: 'on \S+\.tf line (\d+)'
+  title: 'Unsupported argument "{{ .argument }}"'
+  explain: >
+    {{ .argument }} isn't an argument of this block{{ if .suggestion }}. Did you mean {{ .suggestion }}?{{ else }}. Check the provider documentation for the resource's arguments.{{ end }}
+  steps:
+    - title: Fix the argument name
+      action: { kind: open, label: 'Open {{ .file }}:{{ .line }}', href: '/code/{{ path .Root .file }}?line={{ .line }}' }
+  resolve: success
+
+- id: tf-missing-variable
+  scope: terraform
+  category: variables
+  severity: error
+  each: 'input variable "(?P<variable>[^"]+)" is not set'
+  match:
+    any:
+      - log: 'No value for required variable'
+  title: '{{ .variable }} has no value in {{ .Env }}'
+  explain: >
+    {{ .variable }} is required (it has no default) and no tfvars file, var-file or TF_VAR_{{ .variable }} sets it for {{ .Env }}.
+  steps:
+    - title: Set a value
+      action: { kind: open, label: Open Variables, href: '/variables?tab=terraform' }
+  resolve: success
+
+- id: tf-provider-version-conflict
+  scope: terraform
+  category: providers
+  severity: error
+  match:
+    any:
+      - log: 'no available releases match the given constraints'
+  extract:
+    provider: 'versions for provider\s+(\S+?):'
+    constraints: 'match the given constraints\s+(.+)'
+  title: 'No {{ .provider }} version satisfies {{ .constraints }}'
+  explain: >
+    The version constraints on {{ .provider }} (from this configuration and its modules) can't all be met by any published release.
+    Run `terraform providers` to see which module asks for what, then relax one constraint.
+  steps:
+    - title: Find the conflicting constraints
+      action: { kind: copy, label: Copy command, text: 'terraform -chdir={{ .Root }} providers' }
+  resolved_by: [tf.init, tf.plan, tf.drift]
+  resolve: success
+
+- id: tf-module-not-installed
+  scope: terraform
+  category: modules
+  severity: error
+  match:
+    any:
+      - log: 'Error: Module not installed'
+      - log: 'Module source has changed'
+  title: Modules need installing
+  explain: >
+    A module was added or its source changed since the last init. Initialising downloads or links it.
+  steps:
+    - title: Initialise
+      action: { kind: run, label: Run init, run: { kind: tf.init } }
+  resolved_by: [tf.init, tf.plan, tf.drift]
+  resolve: success
+
+- id: tf-module-source-not-found
+  scope: terraform
+  category: modules
+  severity: error
+  match:
+    any:
+      - log: 'Error: Unreadable module directory'
+      - log: 'Failed to download module'
+  extract:
+    module: 'for module "([^"]+)"'
+    where: 'for module "[^"]+" at (\S+?:\d+)'
+  title: 'Module "{{ .module }}" source not found'
+  explain: >
+    The source path or address of module {{ .module }} ({{ .where }}) doesn't exist or can't be downloaded. Check the `source` argument for typos.
+  steps:
+    - title: Fix the module source
+      action: { kind: open, label: 'Open the module block', href: '/code/{{ .Root }}' }
+  resolved_by: [tf.init, tf.plan, tf.drift]
+  resolve: success
+
+- id: tf-backend-init-required
+  scope: terraform
+  category: backend
+  severity: error
+  match:
+    any:
+      - log: 'Backend initialization required'
+  extract:
+    reason: 'Reason:\s+(.+)'
+  title: Backend configuration changed
+  explain: >
+    {{ .reason }}. Terraform needs init with -reconfigure (use the new backend as-is) or -migrate-state (copy state across).
+    groundwork doesn't migrate state for you: run the command yourself after checking where the state should live.
+  steps:
+    - title: Re-initialise the backend in a terminal
+      action: { kind: copy, label: Copy command, text: 'terraform -chdir={{ .Root }} init -migrate-state' }
+  resolved_by: [tf.init, tf.plan, tf.drift]
+  resolve: success
