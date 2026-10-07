@@ -142,6 +142,7 @@ func Run(ctx context.Context, o Options) error {
 	bgCtx, bgStop := context.WithCancel(ctx)
 	defer bgStop()
 	apiSvc.Start(bgCtx)
+	defer apiSvc.Checks.Close() // after the watcher stops feeding it, before the store closes
 	watcher, err := files.NewWatcher(root, apiSvc.Ignore(), 300*time.Millisecond, apiSvc.OnFilesChanged, o.Log)
 	if err != nil {
 		o.Log.Warn("file watching disabled", "err", err)
@@ -219,6 +220,8 @@ func runningInstance(path string) (ServerInfo, bool) {
 	}
 	defer resp.Body.Close()
 	var body struct{ App string }
-	json.NewDecoder(resp.Body).Decode(&body)
+	if json.NewDecoder(resp.Body).Decode(&body) != nil {
+		return si, false
+	}
 	return si, resp.StatusCode == 200 && body.App == "groundwork"
 }

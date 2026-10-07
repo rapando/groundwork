@@ -236,12 +236,7 @@ func sourcesFor(repoRoot string, t Target) []string {
 func writableFor(repoRoot string, t Target) []string {
 	rel := func(p string) string { r, _ := filepath.Rel(repoRoot, p); return filepath.ToSlash(r) }
 	dir := filepath.Join(repoRoot, filepath.FromSlash(t.Root))
-	var out []string
-	if len(t.VarFiles) > 0 {
-		for _, vf := range t.VarFiles {
-			out = append(out, vf) // workspace-style roots: the env's own file first
-		}
-	}
+	out := append([]string(nil), t.VarFiles...) // workspace-style roots: the env's own file first
 	out = append(out, rel(filepath.Join(dir, "terraform.tfvars")))
 	auto, _ := filepath.Glob(filepath.Join(dir, "*.auto.tfvars"))
 	sort.Strings(auto)

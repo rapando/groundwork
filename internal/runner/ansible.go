@@ -180,7 +180,7 @@ func (r *Runner) ansExec(j *job, stage, phase string, argv []string) (execResult
 			hr := hostResult{Phase: phase, HostResult: res}
 			if b, err := json.Marshal(hr); err == nil {
 				mu.Lock()
-				hf.Write(append(b, '\n'))
+				_, _ = hf.Write(append(b, '\n')) // best effort: the live event still goes out
 				mu.Unlock()
 			}
 			r.Bus.Publish("ans.result", map[string]any{"run": j.id, "result": hr})

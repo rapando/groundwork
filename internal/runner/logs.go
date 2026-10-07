@@ -75,7 +75,7 @@ func (w *logWriter) add(stage, level, text string, res *terraform.ResEvent) {
 	w.n++
 	b, _ := json.Marshal(l)
 	if w.bytes+int64(len(b)) <= logHeadCap {
-		w.f.Write(append(b, '\n'))
+		_, _ = w.f.Write(append(b, '\n')) // best effort: live viewers still get the line
 		w.bytes += int64(len(b)) + 1
 	} else {
 		w.omitted++
@@ -113,11 +113,11 @@ func (w *logWriter) close() {
 		if dropped > 0 {
 			m, _ := json.Marshal(LogLine{N: w.n, T: time.Now().UTC(), Level: "warn",
 				Text: "… log too large: " + itoa(dropped) + " lines omitted …"})
-			w.f.Write(append(m, '\n'))
+			_, _ = w.f.Write(append(m, '\n'))
 		}
 		for _, l := range w.tail {
 			b, _ := json.Marshal(l)
-			w.f.Write(append(b, '\n'))
+			_, _ = w.f.Write(append(b, '\n'))
 		}
 	}
 	w.f.Close()

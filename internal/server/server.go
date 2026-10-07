@@ -291,9 +291,9 @@ func (s *Server) spa() http.Handler {
 		p := r.URL.Path
 		if p != "/" {
 			if f, err := sub.Open(p[1:]); err == nil {
-				st, _ := f.Stat()
+				st, err := f.Stat()
 				f.Close()
-				if !st.IsDir() {
+				if err == nil && !st.IsDir() {
 					files.ServeHTTP(w, r)
 					return
 				}
@@ -302,7 +302,7 @@ func (s *Server) spa() http.Handler {
 		// history-mode fallback
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-store") // it carries the session token
-		w.Write(page)
+		_, _ = w.Write(page)
 	})
 }
 
@@ -311,7 +311,7 @@ func (s *Server) spa() http.Handler {
 func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(v)
+	_ = json.NewEncoder(w).Encode(v) // the status is already sent; a failure here is the client going away
 }
 
 func writeError(w http.ResponseWriter, status int, code, msg string) {

@@ -145,7 +145,7 @@ func (r *Runner) tfStage(j *job, name string, argv []string, jsonMode bool) (exe
 		if e != nil {
 			return e
 		}
-		if res.exit != 0 && !(name == "plan" && res.exit == 2) {
+		if res.exit != 0 && (name != "plan" || res.exit != 2) {
 			return fmt.Errorf("terraform %s failed (exit %d)", name, res.exit)
 		}
 		return nil

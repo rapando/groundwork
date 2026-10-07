@@ -39,10 +39,7 @@ type entry struct {
 	each     string // "", "env", "role"
 	exec     bool
 	merge    bool
-	when     func(*Form) bool
 }
-
-func always(*Form) bool { return true }
 
 func manifest(f *Form) []entry {
 	tf := "presets/" + f.Preset + "/terraform/"

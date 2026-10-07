@@ -70,6 +70,12 @@ type Service struct {
 	cancels  map[string]context.CancelFunc
 	timers   map[string]*time.Timer
 	debounce time.Duration
+
+	// background runs (debounced, RunNow, Start) stop with Close
+	ctx    context.Context
+	stop   context.CancelFunc
+	bg     sync.WaitGroup
+	closed bool
 }
 
 func New(root string, cfg func() *config.Config, ex Exec, st *store.Store, bus *events.Bus, log *slog.Logger) *Service {
@@ -80,7 +86,9 @@ func New(root string, cfg func() *config.Config, ex Exec, st *store.Store, bus *
 	if log == nil {
 		log = slog.Default()
 	}
+	ctx, stop := context.WithCancel(context.Background())
 	return &Service{
+		ctx: ctx, stop: stop,
 		Root: root, Cfg: cfg, Exec: ex, Store: st, Bus: bus, Log: log, realRoot: real,
 		sem: make(chan struct{}, 3), dirty: true, debounce: 400 * time.Millisecond,
 		status: map[string]map[string]ToolStatus{}, cache: map[string]cached{},
@@ -207,25 +215,55 @@ func (s *Service) OnChange(paths []string) {
 // The watcher event that follows hits the content-hash cache.
 func (s *Service) RunNow(paths []string) {
 	for _, u := range s.affected(paths) {
-		go func() {
-			if err := s.Run(context.Background(), u.ID, false); err != nil && !errors.Is(err, context.Canceled) {
-				s.Log.Warn("check run failed", "unit", u.ID, "err", err)
-			}
-		}()
+		s.Start(u.ID, false, 0)
 	}
+}
+
+// Start runs Run in the background (timeout 0: none). Close cancels and waits for it.
+func (s *Service) Start(unitID string, force bool, timeout time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return
+	}
+	s.bg.Add(1)
+	go func() {
+		defer s.bg.Done()
+		ctx := s.ctx
+		if timeout > 0 {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, timeout)
+			defer cancel()
+		}
+		if err := s.Run(ctx, unitID, force); err != nil && !errors.Is(err, context.Canceled) {
+			s.Log.Warn("check run failed", "unit", unitID, "err", err)
+		}
+	}()
 }
 
 func (s *Service) schedule(unit string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.closed {
+		return
+	}
 	if t := s.timers[unit]; t != nil {
 		t.Stop()
 	}
-	s.timers[unit] = time.AfterFunc(s.debounce, func() {
-		if err := s.Run(context.Background(), unit, false); err != nil {
-			s.Log.Warn("check run failed", "unit", unit, "err", err)
-		}
-	})
+	s.timers[unit] = time.AfterFunc(s.debounce, func() { s.Start(unit, false, 0) })
+}
+
+// Close cancels pending and in-flight background runs and waits for them, so
+// nothing writes to the store or the shadow trees afterwards.
+func (s *Service) Close() {
+	s.mu.Lock()
+	s.closed = true
+	for _, t := range s.timers {
+		t.Stop()
+	}
+	s.mu.Unlock()
+	s.stop()
+	s.bg.Wait()
 }
 
 // Run checks one unit, or all units when unitID is empty. force bypasses the

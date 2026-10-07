@@ -94,6 +94,7 @@ func newEnv(t *testing.T, fx *fakeExec) *env {
 	t.Cleanup(cancel)
 	svc := New(root, func() *config.Config { return cfg }, fx, st, bus, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	svc.debounce = 30 * time.Millisecond
+	t.Cleanup(svc.Close) // before the store closes (cleanups run last-first)
 	return &env{svc, fx, root, st, sub}
 }
 
@@ -376,6 +377,26 @@ func TestOnChangeDebouncesBurstsAndMapsToUnits(t *testing.T) {
 	}
 	if got := e.fx.count("--syntax-check"); got != 0 {
 		t.Fatalf("ansible must not run for a terraform change (%d)", got)
+	}
+}
+
+func TestCloseStopsBackgroundRuns(t *testing.T) {
+	fx := realisticExec()
+	inner := fx.handler
+	fx.handler = func(c Cmd) Output { time.Sleep(50 * time.Millisecond); return inner(c) }
+	e := newEnv(t, fx)
+	e.svc.OnChange([]string{"terraform/envs/prod/main.tf"}) // debounced: still pending
+	e.svc.RunNow([]string{"terraform/envs/dev/main.tf"})    // in flight
+	time.Sleep(10 * time.Millisecond)
+	e.svc.Close() // returns once the in-flight run is done
+	settled := e.fx.count(" ")
+	e.svc.RunNow([]string{"terraform/envs/dev/main.tf"})
+	time.Sleep(150 * time.Millisecond)
+	if got := e.fx.count(" "); got != settled {
+		t.Fatalf("%d commands ran after Close", got-settled)
+	}
+	if got := e.fx.count("terraform/envs/prod validate"); got != 0 {
+		t.Fatalf("the pending debounced run should have been dropped (%d)", got)
 	}
 }
 

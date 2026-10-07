@@ -147,8 +147,6 @@ func skipDir(name string) bool {
 
 func secretID(parts ...string) string { return strings.Join(parts, "\x1f") }
 
-func splitID(id string) []string { return strings.Split(id, "\x1f") }
-
 // List discovers secrets. checks controls whether decryptability is tested
 // (it shells out to ansible-vault / sops, once per distinct file content).
 func (s *Secrets) List(ctx context.Context, checks bool) []Secret {

@@ -69,6 +69,7 @@ func newStack(t *testing.T) *stack {
 	}
 	t.Cleanup(func() { st.Close() })
 	a := api.New(root, "test", events.NewBus(), st)
+	t.Cleanup(a.Checks.Close)
 	s := server.New(slog.New(slog.NewTextHandler(io.Discard, nil)), events.NewBus(), server.Info{Root: root, Version: "t"}, token)
 	s.SetAPI(a.Routes)
 	ts := httptest.NewServer(s.Handler())

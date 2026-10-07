@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"github.com/rapando/groundwork/internal/config"
 	"net/http"
 	"time"
@@ -50,11 +49,7 @@ func (a *API) runChecks(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
-		defer cancel()
-		_ = a.Checks.Run(ctx, req.Unit, req.Force)
-	}()
+	a.Checks.Start(req.Unit, req.Force, 15*time.Minute)
 	writeJSON(w, 202, map[string]any{"started": true})
 }
 

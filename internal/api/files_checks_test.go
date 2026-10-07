@@ -65,6 +65,7 @@ func newConfigured(t *testing.T) *testEnv {
 	}
 	t.Cleanup(func() { st.Close() })
 	a := New(root, "test", events.NewBus(), st)
+	t.Cleanup(a.Checks.Close) // background check runs end before the store and temp dirs go
 	fx := &fakeExec{}
 	a.Checks.Exec = fx
 	r := chi.NewRouter()
@@ -220,7 +221,7 @@ func TestChecksRunAndReport(t *testing.T) {
 	// SSE events fired
 	deadline := time.After(2 * time.Second)
 	seen := map[string]bool{}
-	for !(seen["checks.started"] && seen["checks.updated"]) {
+	for !seen["checks.started"] || !seen["checks.updated"] {
 		select {
 		case ev := <-sub:
 			seen[ev.Type] = true

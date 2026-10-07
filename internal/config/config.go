@@ -364,7 +364,7 @@ func pathString(keys []any) string {
 // nodeAt finds the YAML node at the key path (string keys, int indexes).
 // For mapping lookups it returns the key node so positions point at the field.
 func nodeAt(n *yaml.Node, keys []any) *yaml.Node {
-	var last *yaml.Node = n
+	last := n
 	for _, k := range keys {
 		switch v := k.(type) {
 		case string:

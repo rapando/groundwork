@@ -36,7 +36,7 @@ func FuzzLiteralRoundTrip(f *testing.F) {
 		if err != nil {
 			t.Fatalf("%q wrote %q which doesn't parse: %v", text, out, err)
 		}
-		if !back.RawEquals(v) && !(v.IsNull() && back.IsNull()) {
+		if !back.RawEquals(v) && (!v.IsNull() || !back.IsNull()) {
 			if !back.Equals(v).True() {
 				t.Fatalf("%q round-tripped to %#v (was %#v) via %q", text, back, v, out)
 			}

@@ -27,7 +27,9 @@ func newAPI(t *testing.T, root string) http.Handler {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { st.Close() })
-	New(root, "test", events.NewBus(), st).Routes(r)
+	a := New(root, "test", events.NewBus(), st)
+	t.Cleanup(a.Checks.Close) // background check runs end before the store and temp dirs go
+	a.Routes(r)
 	return r
 }
 

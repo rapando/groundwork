@@ -39,7 +39,7 @@ jobs:
       tag: ${{ steps.next.outputs.tag }}
       sha: ${{ steps.next.outputs.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
@@ -73,13 +73,14 @@ jobs:
     if: needs.version.outputs.tag != ''
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.version.outputs.sha }}
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with: { go-version-file: go.mod }
       - run: go test ./...
+        if: github.event_name != 'workflow_run' # ci already passed on this commit
       - name: Tag
         if: github.event_name != 'push'
         env:
@@ -90,7 +91,7 @@ jobs:
           git tag -a "$TAG" -m "groundwork $TAG"
           # pushed with GITHUB_TOKEN, so this tag doesn't re-trigger this workflow
           git push origin "refs/tags/$TAG"
-      - uses: goreleaser/goreleaser-action@v6
+      - uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
           version: "~> v2"
