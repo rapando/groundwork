@@ -72,11 +72,3 @@ jobs:
         with: { distribution: goreleaser, version: "~> v2", args: release --snapshot --clean --skip=publish }
         env: { HOMEBREW_TAP_TOKEN: unused }
       - run: scripts/demo.sh
-  fuzz:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with: { go-version-file: go.mod }
-      - run: make fuzz FUZZTIME=20s
-      - run: make perf

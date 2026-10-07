@@ -108,8 +108,9 @@ func TestLargeRepo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer st.Close()
+	t.Cleanup(func() { st.Close() })
 	a := api.New(root, "perf", events.NewBus(), st)
+	t.Cleanup(a.Checks.Close) // background check runs end before the store and temp dirs go
 	a.Checks.Exec = okExec{}
 	h := chi.NewRouter()
 	a.Routes(h)
