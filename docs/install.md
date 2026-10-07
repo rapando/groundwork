@@ -2,12 +2,6 @@
 
 groundwork is one static binary for macOS and Linux, on amd64 and arm64. Windows isn't supported.
 
-## Homebrew
-
-```sh
-brew install rapando/tap/groundwork
-```
-
 ## Install script
 
 ```sh
@@ -57,4 +51,4 @@ groundwork runs your tools; it doesn't bundle them. `groundwork doctor` lists wh
 
 ## Upgrading and removing
 
-Install again to upgrade (`brew upgrade groundwork`). To remove: delete the binary; each repository's `.groundwork/` folder holds its run history and can be deleted too.
+Install again to upgrade. To remove: delete the binary; each repository's `.groundwork/` folder holds its run history and can be deleted too.

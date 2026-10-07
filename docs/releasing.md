@@ -17,7 +17,7 @@ PRs are squash-merged, so the **PR title** is the commit that counts; the `pr-ti
 
 1. `ci` runs.
 2. When it passes, `release` runs `scripts/next-version.sh` on that commit. If no commit since the last `vX.Y.Z` tag warrants a release, it stops.
-3. Otherwise it tags the commit (`v0.4.0`), and goreleaser builds the archives, `checksums.txt`, the GitHub release with a changelog grouped by commit type, and the Homebrew cask.
+3. Otherwise it tags the commit (`v0.4.0`), and goreleaser builds the archives, `checksums.txt`, and the GitHub release with a changelog grouped by commit type.
 
 The first release is `v0.1.0`. To preview what the next one would be:
 
@@ -30,8 +30,6 @@ scripts/next-version.sh
 - **Force a release or a bigger bump:** Actions → release → *Run workflow* on `main`, choosing `patch`, `minor` or `major`. Going to `v1.0.0` is done this way (`major`), since breaking changes only bump minor before 1.0.
 - **Pre-release:** push a tag such as `v1.0.0-rc.1`; it's published as a pre-release, isn't "latest", and is ignored when computing the next version.
 - **Any specific version:** `git tag -a v1.2.3 -m v1.2.3 && git push origin v1.2.3`.
-
-The workflow needs the `HOMEBREW_TAP_TOKEN` secret (a token with write access to `rapando/homebrew-tap`).
 
 ## Installing a version
 

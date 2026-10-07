@@ -70,5 +70,4 @@ jobs:
         with: { terraform_wrapper: false }
       - uses: goreleaser/goreleaser-action@v7
         with: { distribution: goreleaser, version: "~> v2", args: release --snapshot --clean --skip=publish }
-        env: { HOMEBREW_TAP_TOKEN: unused }
       - run: scripts/demo.sh

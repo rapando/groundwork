@@ -32,8 +32,6 @@ It opens `http://127.0.0.1:7420` in your browser.
 macOS and Linux (amd64, arm64).
 
 ```sh
-brew install rapando/tap/groundwork
-# or
 curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | sh
 # or, from source (Go 1.27+)
 go install github.com/rapando/groundwork/cmd/groundwork@latest

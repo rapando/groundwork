@@ -65,29 +65,6 @@ release:
     owner: rapando
     name: groundwork
   footer: |
-    Install: `brew install rapando/tap/groundwork`, or
-    `curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | sh`.
+    Install: `curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | sh`,
+    or `go install github.com/rapando/groundwork/cmd/groundwork@{{ .Tag }}`.
     Verify downloads against checksums.txt.
-
-# Homebrew cask (works on macOS and Linux Homebrew): brew install rapando/tap/groundwork
-homebrew_casks:
-  - name: groundwork
-    repository:
-      owner: rapando
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    homepage: https://github.com/rapando/groundwork
-    description: Local web console for Terraform and Ansible
-    commit_author:
-      name: groundwork-release
-      email: noreply@github.com
-    caveats: |
-      groundwork drives the terraform (or tofu) and ansible already on your PATH.
-      Run it inside a repository: `groundwork`.
-    hooks:
-      post:
-        # the binary isn't notarized: clear the download quarantine on macOS
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/groundwork"]
-          end
