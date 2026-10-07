@@ -61,7 +61,7 @@ func TestEncryptedFilesAreSkipped(t *testing.T) {
 }
 
 func TestParseLiteralAndSetValue(t *testing.T) {
-	for in, ok := range map[string]bool{`"x"`: true, `3`: true, `["a", "b"]`: true, `{ k = "v" }`: true, `var.x`: false, `x`: false, `"unterminated`: false} {
+	for in, ok := range map[string]bool{`"x"`: true, `3`: true, `["a", "b"]`: true, `{ k = "v" }`: true, `var.x`: false, `x`: false, `"unterminated`: false, `1/0`: false, `-1/0`: false, `{ k = [1/0] }`: false, `0/1`: true} {
 		_, err := ParseLiteral(in)
 		if (err == nil) != ok {
 			t.Errorf("%s: err=%v", in, err)

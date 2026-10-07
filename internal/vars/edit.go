@@ -26,6 +26,16 @@ func ParseLiteral(text string) (cty.Value, error) {
 	if diags.HasErrors() {
 		return cty.NilVal, fmt.Errorf("not a literal value: %s", diags[0].Summary)
 	}
+	// 1/0 evaluates to infinity, which HCL can't write back
+	err := cty.Walk(v, func(_ cty.Path, x cty.Value) (bool, error) {
+		if x.Type() == cty.Number && x.IsKnown() && !x.IsNull() && x.AsBigFloat().IsInf() {
+			return false, fmt.Errorf("not a literal value: %s is infinite", text)
+		}
+		return true, nil
+	})
+	if err != nil {
+		return cty.NilVal, err
+	}
 	return v, nil
 }
 

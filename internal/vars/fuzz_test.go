@@ -20,7 +20,7 @@ func FuzzScan(f *testing.F) {
 
 // Any literal the editor accepts writes back as HCL that reads the same value.
 func FuzzLiteralRoundTrip(f *testing.F) {
-	for _, s := range []string{`"x"`, `3`, `true`, `["a", "b"]`, `{ k = "v" }`, `"multi\nline"`, `null`, `-1.5`, `"${x}"`, `"%{if}"`} {
+	for _, s := range []string{`"x"`, `3`, `true`, `["a", "b"]`, `{ k = "v" }`, `"multi\nline"`, `null`, `-1.5`, `"${x}"`, `"%{if}"`, `[1/0]`} {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, text string) {
