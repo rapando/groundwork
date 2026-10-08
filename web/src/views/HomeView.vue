@@ -232,38 +232,38 @@ const hasTerraform = computed(() => (ws.ws?.config?.terraform?.roots ?? []).leng
 .page { padding: 24px 32px; display: flex; flex-direction: column; gap: 20px; overflow: auto; }
 .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .head { display: flex; align-items: baseline; gap: 12px; }
-.search { flex: 1 1 260px; max-width: 440px; margin-left: auto; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: #111518; color: var(--text-label); font: inherit; font-size: 13px; cursor: text; text-align: left; }
+.search { flex: 1 1 260px; max-width: 440px; margin-left: auto; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: #111518; color: var(--text-label); font: inherit; font-size: 14px; cursor: text; text-align: left; }
 .search span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.search kbd { font-size: 11px; border: 1px solid var(--line-strong); border-radius: 4px; padding: 1px 5px; }
+.search kbd { font-size: 12px; border: 1px solid var(--line-strong); border-radius: 4px; padding: 1px 5px; }
 .search:focus-visible { outline: 2px solid var(--accent); }
 .icon { width: 36px; padding: 0; justify-content: center; }
 .btn.ghost { border-color: transparent; background: transparent; color: var(--text-muted); }
 .getting { border: 1px solid #2E3A22; border-radius: 10px; background: #121710; padding: 16px 20px; display: flex; flex-wrap: wrap; gap: 12px 32px; }
 .gl { flex: 1 1 240px; display: flex; flex-direction: column; gap: 8px; }
-.gk { font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; }
+.gk { font-size: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; }
 .gh { font-size: 17px; }
 .bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin-top: 4px; }
 .bar div { height: 100%; background: var(--accent); }
 .gbtn { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 .gr { flex: 2 1 420px; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.chk { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid #1F2A18; font-size: 13.5px; }
+.chk { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid #1F2A18; font-size: 14.5px; }
 .chk:first-child { border-top: 0; }
 .chk.done > span:nth-child(2) { color: var(--text-muted); }
-.tick { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 600 11px var(--font-mono); border: 1px solid #3A4A2A; color: var(--text-muted); }
+.tick { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 600 12px var(--font-mono); border: 1px solid #3A4A2A; color: var(--text-muted); }
 .chk.done .tick { background: var(--accent); border-color: var(--accent); color: var(--bg); }
 .attention { border: 1px solid #3A2A22; border-radius: 10px; background: #15110F; }
 .attention .ph { border-bottom-color: #2B211C; }
 .att { display: flex; flex-direction: column; gap: 6px; padding: 12px 18px; border-bottom: 1px solid #221A16; color: inherit; text-decoration: none; }
 .att:hover { background: #1A1512; }
 .arow { display: flex; align-items: center; gap: 8px; }
-.atitle { font-size: 13px; color: #F1E6DF; }
-.amuted { color: #B8C0C5; }
-.pill { font: 500 11px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; }
+.atitle { font-size: 14px; color: #F1E6DF; }
+.amuted { color: #C8CFD4; }
+.pill { font: 500 12px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; }
 .st-fail { color: var(--fail); background: rgba(255, 122, 122, .10); } .st-warn { color: var(--warn); background: rgba(245, 182, 71, .10); } .st-idle { color: var(--text-muted); background: rgba(154, 164, 171, .10); }
 .fail { color: var(--fail); }
 h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.01em; }
 h2 { margin: 0; font-size: 14px; font-weight: 600; }
-.small { font-size: 12px; } .small2 { font-size: 13px; }
+.small { font-size: 13px; } .small2 { font-size: 14px; }
 .between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .envs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; }
 .env { padding: 18px; gap: 14px; border-radius: var(--r-card); background: var(--bg-panel); }
@@ -273,7 +273,7 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .num.warn { color: var(--warn); text-decoration: none; }
 .stats > div { display: flex; flex-direction: column; gap: 2px; }
-.lbl { font-size: 11px; color: var(--text-label); text-transform: uppercase; letter-spacing: .06em; }
+.lbl { font-size: 12px; color: var(--text-label); text-transform: uppercase; letter-spacing: .06em; }
 .num { font-size: 18px; }
 .foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); flex-wrap: wrap; }
 .acts { display: flex; align-items: center; gap: 12px; }
@@ -285,9 +285,9 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .row:hover { background: #151A1E; }
 .rt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .dur { text-align: right; }
-.sums { margin: 0; font-size: 13px; }
+.sums { margin: 0; font-size: 14px; }
 .pad { padding: 14px 18px; margin: 0; }
-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 th { text-align: left; color: var(--text-label); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 td { padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .b { font-weight: 700; }

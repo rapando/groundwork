@@ -228,13 +228,13 @@ async function applyPreview() {
 <style scoped>
 .ghead { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 24px; border-bottom: 1px solid var(--line); }
 h1 { margin: 0; font-size: 18px; font-weight: 600; } h2 { margin: 0; font-size: 15px; font-weight: 600; }
-.small { font-size: 12px; } .pad { padding: 24px; margin: 0; } .pad0 { margin: 0; padding: 8px 14px; }
+.small { font-size: 13px; } .pad { padding: 24px; margin: 0; } .pad0 { margin: 0; padding: 8px 14px; }
 .seg-group { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line-strong); border-radius: 7px; background: #111518; }
-.seg { font-size: 13px; height: 30px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; color: var(--text-muted); cursor: pointer; }
+.seg { font-size: 14px; height: 30px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; color: var(--text-muted); cursor: pointer; }
 .seg.on { background: var(--line-strong); color: var(--text); }
-.stack { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); }
-.sel { height: 32px; background: #111518; color: var(--text); border: 1px solid var(--line-strong); border-radius: 6px; padding: 0 8px; font-size: 13px; }
-.legend { margin-left: auto; display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--text-muted); }
+.stack { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-muted); }
+.sel { height: 32px; background: #111518; color: var(--text); border: 1px solid var(--line-strong); border-radius: 6px; padding: 0 8px; font-size: 14px; }
+.legend { margin-left: auto; display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--text-muted); }
 .legend span { display: flex; align-items: center; gap: 6px; }
 .lg { width: 14px; height: 10px; border: 1px solid #3A444B; border-radius: 3px; display: inline-block; }
 .lg.drift { border: 1px dashed var(--warn); } .lg.update { border-color: var(--running); } .lg.create { border-color: var(--ok); } .lg.replace { border-color: var(--fail); }
@@ -249,16 +249,16 @@ h1 { margin: 0; font-size: 18px; font-weight: 600; } h2 { margin: 0; font-size: 
 .inspector.drifted { border-color: #3A3220; }
 .meta { flex: 1 1 300px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; border-right: 1px solid var(--line); }
 .addr { font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
-.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: 12px; color: var(--text-muted); }
+.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: 13px; color: var(--text-muted); }
 .kv .v { color: var(--text); overflow-wrap: anywhere; }
 .driftpane { flex: 2 1 420px; min-width: 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
 .scroll { overflow-x: auto; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
-.dt { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 12.5px; }
+.dt { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 13.5px; }
 .dt th { text-align: left; font-weight: 500; padding: 6px 8px 6px 0; color: var(--text-label); }
 .dt td { border-top: 1px solid var(--line); padding: 8px 8px 8px 0; overflow-wrap: anywhere; vertical-align: top; }
 .acts { display: flex; gap: 6px; flex-wrap: wrap; }
-.btn.xs { height: 26px; font-size: 11px; padding: 0 8px; }
-.pill { font: 500 11px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; align-self: flex-start; }
+.btn.xs { height: 26px; font-size: 12px; padding: 0 8px; }
+.pill { font: 500 12px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; align-self: flex-start; }
 .st-warn { color: var(--warn); background: rgba(245, 182, 71, .10); } .st-run { color: var(--running); background: rgba(124, 192, 255, .12); }
 .link { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font: inherit; }
 .modal { position: fixed; inset: 0; background: rgba(0, 0, 0, .55); display: grid; place-items: center; z-index: 50; padding: 16px; }

@@ -217,17 +217,17 @@ const grouped = computed(() => {
 .pin { height: 48px; padding: 0 16px; background: transparent; border: 0; border-bottom: 1px solid var(--line); color: var(--text); font: inherit; font-size: 15px; outline: none; }
 .list { list-style: none; margin: 0; padding: 6px; overflow: auto; }
 .grp { padding: 10px 10px 4px; }
-.it { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.it { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 14px; }
 .it.on { background: #1C2226; box-shadow: inset 2px 0 0 var(--accent); }
 .lab { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hint { color: var(--text-label); font-size: 11.5px; white-space: nowrap; }
-.empty { padding: 16px; color: var(--text-muted); font-size: 13px; }
-.foot { display: flex; gap: 16px; padding: 8px 14px; border-top: 1px solid var(--line); font-size: 11px; color: var(--text-label); }
-kbd { font: 500 11px var(--font-mono); border: 1px solid var(--line-strong); border-radius: 4px; padding: 1px 5px; margin-right: 2px; color: var(--text-muted); }
+.hint { color: var(--text-label); font-size: 12.5px; white-space: nowrap; }
+.empty { padding: 16px; color: var(--text-muted); font-size: 14px; }
+.foot { display: flex; gap: 16px; padding: 8px 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--text-label); }
+kbd { font: 500 12px var(--font-mono); border: 1px solid var(--line-strong); border-radius: 4px; padding: 1px 5px; margin-right: 2px; color: var(--text-muted); }
 .helpbox { padding: 20px; gap: 14px; width: min(420px, 100%); }
 .helpbox h2 { margin: 0; font-size: 16px; }
-.keys { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0; font-size: 13px; }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0; font-size: 14px; }
 .keys dd { margin: 0; color: var(--text-muted); }
 .helpbox .btn { align-self: flex-end; }
-.toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 101; margin: 0; padding: 10px 16px; border-radius: 8px; background: #1C2226; border: 1px solid var(--line-strong); font-size: 13px; }
+.toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 101; margin: 0; padding: 10px 16px; border-radius: 8px; background: #1C2226; border: 1px solid var(--line-strong); font-size: 14px; }
 </style>

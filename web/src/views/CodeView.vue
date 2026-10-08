@@ -303,13 +303,13 @@ function gotoFrom(file: string, line: number) {
 
 <style scoped>
 .head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 24px; border-bottom: 1px solid var(--line); }
-.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; color: var(--text-label); min-width: 0; }
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 14px; color: var(--text-label); min-width: 0; }
 .crumbs .cur { color: var(--text); }
-.mod { margin-left: 6px; font-size: 11px; color: var(--warn); }
+.mod { margin-left: 6px; font-size: 12px; color: var(--warn); }
 .mod.git { color: var(--text-label); }
 .actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
-.kbd { font-size: 11px; color: var(--text-label); }
-.banner { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 24px; font-size: 13px; border-bottom: 1px solid var(--line); }
+.kbd { font-size: 12px; color: var(--text-label); }
+.banner { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 24px; font-size: 14px; border-bottom: 1px solid var(--line); }
 .banner.fail { background: #1A1213; color: #FFB3B3; }
 .banner.warn { background: #1D1810; color: #F5D49A; }
 .work { display: flex; flex-wrap: wrap; flex: 1; min-height: 0; }
@@ -320,10 +320,10 @@ function gotoFrom(file: string, line: number) {
 .vispane { flex: 1 1 50%; min-width: 0; }
 .editor-area.visualonly .vispane { flex-basis: 100%; }
 .seg-group { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line-strong); border-radius: 7px; background: #111518; }
-.seg { font-size: 13px; height: 30px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; color: var(--text-muted); cursor: pointer; }
+.seg { font-size: 14px; height: 30px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; color: var(--text-muted); cursor: pointer; }
 .seg.on { background: var(--line-strong); color: var(--text); }
 .state { padding: 24px; margin: 0; }
-.status { padding: 6px 16px; font-size: 11.5px; color: #6E7A82; border-top: 1px solid #1A1F23; display: flex; gap: 12px; }
+.status { padding: 6px 16px; font-size: 12.5px; color: var(--text-faint); border-top: 1px solid #1A1F23; display: flex; gap: 12px; }
 .notice { margin-left: auto; color: var(--ok); }
 :deep(.tray) { max-height: 40vh; }
 @media (max-width: 900px) { .tree { max-width: 100%; max-height: 260px; } }

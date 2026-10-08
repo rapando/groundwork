@@ -47,4 +47,4 @@ make integration  # real terraform/linters, see docs/checks.md
 make golden   # accept new detection golden files
 ```
 
-For UI work, run `groundwork serve --no-open --port 7420`, open the printed URL once, then `cd web && npm run dev`.
+For UI work, run `groundwork serve --no-open --port 7420 <repo>`, open the printed URL once, then `cd web && npm run dev` and open `/p/<project id>/` on the dev server.

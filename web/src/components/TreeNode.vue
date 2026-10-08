@@ -52,14 +52,14 @@ function click() { props.node.dir ? emit('toggle', props.node.path) : emit('open
 <style scoped>
 .tree {
   all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 8px;
-  padding: 5px 10px; border-radius: 4px; color: #C3CBD0; font-size: 12.5px; white-space: nowrap; cursor: pointer;
+  padding: 5px 10px; border-radius: 4px; color: #C3CBD0; font-size: 13.5px; white-space: nowrap; cursor: pointer;
 }
 .tree:hover { background: #1A1F23; color: var(--text); }
 .tree.on { background: #1F2A1A; color: var(--text); }
 .tree:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .caret { width: 10px; color: var(--text-label); }
 .name { overflow: hidden; text-overflow: ellipsis; }
-.cnt { margin-left: auto; font-size: 11px; display: inline-flex; gap: 6px; }
+.cnt { margin-left: auto; font-size: 12px; display: inline-flex; gap: 6px; }
 .gitm { font-weight: 700; }
 .gitm.modified { color: var(--warn); } .gitm.added, .gitm.untracked { color: var(--ok); }
 .gitm.deleted, .gitm.conflict { color: var(--fail); } .gitm.renamed { color: var(--running); }

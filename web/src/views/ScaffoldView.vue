@@ -334,20 +334,20 @@ legend { padding: 0; margin-bottom: 10px; }
 .opt.tall { padding: 12px 14px; align-items: flex-start; }
 .opt.tall input { margin-top: 3px; }
 .stack { display: flex; flex-direction: column; gap: 4px; }
-.soon { margin-left: auto; font-size: 11px; color: var(--text-label); }
-.small { font-size: 12px; margin: 0; }
-.check { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.soon { margin-left: auto; font-size: 12px; color: var(--text-label); }
+.small { font-size: 13px; margin: 0; }
+.check { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .dimmed { opacity: .6; }
 .card.tight { gap: 12px; padding: 18px; }
 .between { display: flex; align-items: baseline; justify-content: space-between; }
-.tree { font-size: 12.5px; line-height: 1.75; color: var(--text-code); max-height: 360px; overflow: auto; }
+.tree { font-size: 13.5px; line-height: 1.75; color: var(--text-code); max-height: 360px; overflow: auto; }
 .file { all: unset; cursor: pointer; }
 .file:hover, .file.sel { color: var(--accent); }
 .file.newf { color: var(--ok); }
 .file.newf:hover, .file.newf.sel { color: var(--accent-hover); }
 .file:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .viewer { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; }
-.viewer pre { margin: 0; font-size: 12px; line-height: 1.6; color: var(--text-code); overflow: auto; max-height: 260px; background: var(--bg-inset); padding: 10px; border-radius: var(--r-control); }
+.viewer pre { margin: 0; font-size: 13px; line-height: 1.6; color: var(--text-code); overflow: auto; max-height: 260px; background: var(--bg-inset); padding: 10px; border-radius: var(--r-control); }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
 .grow { flex: 1; }
 .pre { white-space: pre-wrap; margin: 0; }

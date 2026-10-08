@@ -265,24 +265,24 @@ h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .between { display: flex; align-items: baseline; justify-content: space-between; }
 .path { font-size: 15px; font-weight: 700; word-break: break-all; }
-.aside { margin-left: auto; font-size: 12px; color: var(--text-label); }
-.kind { font: 500 11px var(--font-mono); padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line-strong); }
+.aside { margin-left: auto; font-size: 13px; color: var(--text-label); }
+.kind { font: 500 12px var(--font-mono); padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line-strong); }
 .k-tf { color: #B79CFF; border-color: #3A3260; }
 .k-an { color: var(--warn); border-color: #4A3B1A; }
 .k-ci { color: var(--text-muted); }
-.ev { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; font-size: 13px; }
+.ev { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; font-size: 14px; }
 .ev dt { color: var(--text-label); }
-.ev dd { margin: 0; font-family: var(--font-mono); font-size: 12.5px; color: var(--text-code); word-break: break-word; }
+.ev dd { margin: 0; font-family: var(--font-mono); font-size: 13.5px; color: var(--text-code); word-break: break-word; }
 .dim { opacity: .85; }
-.small { font-size: 12px; margin: 0; }
+.small { font-size: 13px; margin: 0; }
 .scroll { overflow-x: auto; }
-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 12.5px; }
+table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 13.5px; }
 th { text-align: left; color: var(--text-label); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--line); }
 td { padding: 8px; border-bottom: 1px solid var(--line); }
 .b { font-weight: 700; }
-.check { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.check { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .card.tight { gap: 12px; padding: 18px; }
-.yaml { margin: 0; font-size: 12px; line-height: 1.7; color: var(--text-code); overflow-x: auto; max-height: 420px; }
+.yaml { margin: 0; font-size: 13px; line-height: 1.7; color: var(--text-code); overflow-x: auto; max-height: 420px; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
 .grow { flex: 1; }
 .pre { white-space: pre-wrap; margin: 0; }

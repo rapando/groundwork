@@ -79,30 +79,30 @@ const statusText = (r: UnitStatus['results'][number]) => {
 .tray { display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--line); background: #0F1315; }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 0 12px; border-bottom: 1px solid var(--line); }
 .tabs { display: flex; gap: 14px; }
-.tab { background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--text-muted); height: 38px; padding: 0 4px; cursor: pointer; font-size: 12px; }
+.tab { background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--text-muted); height: 38px; padding: 0 4px; cursor: pointer; font-size: 13px; }
 .tab.on { color: var(--text); border-bottom-color: var(--accent); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-left: 4px; }
-.chip { font-size: 11px; padding: 2px 8px; border-radius: 4px; background: rgba(154, 164, 171, .10); color: var(--text-muted); }
+.chip { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: rgba(154, 164, 171, .10); color: var(--text-muted); }
 .chip.ok { color: var(--ok); background: rgba(95, 211, 141, .10); }
 .chip.issues { color: var(--warn); background: rgba(245, 182, 71, .10); }
 .chip.failed { color: var(--fail); background: rgba(255, 122, 122, .10); }
 .chip.running { color: var(--running); background: rgba(124, 192, 255, .12); }
-.run { margin-left: auto; height: 28px; font-size: 12px; }
+.run { margin-left: auto; height: 28px; font-size: 13px; }
 .notes { padding: 6px 14px 0; }
-.note { margin: 4px 0; font-size: 12.5px; color: var(--text-muted); }
+.note { margin: 4px 0; font-size: 13.5px; color: var(--text-muted); }
 .list { list-style: none; margin: 0; padding: 4px 0; overflow: auto; }
 .item { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 8px 14px; border-bottom: 1px solid #161B1E; }
-.pill { font: 500 11px var(--font-mono); text-transform: uppercase; letter-spacing: .04em; padding: 3px 8px; border-radius: 4px; }
+.pill { font: 500 12px var(--font-mono); text-transform: uppercase; letter-spacing: .04em; padding: 3px 8px; border-radius: 4px; }
 .pill.error { color: var(--fail); background: rgba(255, 122, 122, .10); }
 .pill.warning { color: var(--warn); background: rgba(245, 182, 71, .10); }
 .pill.info { color: var(--running); background: rgba(124, 192, 255, .12); }
-.tool { font-size: 11.5px; color: var(--text-label); }
-.msg { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 2px; flex: 1 1 260px; min-width: 0; font-size: 13px; }
+.tool { font-size: 12.5px; color: var(--text-label); }
+.msg { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 2px; flex: 1 1 260px; min-width: 0; font-size: 14px; }
 .msg:hover > span:first-child { text-decoration: underline; }
 .msg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.detail { font-size: 12px; }
-.loc { font-size: 11.5px; color: var(--text-label); }
-.docs { font-size: 12px; }
-.fix { height: 28px; font-size: 12px; }
-.empty { margin: 0; padding: 14px; font-size: 13px; }
+.detail { font-size: 13px; }
+.loc { font-size: 12.5px; color: var(--text-label); }
+.docs { font-size: 13px; }
+.fix { height: 28px; font-size: 13px; }
+.empty { margin: 0; padding: 14px; font-size: 14px; }
 </style>

@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/go-chi/chi/v5"
@@ -55,6 +56,7 @@ func NewToken() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
+// New builds the server. bus may be nil when event streams are mounted by the API.
 func New(log *slog.Logger, bus *events.Bus, info Info, token string) *Server {
 	return &Server{log: log, bus: bus, info: info, token: token, hosts: map[string]bool{}}
 }
@@ -100,7 +102,9 @@ func (s *Server) Handler() http.Handler {
 			if s.api != nil {
 				s.api(r)
 			}
-			r.Get("/events", s.sse)
+			if s.bus != nil {
+				r.Get("/events", SSE(s.bus))
+			}
 			r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
 				writeError(w, 404, "not_found", "no such endpoint")
 			})
@@ -226,7 +230,7 @@ func (s *Server) session(next http.Handler) http.Handler {
 // SameSite=Strict cookie alone.
 func (s *Server) apiToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/events" && !s.tokenEq(r.Header.Get(TokenHeader)) {
+		if !isEventStream(r.URL.Path) && !s.tokenEq(r.Header.Get(TokenHeader)) {
 			writeError(w, http.StatusUnauthorized, "unauthorized", "missing token header")
 			return
 		}
@@ -239,9 +243,28 @@ func isAPI(r *http.Request) bool {
 	return len(r.URL.Path) >= 4 && r.URL.Path[:4] == "/api"
 }
 
+// isEventStream matches the service-wide /api/events and a project's
+// /api/p/{id}/events.
+func isEventStream(p string) bool {
+	if p == "/api/events" {
+		return true
+	}
+	rest, ok := strings.CutPrefix(p, "/api/p/")
+	if !ok {
+		return false
+	}
+	id, tail, _ := strings.Cut(rest, "/")
+	return id != "" && tail == "events"
+}
+
 // --- SSE ---
 
-func (s *Server) sse(w http.ResponseWriter, r *http.Request) {
+// SSE streams bus events to one client until it disconnects.
+func SSE(bus *events.Bus) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) { sse(bus, w, r) }
+}
+
+func sse(bus *events.Bus, w http.ResponseWriter, r *http.Request) {
 	fl, ok := w.(http.Flusher)
 	if !ok {
 		writeError(w, 500, "no_stream", "streaming unsupported")
@@ -251,7 +274,7 @@ func (s *Server) sse(w http.ResponseWriter, r *http.Request) {
 	h.Set("Content-Type", "text/event-stream")
 	h.Set("Cache-Control", "no-cache")
 	h.Set("Connection", "keep-alive")
-	ch, cancel := s.bus.Subscribe()
+	ch, cancel := bus.Subscribe()
 	defer cancel()
 	fmt.Fprint(w, "event: hello\ndata: {}\n\n")
 	fl.Flush()

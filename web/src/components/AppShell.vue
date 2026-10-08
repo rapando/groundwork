@@ -39,15 +39,15 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
 <template>
   <div class="app">
     <aside class="side" aria-label="Sidebar">
-      <div class="brand">
+      <a class="brand" href="/" title="All projects">
         <div class="logo" aria-hidden="true">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1012" stroke-width="2.4" stroke-linecap="round"><path d="M3 20h18" /><path d="M5 16h14" /><path d="M8 12h8" /><path d="M11 8h2" /></svg>
         </div>
         <div class="col"><span class="mono name">groundwork</span><span class="mono ver">{{ ws.ws?.version }} · :{{ port }}</span></div>
-      </div>
+      </a>
 
       <div class="repo">
-        <span class="lbl">Repository</span>
+        <div class="between"><span class="lbl">Project</span><a class="switch" href="/">All projects</a></div>
         <span class="mono rname">{{ ws.ws?.name }}</span>
         <span class="mono rline">{{ repoLine }}</span>
       </div>
@@ -105,20 +105,23 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
 .app { min-height: 100vh; display: flex; flex-wrap: wrap; }
 .side { flex: 1 1 232px; max-width: 232px; padding: 20px 14px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 24px; background: var(--bg-sidebar); }
 .main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; height: 100vh; }
-.brand { display: flex; align-items: center; gap: 10px; padding: 0 6px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 6px; color: inherit; text-decoration: none; }
+.between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.switch { font-size: 14px; text-decoration: none; }
+.switch:hover { text-decoration: underline; }
 .logo { width: 28px; height: 28px; border-radius: 6px; background: var(--accent); display: grid; place-items: center; }
 .col { display: flex; flex-direction: column; }
 .name { font-weight: 700; font-size: 14px; }
-.ver { font-size: 11px; color: var(--text-label); }
+.ver { font-size: 12px; color: var(--text-label); }
 .repo { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-card); }
-.rname { font-size: 13px; font-weight: 500; word-break: break-all; }
-.rline { font-size: 12px; color: var(--text-muted); }
+.rname { font-size: 14px; font-weight: 500; word-break: break-all; }
+.rline { font-size: 13px; color: var(--text-muted); }
 .nav-list { display: flex; flex-direction: column; gap: 2px; }
-.nav { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 6px; color: #AEB7BD; text-decoration: none; font-size: 14px; }
+.nav { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 6px; color: #C2CAD0; text-decoration: none; font-size: 14px; }
 .nav:hover:not(.static) { background: #1A1F23; color: var(--text); }
 .nav.on { background: #1C2226; color: var(--text); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .nav.static { padding: 6px 12px; cursor: default; }
-.badge { margin-left: auto; font-size: 11px; }
+.badge { margin-left: auto; font-size: 12px; }
 .envs { display: flex; flex-direction: column; gap: 4px; }
 .envs .lbl { padding: 0 12px 4px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: #4A545B; }

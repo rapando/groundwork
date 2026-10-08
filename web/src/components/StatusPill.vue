@@ -9,7 +9,7 @@ defineProps<{ status: string; label?: string }>()
 </template>
 
 <style scoped>
-.pill { display: inline-flex; align-items: center; gap: 6px; font: 500 11px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font: 500 12px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
 .pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .st-ok { color: var(--ok); background: rgba(95, 211, 141, .10); }
 .st-warn { color: var(--warn); background: rgba(245, 182, 71, .10); }

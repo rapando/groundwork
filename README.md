@@ -1,13 +1,14 @@
 # groundwork
 
-A local web console for Terraform and Ansible. Run it inside a repository and it detects your infrastructure code, checks it as you edit, runs plans, applies and playbooks with live logs, and explains failures with a fix. One binary, no accounts, nothing leaves your machine except through the tools you already use.
+A local web console for Terraform and Ansible. It runs as a background service on your machine and hosts all your infrastructure repositories as projects: it detects your infrastructure code, checks it as you edit, runs plans, applies and playbooks with live logs, and explains failures with a fix. One binary, no accounts, nothing leaves your machine except through the tools you already use.
 
 ```sh
 cd your-infra-repo
-groundwork
+groundwork                  # starts the service if needed, imports this repo, opens it
+groundwork service install  # optional: start the service at login (launchd / systemd --user)
 ```
 
-It opens `http://127.0.0.1:7420` in your browser.
+The console lives at `http://127.0.0.1:7420`. Its project list imports more repositories, either a folder on this machine or a git URL that it clones with your own git and SSH keys.
 
 ![Overview: environments, a stale state lock under Needs attention, checks](docs/images/overview.png)
 
@@ -43,7 +44,11 @@ groundwork uses the `terraform` (or `tofu`) and `ansible` on your PATH, plus any
 
 | | |
 |---|---|
-| `groundwork` | detect, set up if needed, serve, open the browser (`--port`, `--no-open`) |
+| `groundwork` | import this repository into the service (starting it if needed) and open it (`--port`, `--no-open`, `--foreground`) |
+| `groundwork add <folder \| git URL>…` | import projects; a URL is cloned into the service's data directory |
+| `groundwork projects` · `remove <project>` · `open [project]` | list, stop managing (files stay), open in the browser |
+| `groundwork service install \| uninstall \| start \| stop \| status` | run at login, or control the background service |
+| `groundwork serve [folder…]` | run the service in the foreground (what the login service runs) |
 | `groundwork init [--detect] [--yes]` | write `groundwork.yaml` (or scaffold an empty repo) without the UI |
 | `groundwork check [--json]` | run all checks once; non-zero exit on problems (for CI) |
 | `groundwork doctor [--json]` | tools, credentials, backends, SSH agent, disk |
@@ -54,7 +59,9 @@ groundwork uses the `terraform` (or `tofu`) and `ansible` on your PATH, plus any
 
 - The server listens on `127.0.0.1` only. Every request needs the session token from the URL it prints; other websites can't reach it (Host and Origin checks, strict CSP). See [security](docs/security.md).
 - Nothing changes infrastructure without a plan you reviewed and approved. Production-like environments need their name typed.
-- groundwork's own state lives in `.groundwork/` (git-ignored). The only file it adds to your repo is `groundwork.yaml`.
+- Each project's state (runs, plans, history) lives in its own `.groundwork/` (git-ignored). The only file groundwork adds to your repo is `groundwork.yaml`.
+- The service keeps its project list, session token and log in `~/Library/Application Support/groundwork` (macOS) or `~/.config/groundwork` (Linux); set `GROUNDWORK_HOME` to move it.
+- A login service runs with the `PATH` of the shell you ran `groundwork service install` from, so it finds the same terraform, ansible and linters.
 
 ## Try it
 

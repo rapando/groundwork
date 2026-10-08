@@ -10,7 +10,8 @@ const here = path.dirname(fileURLToPath(import.meta.url))
 export const BIN = process.env.GW_BIN ?? path.resolve(here, '../../bin/groundwork')
 export const FIXTURES = path.resolve(here, '../../testdata/repos')
 
-export interface Instance { url: string; dir: string; output: () => string; stop: () => Promise<void>; kill: () => void; restart: (env?: Record<string, string>) => Promise<Instance> }
+/** url logs in and opens the project; base is the project's UI root (origin + /p/<id>). */
+export interface Instance { url: string; base: string; dir: string; home: string; output: () => string; stop: () => Promise<void>; kill: () => void; restart: (env?: Record<string, string>) => Promise<Instance> }
 
 function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -24,7 +25,7 @@ function freePort(): Promise<number> {
 }
 
 /** Starts groundwork in a fresh temp repo (optionally seeded from a fixture). */
-export interface StartOpts { tips?: boolean; git?: boolean; init?: boolean; commit?: boolean; files?: Record<string, string>; env?: Record<string, string>; dir?: string }
+export interface StartOpts { tips?: boolean; git?: boolean; init?: boolean; commit?: boolean; files?: Record<string, string>; env?: Record<string, string>; dir?: string; home?: string }
 
 export async function start(fixture?: string, opts: StartOpts = {}): Promise<Instance> {
   const reuse = !!opts.dir
@@ -37,7 +38,9 @@ export async function start(fixture?: string, opts: StartOpts = {}): Promise<Ins
     mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true })
     writeFileSync(path.join(dir, rel), text)
   }
-  const env = { ...process.env, ...(opts.tips ? {} : { GROUNDWORK_TIPS: 'off' }), ...(opts.env ?? {}), PATH: `${path.join(here, 'fakebin')}${path.delimiter}${process.env.PATH}` }
+  // each instance is its own service with its own project registry
+  const home = opts.home ?? mkdtempSync(path.join(tmpdir(), 'gw-e2e-home-'))
+  const env = { ...process.env, GROUNDWORK_HOME: home, ...(opts.tips ? {} : { GROUNDWORK_TIPS: 'off' }), ...(opts.env ?? {}), PATH: `${path.join(here, 'fakebin')}${path.delimiter}${process.env.PATH}` }
   if (!reuse && opts.git !== false) execFileSync('git', ['init', '-q'], { cwd: dir })
   if (!reuse && opts.init) execFileSync(BIN, ['init', '--detect', '--yes'], { cwd: dir, env })
   if (!reuse && opts.commit) {
@@ -45,7 +48,7 @@ export async function start(fixture?: string, opts: StartOpts = {}): Promise<Ins
     g('add', '-A'); g('commit', '-qm', 'initial')
   }
   const port = await freePort()
-  const child: ChildProcess = spawn(BIN, ['--no-open', '--port', String(port)], { cwd: dir, env })
+  const child: ChildProcess = spawn(BIN, ['serve', '--no-open', '--port', String(port), '.'], { cwd: dir, env })
   let all = '' // everything the server printed, for leak checks
   child.stderr!.on('data', (d) => { all += d })
   const url = await new Promise<string>((resolve, reject) => {
@@ -53,7 +56,7 @@ export async function start(fixture?: string, opts: StartOpts = {}): Promise<Ins
     child.stdout!.on('data', (d) => {
       all += d
       buf += d
-      const m = buf.match(/http:\/\/127\.0\.0\.1:\d+\/\?t=[0-9a-f]+/)
+      const m = buf.match(/http:\/\/127\.0\.0\.1:\d+\/p\/[a-z0-9-]+\/\?t=[0-9a-f]+/)
       if (m) resolve(m[0])
     })
     child.on('exit', (c) => reject(new Error('groundwork exited ' + c + ' ' + buf)))
@@ -62,8 +65,8 @@ export async function start(fixture?: string, opts: StartOpts = {}): Promise<Ins
   // a child killed by a signal has exitCode null but a signalCode, so check both
   const stop = () => new Promise<void>((r) => { if (child.exitCode !== null || child.signalCode !== null) return r(); child.once('exit', () => r()); child.kill('SIGINT') })
   return {
-    url, dir, stop, output: () => all,
+    url, base: new URL(url).origin + new URL(url).pathname.replace(/\/$/, ''), dir, home, stop, output: () => all,
     kill: () => { child.kill('SIGKILL') }, // simulates a crash: no graceful shutdown
-    restart: async (e) => { await stop().catch(() => {}); return start(undefined, { ...opts, dir, env: { ...(opts.env ?? {}), ...(e ?? {}) } }) },
+    restart: async (e) => { await stop().catch(() => {}); return start(undefined, { ...opts, dir, home, env: { ...(opts.env ?? {}), ...(e ?? {}) } }) },
   }
 }

@@ -1,3 +1,5 @@
+import { apiBase } from '../project'
+
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string, public details?: unknown) {
     super(message)
@@ -18,8 +20,24 @@ async function parseError(res: Response): Promise<ApiError> {
   }
 }
 
-export async function api<T>(path: string, init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}): Promise<T> {
-  const res = await fetch('/api' + path, {
+type Init = { method?: string; body?: unknown; headers?: Record<string, string> }
+
+/** Calls the current project's API. */
+export function api<T>(path: string, init: Init = {}): Promise<T> {
+  return request<T>(apiBase + path, init)
+}
+
+/** Calls the service API (the project list), whichever page is open. */
+export function serviceApi<T>(path: string, init: Init = {}): Promise<T> {
+  return request<T>('/api' + path, init)
+}
+
+export function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  return fetch(apiBase + path, { ...init, headers: { 'X-Groundwork-Token': token(), ...(init.headers ?? {}) } })
+}
+
+async function request<T>(url: string, init: Init): Promise<T> {
+  const res = await fetch(url, {
     method: init.method ?? (init.body === undefined ? 'GET' : 'POST'),
     headers: {
       'X-Groundwork-Token': token(),
@@ -33,7 +51,7 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
 }
 
 export async function apiBlob(path: string, body: unknown): Promise<Blob> {
-  const res = await fetch('/api' + path, {
+  const res = await fetch(apiBase + path, {
     method: 'POST',
     headers: { 'X-Groundwork-Token': token(), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

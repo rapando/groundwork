@@ -10,9 +10,13 @@ test.afterEach(async () => { await gw?.stop() })
 
 test('requests without the session token are rejected', async ({ request }) => {
   gw = await start('embedded')
-  const base = new URL(gw.url).origin
-  expect((await request.get(base + '/api/workspace')).status()).toBe(401)
-  expect((await request.get(base + '/')).status()).toBe(401)
+  const origin = new URL(gw.url).origin
+  const api = origin + '/api' + new URL(gw.base).pathname
+  expect((await request.get(api + '/workspace')).status()).toBe(401)
+  expect((await request.get(api + '/events')).status()).toBe(401)
+  expect((await request.get(origin + '/api/projects')).status()).toBe(401)
+  expect((await request.get(gw.base + '/')).status()).toBe(401)
+  expect((await request.get(origin + '/')).status()).toBe(401)
 })
 
 test('empty repo: scaffold screen validates, previews, creates', async ({ page }) => {
@@ -76,6 +80,6 @@ test('app repo: detect screen lists findings, honours exclusions, writes config'
   expect(existsSync(path.join(gw.dir, 'terraform'))).toBe(false)
 
   // configured repos never show setup again
-  await page.goto(new URL(gw.url).origin + '/setup/detect')
+  await page.goto(gw.base + '/setup/detect')
   await expect(page).toHaveURL(/\/$/)
 })

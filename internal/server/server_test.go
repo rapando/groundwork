@@ -126,3 +126,21 @@ func TestOriginCheck(t *testing.T) {
 		t.Errorf("good origin rejected")
 	}
 }
+
+// Only event streams skip the token header (EventSource can't send it).
+func TestEventStreamPaths(t *testing.T) {
+	for p, want := range map[string]bool{
+		"/api/events":                true,
+		"/api/p/infra-a1b2c3/events": true,
+		"/api/p//events":             false,
+		"/api/p/x/events/extra":      false,
+		"/api/p/x/runs/1/events":     false,
+		"/api/projects":              false,
+		"/api/p/x/workspace":         false,
+		"/api/eventsx":               false,
+	} {
+		if got := isEventStream(p); got != want {
+			t.Errorf("isEventStream(%q) = %v, want %v", p, got, want)
+		}
+	}
+}

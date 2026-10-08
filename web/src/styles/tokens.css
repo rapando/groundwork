@@ -7,10 +7,11 @@
   --bg-inset: #0A0C0E;
   --line: #1E2428;
   --line-strong: #2A3238;
-  --text: #E6E9EB;
-  --text-muted: #9AA4AB;
-  --text-label: #8B959C;
-  --text-code: #C3CBD0;
+  --text: #EDF0F2;
+  --text-muted: #B0BAC0;
+  --text-label: #A3ADB4;
+  --text-code: #D2D9DD;
+  --text-faint: #8D99A1; /* de-emphasised text; still 6:1 on --bg */
   --accent: #B8F36B;
   --accent-hover: #D6FF9E;
   --accent-bg: #161D12;

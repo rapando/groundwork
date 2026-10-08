@@ -8,7 +8,7 @@ const SHOTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'screen
 let gw: Instance
 test.afterEach(async () => { await gw?.stop() })
 
-const origin = () => new URL(gw.url).origin
+const origin = () => gw.base
 
 async function login(page: Page) {
   await page.goto(gw.url)

@@ -20,8 +20,8 @@ resource "aws_vpc" "cluster" {
 `
 
 async function open(page: import('@playwright/test').Page, url: string, file: string) {
-  await page.goto(new URL(url).origin + '/?t=' + new URL(url).searchParams.get('t'))
-  await page.goto(new URL(url).origin + '/code/' + file)
+  await page.goto(url)
+  await page.goto(new URL(url).origin + new URL(url).pathname.replace(/\/$/, '') + '/code/' + file)
   await expect(page.locator('.cm-content')).toBeVisible()
 }
 
@@ -110,7 +110,7 @@ test('saving over a file that changed meanwhile is refused (409), with a way out
 test('file tree: IaC-only hides unmanaged files, All files shows them; filter narrows', async ({ page }) => {
   gw = await start('iac-only', { init: true })
   await page.goto(gw.url)
-  await page.goto(new URL(gw.url).origin + '/code')
+  await page.goto(gw.base + '/code')
   const tree = page.getByRole('region', { name: 'Repository files' })
   await expect(tree.getByText('Terraform', { exact: true })).toBeVisible()
   await expect(tree.getByText('Ansible', { exact: true })).toBeVisible()
@@ -125,6 +125,6 @@ test('file tree: IaC-only hides unmanaged files, All files shows them; filter na
   await page.screenshot({ path: path.join(SHOTS, 'code-tree.png'), fullPage: true })
 
   // binary and forbidden files get an explanation, not garbage
-  await page.goto(new URL(gw.url).origin + '/code/.git/config')
+  await page.goto(gw.base + '/code/.git/config')
   await expect(page.getByText('path is not editable')).toBeVisible()
 })

@@ -6,6 +6,7 @@ import StatusPill from '../components/StatusPill.vue'
 import StagePipeline from '../components/StagePipeline.vue'
 import LogView from '../components/LogView.vue'
 import { api, ApiError } from '../api/client'
+import { apiBase } from '../project'
 import type { HostResult, PlanChange, ResEvent, RunDetail } from '../api/types'
 import { ago, duration, kindLabel, useRuns } from '../stores/runs'
 import { useNow } from '../composables/now'
@@ -183,7 +184,7 @@ async function cancelRun() {
   if (!window.confirm(waiting ? 'Discard this plan?' : 'Cancel this run? Terraform will be interrupted and asked to release its state lock.')) return
   try { await runs.cancel(run.value.id) } catch (e) { flash(e instanceof Error ? e.message : String(e)) }
 }
-const downloadHref = computed(() => (id.value ? `/api/runs/${id.value}/log/download` : '#'))
+const downloadHref = computed(() => (id.value ? `${apiBase}/runs/${id.value}/log/download` : '#'))
 </script>
 
 <template>
@@ -341,9 +342,9 @@ const downloadHref = computed(() => (id.value ? `/api/runs/${id.value}/log/downl
 .rhead { display: flex; align-items: center; justify-content: space-between; padding: 0 6px; }
 h1 { margin: 0; font-size: 20px; font-weight: 700; }
 h2 { margin: 0; font-size: 14px; font-weight: 600; }
-.small { font-size: 12px; }
+.small { font-size: 13px; }
 .filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 6px; }
-.chip { height: 28px; font-size: 12px; padding: 0 10px; }
+.chip { height: 28px; font-size: 13px; padding: 0 10px; }
 .chip.on { background: #1C2226; }
 .chip.warn { color: var(--warn); } .chip.fail { color: #FF8A8A; }
 .rlist { display: flex; flex-direction: column; gap: 2px; }
@@ -351,7 +352,7 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .rr:hover { background: #151A1E; }
 .rr.on { background: #1C2226; box-shadow: inset 0 0 0 1px var(--line-strong); }
 .rtext { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.cmd { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cmd { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: #4A545B; }
 .d-ok { background: var(--ok); } .d-run { background: var(--running); } .d-fail { background: var(--fail); } .d-warn { background: var(--warn); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
@@ -360,10 +361,10 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .between { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .titles { display: flex; flex-direction: column; gap: 6px; }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.sub { font-size: 13px; }
+.sub { font-size: 14px; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .btn.danger { border-color: #5A2E2E; color: #FF9A9A; }
-.banner { margin: 0; padding: 10px 14px; border-radius: 8px; font-size: 13px; }
+.banner { margin: 0; padding: 10px 14px; border-radius: 8px; font-size: 14px; }
 .banner.fail { background: #1A1213; border: 1px solid #4A2A2A; color: #FFB3B3; }
 .banner.ok { background: #121A15; border: 1px solid #24402F; color: #9BE3B8; }
 .banner.warnb { background: #1D1810; border: 1px solid #4A3B1A; color: #F5D49A; }
@@ -373,17 +374,17 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .bar span { display: block; height: 100%; background: var(--ok); transition: width .3s; }
 .clist { display: flex; flex-direction: column; gap: 8px; }
 .change { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-panel); }
-.s { font-size: 13px; font-weight: 700; }
-.addr { font-size: 12px; overflow-wrap: break-word; }
-.pill { font: 500 11px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; }
+.s { font-size: 14px; font-weight: 700; }
+.addr { font-size: 13px; overflow-wrap: break-word; }
+.pill { font: 500 12px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; }
 .st-ok { color: var(--ok); background: rgba(95, 211, 141, .10); } .st-fail { color: var(--fail); background: rgba(255, 122, 122, .10); }
 .st-run { color: var(--running); background: rgba(124, 192, 255, .12); } .st-idle { color: var(--text-muted); background: rgba(154, 164, 171, .10); }
 .logpane { flex: 999 1 420px; min-width: 0; min-height: 320px; display: flex; flex-direction: column; background: var(--bg-inset); }
 .ltools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
 .search { flex: 1 1 200px; display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--text-label); }
-.search input { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: var(--text); font-size: 12px; }
+.search input { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: var(--text); font-size: 13px; }
 .lv { display: flex; gap: 4px; }
-.tog { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+.tog { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); }
 .logbox { flex: 1; min-height: 0; }
 .note { margin: 0; padding: 6px 16px; color: var(--text-muted); border-bottom: 1px solid var(--line); }
 .link { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font: inherit; }
@@ -396,7 +397,7 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .st-warn { color: var(--warn); background: rgba(245, 182, 71, .10); }
 .tasks { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 8px; }
 .task { display: flex; flex-direction: column; gap: 4px; }
-.tmsg, .tdiff { margin: 0; font: 11.5px/1.5 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg-inset); padding: 6px 8px; border-radius: 4px; max-height: 240px; overflow: auto; }
+.tmsg, .tdiff { margin: 0; font: 12.5px/1.5 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg-inset); padding: 6px 8px; border-radius: 4px; max-height: 240px; overflow: auto; }
 .tmsg { color: #FF9A9A; }
 .tdiff { color: var(--text-code); }
 @media (max-width: 900px) { .runs, .changes { max-width: 100%; border-right: 0; } }

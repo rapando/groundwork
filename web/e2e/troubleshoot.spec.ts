@@ -136,10 +136,10 @@ test('first run: the tour points at each area, the checklist follows real activi
   // doing the things ticks them off
   await card(page, 'dev').getByRole('button', { name: 'Plan' }).click()
   await expect(page).toHaveURL(/\/runs\/\d+$/)
-  await page.goto(new URL(gw.url).origin + '/code/terraform/modules/network/main.tf')
+  await page.goto(gw.base + '/code/terraform/modules/network/main.tf')
   await page.getByRole('button', { name: 'Split' }).click()
   await expect(page.getByRole('region', { name: 'Infrastructure view' })).toBeVisible()
-  await page.goto(new URL(gw.url).origin + '/troubleshoot?doctor=1')
+  await page.goto(gw.base + '/troubleshoot?doctor=1')
   await expect(page.getByRole('region', { name: 'Doctor' }).getByText(/ran just now/)).toBeVisible({ timeout: 30_000 })
   await page.getByRole('link', { name: 'Overview', exact: true }).click()
   for (const l of [/first plan/, /infrastructure view/, /Run doctor/]) await expect(item(l).locator('.tick')).toHaveText('✓')

@@ -1,5 +1,7 @@
 // One SSE connection for the whole app. Stores subscribe with onEvent();
 // after a reconnect, 'reconnected' fires so they can refetch snapshots.
+import { apiBase } from '../project'
+
 type Handler = (data: any) => void
 
 const handlers = new Map<string, Set<Handler>>()
@@ -22,7 +24,7 @@ function emit(type: string, data: unknown) {
 }
 
 function connect() {
-  es = new EventSource('/api/events')
+  es = new EventSource(apiBase + '/events')
   es.addEventListener('hello', () => {
     if (reconnecting) emit('reconnected', null)
     reconnecting = false

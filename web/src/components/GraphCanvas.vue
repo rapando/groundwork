@@ -196,12 +196,12 @@ const summary = computed(() => `${props.nodes.length} nodes, ${props.edges.lengt
             @click="emit('select', b.id)" @keydown.enter="emit('select', b.id)">
             <rect :x="b.x" :y="b.y" :width="b.w" :height="b.h" rx="12" fill="rgba(255,255,255,0.015)"
               :stroke="b.id === focus ? '#B8F36B' : b.id === selected ? '#E6E9EB' : '#3A444B'" stroke-dasharray="6 5" />
-            <text :x="b.x + 16" :y="b.y + 24" font-size="12" fill="#8B959C">{{ b.container.label }}</text>
+            <text :x="b.x + 16" :y="b.y + 24" font-size="12" fill="#A6B0B7">{{ b.container.label }}</text>
           </g>
         </template>
         <g v-for="p in paths" :key="p.key">
           <path :d="p.d" fill="none" stroke="#5B666D" stroke-width="1.5" marker-end="url(#gw-arrow)" />
-          <text v-if="p.label" :x="p.lx! + 4" :y="p.ly! + 11" font-size="10.5" fill="#8B959C">{{ p.label }}</text>
+          <text v-if="p.label" :x="p.lx! + 4" :y="p.ly! + 11" font-size="10.5" fill="#A6B0B7">{{ p.label }}</text>
         </g>
         <template v-for="b in boxes" :key="'n' + b.id">
           <g v-if="b.node" data-node :data-id="b.id" class="node" role="button" tabindex="0" :aria-label="`${b.node.title} ${b.node.label}${b.node.state ? ', ' + b.node.state : ''}`"
@@ -210,8 +210,8 @@ const summary = computed(() => `${props.nodes.length} nodes, ${props.edges.lengt
               :stroke-dasharray="look(b.node).dash" stroke-width="1.2" />
             <rect v-if="b.id === selected || b.id === focus" :x="b.x - 4" :y="b.y - 4" :width="b.w + 8" :height="b.h + 8" rx="11"
               fill="none" :stroke="b.id === focus ? '#B8F36B' : '#E6E9EB'" stroke-opacity="0.8" stroke-width="2" />
-            <text :x="b.x + 14" :y="b.y + 24" font-size="11" :fill="look(b.node).tagColor ?? '#8B959C'">{{ trunc(b.node.title + (look(b.node).tag ? ' · ' + look(b.node).tag : ''), 30) }}</text>
-            <text :x="b.x + 14" :y="b.y + 44" font-size="13" font-weight="700" fill="#E6E9EB">{{ trunc(b.node.label, 22) }}<tspan v-if="b.node.count" fill="#8B959C" font-weight="400"> {{ b.node.count }}</tspan></text>
+            <text :x="b.x + 14" :y="b.y + 24" font-size="11" :fill="look(b.node).tagColor ?? '#A6B0B7'">{{ trunc(b.node.title + (look(b.node).tag ? ' · ' + look(b.node).tag : ''), 30) }}</text>
+            <text :x="b.x + 14" :y="b.y + 44" font-size="13" font-weight="700" fill="#E6E9EB">{{ trunc(b.node.label, 22) }}<tspan v-if="b.node.count" fill="#A6B0B7" font-weight="400"> {{ b.node.count }}</tspan></text>
             <text v-if="b.node.errors" :x="b.x + b.w - 12" :y="b.y + 20" font-size="11" text-anchor="end" fill="#FF7A7A">! {{ b.node.errors }}</text>
           </g>
         </template>

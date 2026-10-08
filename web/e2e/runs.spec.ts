@@ -119,7 +119,7 @@ test('a plan waiting for approval survives a restart; a crashed apply is marked 
   const runUrl = new URL(page.url())
 
   gw = await gw.restart()
-  await page.goto(new URL(gw.url).origin + '/?t=' + new URL(gw.url).searchParams.get('t'))
+  await page.goto(gw.url)
   await page.goto(new URL(gw.url).origin + runUrl.pathname)
   await waitForApproval(page)
   await approveVia(page, 'prod')
@@ -127,8 +127,8 @@ test('a plan waiting for approval survives a restart; a crashed apply is marked 
 
   // second run: crash the server mid-apply
   gw = await gw.restart({ FAKE_APPLY_DELAY: '3' })
-  await page.goto(new URL(gw.url).origin + '/?t=' + new URL(gw.url).searchParams.get('t'))
-  await page.goto(new URL(gw.url).origin + '/')
+  await page.goto(gw.url)
+  await page.goto(gw.base + '/')
   await card(page, 'dev').getByRole('button', { name: 'Plan' }).click()
   await waitForApproval(page)
   const crashed = page.url()
@@ -138,7 +138,7 @@ test('a plan waiting for approval survives a restart; a crashed apply is marked 
   await new Promise((r) => setTimeout(r, 300))
 
   gw = await gw.restart()
-  await page.goto(new URL(gw.url).origin + '/?t=' + new URL(gw.url).searchParams.get('t'))
+  await page.goto(gw.url)
   await page.goto(new URL(gw.url).origin + new URL(crashed).pathname)
   await expect(page.locator('.dhead .pill', { hasText: 'failed' })).toBeVisible()
   await expect(page.getByText(/interrupted: groundwork stopped/)).toBeVisible()

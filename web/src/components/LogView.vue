@@ -71,11 +71,11 @@ onMounted(() => {
 <style scoped>
 .log { height: 100%; overflow: auto; padding: 10px 0; background: var(--bg-inset); }
 .spacer { position: relative; min-width: 560px; }
-.lg { display: grid; grid-template-columns: 78px 68px minmax(0, 1fr); gap: 12px; padding: 0 16px; font: 12.5px/21px var(--font-mono); font-variant-ligatures: none; min-height: 21px; }
+.lg { display: grid; grid-template-columns: 78px 68px minmax(0, 1fr); gap: 12px; padding: 0 16px; font: 13.5px/21px var(--font-mono); font-variant-ligatures: none; min-height: 21px; }
 .lg:hover { background: #151A1E; }
-.t { color: #5B666D; } .s { color: #7E8A91; }
+.t { color: var(--text-faint); } .s { color: #7E8A91; }
 .m { white-space: pre; }
 .lg.wrap .m { white-space: pre-wrap; overflow-wrap: anywhere; }
-.warn .m { color: var(--warn); } .error .m { color: #FF8A8A; } .debug .m { color: #6E7A82; }
+.warn .m { color: var(--warn); } .error .m { color: #FF8A8A; } .debug .m { color: var(--text-faint); }
 .empty { margin: 0; padding: 16px; }
 </style>

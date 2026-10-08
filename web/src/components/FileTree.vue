@@ -131,10 +131,10 @@ function toggle(p: string) {
 <style scoped>
 .files { display: flex; flex-direction: column; gap: 2px; padding: 12px 8px; background: #0F1315; overflow: auto; min-height: 0; }
 .search { display: flex; align-items: center; gap: 8px; height: 32px; margin: 0 4px 8px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--text-label); }
-.search input { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: var(--text); font-size: 12px; }
+.search input { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: var(--text); font-size: 13px; }
 .seg-group { display: flex; gap: 2px; padding: 2px; margin: 0 4px 8px; border: 1px solid var(--line-strong); border-radius: 7px; background: #111518; }
-.seg { flex: 1; font-size: 12px; height: 26px; border: 0; border-radius: 5px; background: transparent; color: var(--text-muted); cursor: pointer; }
+.seg { flex: 1; font-size: 13px; height: 26px; border: 0; border-radius: 5px; background: transparent; color: var(--text-muted); cursor: pointer; }
 .seg.on { background: var(--line-strong); color: var(--text); }
 .sec { padding: 10px 10px 6px; display: block; }
-.empty { padding: 8px 10px; font-size: 12px; }
+.empty { padding: 8px 10px; font-size: 13px; }
 </style>

@@ -49,19 +49,19 @@ const highlight = HighlightStyle.define([
   { tag: [t.string, t.special(t.string)], color: '#B8F36B' },
   { tag: [t.variableName, t.propertyName, t.labelName], color: '#F5B647' },
   { tag: [t.bool, t.null, t.number, t.atom], color: '#7CC0FF' },
-  { tag: [t.comment, t.lineComment, t.blockComment], color: '#6E7A82', fontStyle: 'italic' },
+  { tag: [t.comment, t.lineComment, t.blockComment], color: '#8D99A1', fontStyle: 'italic' },
   { tag: [t.operator, t.punctuation, t.bracket], color: '#9AA4AB' },
   { tag: [t.typeName, t.className], color: '#B79CFF' },
 ])
 
 const theme = EditorView.theme({
-  '&': { height: '100%', backgroundColor: '#0D1012', color: '#E6E9EB', fontSize: '13px' },
-  '.cm-scroller': { fontFamily: "var(--font-mono)", lineHeight: '22px', fontVariantLigatures: 'none' },
+  '&': { height: '100%', backgroundColor: '#0D1012', color: '#E6E9EB', fontSize: '14px' },
+  '.cm-scroller': { fontFamily: "var(--font-mono)", lineHeight: '23px', fontVariantLigatures: 'none' },
   '.cm-content': { caretColor: '#B8F36B', padding: '14px 0' },
-  '.cm-gutters': { backgroundColor: '#0D1012', color: '#5B666D', border: 'none' },
+  '.cm-gutters': { backgroundColor: '#0D1012', color: '#7A868E', border: 'none' },
   '.cm-lineNumbers .cm-gutterElement': { padding: '0 16px 0 8px', minWidth: '44px' },
   '.cm-activeLine': { backgroundColor: 'rgba(255,255,255,.03)' },
-  '.cm-activeLineGutter': { backgroundColor: 'rgba(255,255,255,.03)', color: '#9AA4AB' },
+  '.cm-activeLineGutter': { backgroundColor: 'rgba(255,255,255,.03)', color: '#C3CBD0' },
   '&.cm-focused': { outline: 'none' },
   '&.cm-focused .cm-cursor': { borderLeftColor: '#B8F36B' },
   '.cm-selectionBackground, &.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(124,192,255,.25) !important' },
@@ -74,7 +74,7 @@ const theme = EditorView.theme({
   '.cm-lintRange-error': { backgroundImage: 'none', textDecoration: 'underline wavy #FF7A7A', textUnderlineOffset: '4px' },
   '.cm-lintRange-warning': { backgroundImage: 'none', textDecoration: 'underline wavy #F5B647', textUnderlineOffset: '4px' },
   '.cm-lintRange-info': { backgroundImage: 'none', textDecoration: 'underline wavy #7CC0FF', textUnderlineOffset: '4px' },
-  '.cm-foldGutter span': { color: '#5B666D' },
+  '.cm-foldGutter span': { color: '#7A868E' },
 }, { dark: true })
 
 function makeState(doc: string, path: string): EditorState {

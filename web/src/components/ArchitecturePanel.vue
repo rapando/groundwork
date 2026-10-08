@@ -85,15 +85,15 @@ const broken = computed(() => arch.value?.errors?.includes(props.path))
 <style scoped>
 .arch { display: flex; flex-direction: column; min-height: 0; height: 100%; border-left: 1px solid var(--line); background: var(--bg-inset); }
 .abar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); background: #0F1315; }
-.scope { font-size: 12.5px; font-weight: 700; }
+.scope { font-size: 13.5px; font-weight: 700; }
 .asby { display: flex; align-items: center; gap: 6px; }
-.sel { height: 28px; background: #111518; color: var(--text); border: 1px solid var(--line-strong); border-radius: 6px; padding: 0 6px; font-size: 12px; }
+.sel { height: 28px; background: #111518; color: var(--text); border: 1px solid var(--line-strong); border-radius: 6px; padding: 0 6px; font-size: 13px; }
 .seg-group { margin-left: auto; display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line-strong); border-radius: 7px; background: #111518; }
-.seg { font-size: 12px; height: 26px; padding: 0 10px; border: 0; border-radius: 5px; background: transparent; color: var(--text-muted); cursor: pointer; display: inline-flex; align-items: center; text-decoration: none; }
+.seg { font-size: 13px; height: 26px; padding: 0 10px; border: 0; border-radius: 5px; background: transparent; color: var(--text-muted); cursor: pointer; display: inline-flex; align-items: center; text-decoration: none; }
 .seg.on { background: var(--line-strong); color: var(--text); }
-.btn.xs { height: 26px; font-size: 11px; padding: 0 8px; }
+.btn.xs { height: 26px; font-size: 12px; padding: 0 8px; }
 .cv { flex: 1; min-height: 300px; }
-.small { font-size: 12px; } .pad { padding: 16px; margin: 0; }
+.small { font-size: 13px; } .pad { padding: 16px; margin: 0; }
 .warnbar { margin: 0; padding: 6px 14px; background: #1D1810; color: #F5D49A; border-bottom: 1px solid var(--line); }
 .tray { padding: 8px 14px; border-top: 1px solid var(--line); color: var(--text-muted); }
 </style>

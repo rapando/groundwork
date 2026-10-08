@@ -41,10 +41,10 @@ const items = computed(() => props.stages.filter((s) => s.name !== 'summary' || 
 
 <style scoped>
 .stages { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.arrow { color: #4A545B; }
+.arrow { color: var(--text-faint); }
 .stage { display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; border: 1px solid #232A2F; border-radius: 8px; background: var(--bg-panel); min-width: 104px; }
-.n { font-size: 12px; }
-.note { font-size: 11px; color: var(--text-label); }
+.n { font-size: 13px; }
+.note { font-size: 12px; color: var(--text-label); }
 .stage.succeeded { border-color: #24402F; } .stage.succeeded .note { color: var(--ok); }
 .stage.running { border-color: #2E4D6E; background: #121A22; box-shadow: 0 0 0 3px rgba(124, 192, 255, .08); } .stage.running .note { color: var(--running); }
 .stage.failed { border-color: #5A2E2E; } .stage.failed .note { color: var(--fail); }

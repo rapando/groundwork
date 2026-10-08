@@ -446,3 +446,23 @@ func writeError(w http.ResponseWriter, status int, code, msg string, details any
 func absPath(p string) (string, error) { return filepath.Abs(p) }
 
 func itoa(n int) string { return strconv.Itoa(n) }
+
+// Summary is the project card on the service's project list.
+type Summary struct {
+	Configured  bool   `json:"configured"`
+	ConfigError string `json:"config_error,omitempty"`
+	ActiveRuns  int    `json:"active_runs"`
+	OpenIssues  int    `json:"open_issues"`
+}
+
+func (a *API) Summary() Summary {
+	cfg, err := a.config()
+	s := Summary{Configured: cfg != nil, ActiveRuns: a.Runner.Active()}
+	if err != nil {
+		s.ConfigError = err.Error()
+	}
+	if open, err := a.Store.ListIssues(store.IssueOpen, time.Time{}, 1000); err == nil {
+		s.OpenIssues = len(open)
+	}
+	return s
+}

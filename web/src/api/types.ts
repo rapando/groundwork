@@ -215,3 +215,10 @@ export interface DoctorReport { ran_at: string; checks: DoctorCheck[] }
 export interface OnboardingItem { id: string; label: string; done: boolean; href: string }
 export interface Onboarding { tour_completed: boolean; checklist_hidden: boolean; tips: boolean; items: OnboardingItem[] }
 export interface DriftSchedule { schedule?: string; notify?: string; next?: string; last_run?: string; error?: string }
+
+export interface ServiceInfo { version: string; home: string; repos_dir: string }
+export interface ProjectView {
+  id: string; name: string; path: string; remote?: string; added: string
+  status: 'ok' | 'unavailable'; error?: string
+  configured?: boolean; config_error?: string; active_runs?: number; open_issues?: number
+}
