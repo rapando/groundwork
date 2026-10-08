@@ -1,24 +1,131 @@
-/* Design tokens: design/README.md (Option A). */
-:root {
+/* Design tokens. Two themes: Paper (default) and Dark (design/README.md, Option A).
+   Components use these variables only; no colour is hard-coded outside this file
+   (the graph reads them at runtime so its SVG/PNG export keeps concrete colours). */
+:root, :root[data-theme='paper'] {
+  color-scheme: light;
+  --bg: #F6F3EB;
+  --bg-sidebar: #EFEBE1;
+  --bg-panel: #FBF9F3;
+  --bg-card: #FFFDF8;
+  --bg-inset: #F2EEE5;
+  --bg-sunken: #F1EDE4;
+  --bg-raised: #FAF7F0;
+  --bg-button: #FFFDF8;
+  --bg-hover: #ECE7DB;
+  --bg-active: #E6E0D2;
+  --line: #E3DDCF;
+  --line-strong: #D3CBB9;
+  --line-hover: #B5AC97;
+  --text: #1F1C17;
+  --text-soft: #3A362F;
+  --text-muted: #5A554B;
+  --text-label: #665F53;
+  --text-code: #2B2823;
+  --text-faint: #736C60;
+  --text-disabled: #B9B1A0;
+  --accent: #4C7514;
+  --accent-hover: #3B5C0E;
+  --accent-bg: #EBF1DC;
+  --accent-line: #C8D9A6;
+  --on-accent: #FFFDF8;
+  --ok: #1B7642;
+  --ok-bg: #E5F2E8;
+  --ok-line: #B4D9BF;
+  --warn: #945600;
+  --warn-strong: #774400;
+  --warn-bg: #FBF0DB;
+  --warn-line: #E8CD95;
+  --fail: #B3261A;
+  --fail-strong: #8E1D14;
+  --fail-bg: #FBE8E4;
+  --fail-line: #ECBDB4;
+  --running: #1E5CB8;
+  --running-bg: #E7EEFA;
+  --running-line: #B5C9EC;
+  --purple: #6C3DAD;
+  --purple-line: #D4C5EC;
+  --attn-bg: #FBF2E9;
+  --attn-line: #EAD4BF;
+  --attn-hover: #F6E9DC;
+  --scrim: rgba(31, 28, 23, .38);
+  --hover-tint: rgba(31, 28, 23, .035);
+  --shadow: 0 1px 2px rgba(31, 28, 23, .06), 0 8px 24px rgba(31, 28, 23, .08);
+  /* code editor (a warm light palette) */
+  --syn-keyword: #2550A8;
+  --syn-string: #3D7012;
+  --syn-property: #925400;
+  --syn-number: #0C6B86;
+  --syn-comment: #857D6F;
+  --syn-operator: #645E52;
+  --syn-type: #6C3DAD;
+  --syn-selection: rgba(30, 92, 184, .18);
+  --syn-active-line: rgba(31, 28, 23, .04);
+  --syn-gutter: #9A927F;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
   --bg: #0D1012;
   --bg-sidebar: #0B0E10;
   --bg-panel: #12161A;
   --bg-card: #111518;
   --bg-inset: #0A0C0E;
+  --bg-sunken: #0F1315;
+  --bg-raised: #151A1E;
+  --bg-button: #161B1E;
+  --bg-hover: #1A1F23;
+  --bg-active: #1C2226;
   --line: #1E2428;
   --line-strong: #2A3238;
+  --line-hover: #3A444B;
   --text: #EDF0F2;
+  --text-soft: #C8CFD4;
   --text-muted: #B0BAC0;
   --text-label: #A3ADB4;
   --text-code: #D2D9DD;
-  --text-faint: #8D99A1; /* de-emphasised text; still 6:1 on --bg */
+  --text-faint: #8D99A1;
+  --text-disabled: #4A545B;
   --accent: #B8F36B;
   --accent-hover: #D6FF9E;
   --accent-bg: #161D12;
+  --accent-line: #2E3A22;
+  --on-accent: #0D1012;
   --ok: #5FD38D;
+  --ok-bg: #101A14;
+  --ok-line: #24402F;
   --warn: #F5B647;
+  --warn-strong: #F5D49A;
+  --warn-bg: #1D1810;
+  --warn-line: #4A3B1A;
   --fail: #FF7A7A;
+  --fail-strong: #FF9A9A;
+  --fail-bg: #1A1213;
+  --fail-line: #5A2E2E;
   --running: #7CC0FF;
+  --running-bg: #121A22;
+  --running-line: #2E4D6E;
+  --purple: #B79CFF;
+  --purple-line: #3A3260;
+  --attn-bg: #15110F;
+  --attn-line: #3A2A22;
+  --attn-hover: #1A1512;
+  --scrim: rgba(5, 7, 8, .62);
+  --hover-tint: rgba(255, 255, 255, .03);
+  --shadow: 0 8px 32px rgba(0, 0, 0, .45);
+  /* code editor (the original groundwork dark palette) */
+  --syn-keyword: #7CC0FF;
+  --syn-string: #B8F36B;
+  --syn-property: #F5B647;
+  --syn-number: #7CC0FF;
+  --syn-comment: #8D99A1;
+  --syn-operator: #9AA4AB;
+  --syn-type: #B79CFF;
+  --syn-selection: rgba(124, 192, 255, .25);
+  --syn-active-line: rgba(255, 255, 255, .03);
+  --syn-gutter: #7A868E;
+}
+
+:root {
   --font-ui: 'IBM Plex Sans', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
   --r-control: 6px;
