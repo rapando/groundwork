@@ -8,6 +8,7 @@ import { useChecks } from '../stores/checks'
 import { useFiles } from '../stores/files'
 import { useIssues } from '../stores/issues'
 import { kindLabel, useRuns } from '../stores/runs'
+import { theme, toggleTheme } from '../composables/theme'
 import { useWorkspace } from '../stores/workspace'
 
 interface Item { id: string; group: string; label: string; hint?: string; run: () => void | Promise<unknown> }
@@ -58,6 +59,7 @@ const items = computed<Item[]>(() => {
   out.push({ id: 'checks', group: 'Actions', label: 'Run all checks', run: async () => { await checks.run('', true); say('Checks started') } })
   out.push({ id: 'doctor', group: 'Actions', label: 'Run doctor', run: () => go('/troubleshoot?doctor=1') })
   out.push({ id: 'tour', group: 'Actions', label: 'Show tips', run: () => go('/?tour=1') })
+  out.push({ id: 'theme', group: 'Actions', label: theme.value === 'dark' ? 'Switch to paper theme' : 'Switch to dark theme', run: toggleTheme })
   out.push({ id: 'help', group: 'Actions', label: 'Keyboard shortcuts', hint: '?', run: () => { help.value = true } })
   for (const i of issues.open) out.push({ id: 'issue:' + i.id, group: 'Issues', label: i.title, hint: i.category, run: () => go('/troubleshoot/' + i.id) })
   for (const r of runs.list.slice(0, 30)) out.push({ id: 'run:' + r.id, group: 'Runs', label: `#${r.id} ${kindLabel(r)}`, hint: `${r.target.env} · ${r.status.replace('_', ' ')}`, run: () => go('/runs/' + r.id) })
@@ -212,13 +214,13 @@ const grouped = computed(() => {
 </template>
 
 <style scoped>
-.pal-back { position: fixed; inset: 0; z-index: 100; background: rgba(5, 7, 8, .6); display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px; }
-.pal { width: min(640px, 100%); max-height: 70vh; display: flex; flex-direction: column; background: #12161A; border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: 0 24px 64px rgba(0, 0, 0, .6); overflow: hidden; }
+.pal-back { position: fixed; inset: 0; z-index: 100; background: var(--scrim); display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px; }
+.pal { width: min(640px, 100%); max-height: 70vh; display: flex; flex-direction: column; background: var(--bg-panel); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: 0 24px 64px var(--scrim); overflow: hidden; }
 .pin { height: 48px; padding: 0 16px; background: transparent; border: 0; border-bottom: 1px solid var(--line); color: var(--text); font: inherit; font-size: 15px; outline: none; }
 .list { list-style: none; margin: 0; padding: 6px; overflow: auto; }
 .grp { padding: 10px 10px 4px; }
 .it { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 14px; }
-.it.on { background: #1C2226; box-shadow: inset 2px 0 0 var(--accent); }
+.it.on { background: var(--bg-active); box-shadow: inset 2px 0 0 var(--accent); }
 .lab { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hint { color: var(--text-label); font-size: 12.5px; white-space: nowrap; }
 .empty { padding: 16px; color: var(--text-muted); font-size: 14px; }
@@ -229,5 +231,5 @@ kbd { font: 500 12px var(--font-mono); border: 1px solid var(--line-strong); bor
 .keys { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0; font-size: 14px; }
 .keys dd { margin: 0; color: var(--text-muted); }
 .helpbox .btn { align-self: flex-end; }
-.toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 101; margin: 0; padding: 10px 16px; border-radius: 8px; background: #1C2226; border: 1px solid var(--line-strong); font-size: 14px; }
+.toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 101; margin: 0; padding: 10px 16px; border-radius: 8px; background: var(--bg-active); border: 1px solid var(--line-strong); font-size: 14px; }
 </style>

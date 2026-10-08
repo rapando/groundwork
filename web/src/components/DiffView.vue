@@ -20,10 +20,10 @@ const lines = computed(() => props.diff.split('\n').map((text) => {
 </template>
 
 <style scoped>
-.diff { height: 100%; overflow: auto; background: #0D1012; font-size: 13.5px; line-height: 20px; padding: 12px 0; }
+.diff { height: 100%; overflow: auto; background: var(--bg); font-size: 13.5px; line-height: 20px; padding: 12px 0; }
 .l { white-space: pre; padding: 0 16px; }
-.add { background: rgba(95, 211, 141, .10); color: var(--ok); }
-.del { background: rgba(255, 122, 122, .10); color: var(--fail); }
+.add { background: color-mix(in srgb, var(--ok) 10%, transparent); color: var(--ok); }
+.del { background: color-mix(in srgb, var(--fail) 10%, transparent); color: var(--fail); }
 .hunk { color: var(--running); }
 .meta { color: var(--text-label); }
 .pad { padding: 12px 16px; margin: 0; }

@@ -1,6 +1,6 @@
 # First run
 
-`groundwork` looks at the repository it is started in (the nearest ancestor with `.git`, else the current directory).
+When you import a project (by running `groundwork` in it, `groundwork add`, or the console's Projects page), groundwork uses the repository root: the nearest ancestor with `.git`, else the folder itself. Opening a project that has no `groundwork.yaml` yet shows one of these screens:
 
 | Repo contents | Screen | CLI equivalent |
 |---|---|---|

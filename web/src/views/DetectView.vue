@@ -267,8 +267,8 @@ h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .path { font-size: 15px; font-weight: 700; word-break: break-all; }
 .aside { margin-left: auto; font-size: 13px; color: var(--text-label); }
 .kind { font: 500 12px var(--font-mono); padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line-strong); }
-.k-tf { color: #B79CFF; border-color: #3A3260; }
-.k-an { color: var(--warn); border-color: #4A3B1A; }
+.k-tf { color: var(--purple); border-color: var(--purple-line); }
+.k-an { color: var(--warn); border-color: var(--warn-line); }
 .k-ci { color: var(--text-muted); }
 .ev { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; font-size: 14px; }
 .ev dt { color: var(--text-label); }

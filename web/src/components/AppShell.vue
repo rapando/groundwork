@@ -5,6 +5,7 @@ import { useChecks } from '../stores/checks'
 import { useGit } from '../stores/git'
 import { useRuns } from '../stores/runs'
 import { useIssues } from '../stores/issues'
+import ThemeToggle from './ThemeToggle.vue'
 
 const ws = useWorkspace()
 const checks = useChecks()
@@ -41,7 +42,7 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
     <aside class="side" aria-label="Sidebar">
       <a class="brand" href="/" title="All projects">
         <div class="logo" aria-hidden="true">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1012" stroke-width="2.4" stroke-linecap="round"><path d="M3 20h18" /><path d="M5 16h14" /><path d="M8 12h8" /><path d="M11 8h2" /></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 20h18" /><path d="M5 16h14" /><path d="M8 12h8" /><path d="M11 8h2" /></svg>
         </div>
         <div class="col"><span class="mono name">groundwork</span><span class="mono ver">{{ ws.ws?.version }} · :{{ port }}</span></div>
       </a>
@@ -96,6 +97,7 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
           <span v-if="STATUS_TEXT[envStatus.get(e) ?? '']" class="mono badge" :class="envStatus.get(e) === 'failed' ? 'fail' : envStatus.get(e) === 'pending' || envStatus.get(e) === 'drift' ? 'warn' : 'run'">{{ STATUS_TEXT[envStatus.get(e) ?? ''] }}</span>
         </span>
       </div>
+      <div class="foot"><ThemeToggle /></div>
     </aside>
     <main class="main"><slot /></main>
   </div>
@@ -109,22 +111,23 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
 .between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .switch { font-size: 14px; text-decoration: none; }
 .switch:hover { text-decoration: underline; }
-.logo { width: 28px; height: 28px; border-radius: 6px; background: var(--accent); display: grid; place-items: center; }
+.logo { flex: none; width: 28px; height: 28px; border-radius: 6px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; }
 .col { display: flex; flex-direction: column; }
 .name { font-weight: 700; font-size: 14px; }
-.ver { font-size: 12px; color: var(--text-label); }
+.ver { font-size: 12px; color: var(--text-label); word-break: break-all; }
 .repo { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-card); }
 .rname { font-size: 14px; font-weight: 500; word-break: break-all; }
 .rline { font-size: 13px; color: var(--text-muted); }
+.foot { margin-top: auto; padding: 0 6px; }
 .nav-list { display: flex; flex-direction: column; gap: 2px; }
-.nav { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 6px; color: #C2CAD0; text-decoration: none; font-size: 14px; }
-.nav:hover:not(.static) { background: #1A1F23; color: var(--text); }
-.nav.on { background: #1C2226; color: var(--text); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.nav { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 6px; color: var(--text-soft); text-decoration: none; font-size: 14px; }
+.nav:hover:not(.static) { background: var(--bg-hover); color: var(--text); }
+.nav.on { background: var(--bg-active); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .nav.static { padding: 6px 12px; cursor: default; }
 .badge { margin-left: auto; font-size: 12px; }
 .envs { display: flex; flex-direction: column; gap: 4px; }
 .envs .lbl { padding: 0 12px 4px; }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: #4A545B; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-disabled); }
 .dot.ok { background: var(--ok); } .dot.pending, .dot.drift { background: var(--warn); } .dot.failed { background: var(--fail); } .dot.running { background: var(--running); }
 .badge.run { color: var(--running); }
 @media (max-width: 900px) { .side { max-width: 100%; flex-basis: 100%; } .main { height: auto; min-height: 70vh; } }

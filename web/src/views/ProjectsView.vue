@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { serviceApi } from '../api/client'
 import type { ProjectView, ServiceInfo } from '../api/types'
+import ThemeToggle from '../components/ThemeToggle.vue'
 
 const projects = ref<ProjectView[] | null>(null)
 const info = ref<ServiceInfo | null>(null)
@@ -84,10 +85,11 @@ onUnmounted(() => {
   <div class="shell">
     <header class="top">
       <div class="logo" aria-hidden="true">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1012" stroke-width="2.4" stroke-linecap="round"><path d="M3 20h18" /><path d="M5 16h14" /><path d="M8 12h8" /><path d="M11 8h2" /></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 20h18" /><path d="M5 16h14" /><path d="M8 12h8" /><path d="M11 8h2" /></svg>
       </div>
       <span class="mono name">groundwork</span>
       <span class="mono meta">{{ info ? `${info.version} · ${info.home}` : '' }}</span>
+      <ThemeToggle />
     </header>
 
     <main class="body">
@@ -154,7 +156,7 @@ onUnmounted(() => {
 <style scoped>
 .shell { min-height: 100vh; }
 .top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px 32px; border-bottom: 1px solid var(--line); }
-.logo { width: 28px; height: 28px; border-radius: 6px; background: var(--accent); display: grid; place-items: center; }
+.logo { flex: none; width: 28px; height: 28px; border-radius: 6px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; }
 .name { font-weight: 700; }
 .meta { margin-left: auto; font-size: 13px; color: var(--text-label); word-break: break-all; }
 .body { max-width: 960px; margin: 0 auto; padding: 40px 32px; display: flex; flex-direction: column; gap: 24px; }
@@ -178,12 +180,12 @@ a.pname:hover { color: var(--accent-hover); }
 .path { font-size: 13px; color: var(--text-muted); word-break: break-all; }
 .actions { display: flex; gap: 8px; }
 .pill { font-size: 12px; font-weight: 500; padding: 3px 9px; border-radius: 4px; }
-.pill.ok { color: var(--ok); background: rgba(95, 211, 141, .12); }
-.pill.warn { color: var(--warn); background: rgba(245, 182, 71, .12); }
-.pill.fail { color: var(--fail); background: rgba(255, 122, 122, .12); }
-.pill.run { color: var(--running); background: rgba(124, 192, 255, .12); }
-.btn.danger { background: var(--fail); border-color: var(--fail); color: var(--bg); }
-.scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, .6); display: grid; place-items: center; padding: 16px; }
+.pill.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+.pill.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+.pill.fail { color: var(--fail); background: color-mix(in srgb, var(--fail) 12%, transparent); }
+.pill.run { color: var(--running); background: color-mix(in srgb, var(--running) 12%, transparent); }
+.btn.danger { background: var(--fail); border-color: var(--fail); color: var(--on-accent); }
+.scrim { position: fixed; inset: 0; background: var(--scrim); display: grid; place-items: center; padding: 16px; }
 .dialog { max-width: 520px; width: 100%; }
 .dialog p { margin: 0; font-size: 15px; line-height: 1.6; }
 @media (max-width: 640px) { .body { padding: 24px 16px; } .top { padding: 14px 16px; } }

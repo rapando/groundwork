@@ -52,10 +52,10 @@ function click() { props.node.dir ? emit('toggle', props.node.path) : emit('open
 <style scoped>
 .tree {
   all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 8px;
-  padding: 5px 10px; border-radius: 4px; color: #C3CBD0; font-size: 13.5px; white-space: nowrap; cursor: pointer;
+  padding: 5px 10px; border-radius: 4px; color: var(--text-code); font-size: 13.5px; white-space: nowrap; cursor: pointer;
 }
-.tree:hover { background: #1A1F23; color: var(--text); }
-.tree.on { background: #1F2A1A; color: var(--text); }
+.tree:hover { background: var(--bg-hover); color: var(--text); }
+.tree.on { background: var(--accent-line); color: var(--text); }
 .tree:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .caret { width: 10px; color: var(--text-label); }
 .name { overflow: hidden; text-overflow: ellipsis; }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
+import { theme, token } from '../composables/theme'
 
 export interface GNode { id: string; title: string; label: string; count?: string; state?: string; errors?: number; dim?: boolean }
 export interface GEdge { from: string; to: string; label?: string }
@@ -152,7 +153,7 @@ function exportPNG(name = 'graph.png') {
     c.width = size.value.w * 2
     c.height = size.value.h * 2
     const ctx = c.getContext('2d')!
-    ctx.fillStyle = '#0A0C0E'
+    ctx.fillStyle = pal.value.canvas
     ctx.fillRect(0, 0, c.width, c.height)
     ctx.scale(2, 2)
     ctx.drawImage(img, 0, 0)
@@ -163,17 +164,27 @@ function exportPNG(name = 'graph.png') {
 defineExpose({ fit, zoom, exportSVG, exportPNG })
 
 // ---- look ----
-const STYLE: Record<string, { stroke: string; fill: string; dash?: string; tag?: string; tagColor?: string }> = {
-  '': { stroke: '#3A444B', fill: '#12161A' },
-  create: { stroke: '#5FD38D', fill: '#101A14', tag: '+ create', tagColor: '#5FD38D' },
-  update: { stroke: '#7CC0FF', fill: '#121A22', tag: '~ update', tagColor: '#7CC0FF' },
-  replace: { stroke: '#FF7A7A', fill: '#1A1213', tag: '± replace', tagColor: '#FF7A7A' },
-  delete: { stroke: '#FF7A7A', fill: '#1A1213', tag: '− destroy', tagColor: '#FF7A7A' },
-  drift: { stroke: '#F5B647', fill: '#1A1610', dash: '6 4', tag: 'drift', tagColor: '#F5B647' },
-}
+// Concrete colours (not var()) so an exported SVG/PNG looks the same outside
+// the page; re-read from the tokens whenever the theme changes.
+const pal = computed(() => {
+  void theme.value
+  const c = (n: string) => token('--' + n)
+  return {
+    canvas: c('bg-inset'), dot: c('line-strong'), edge: c('text-faint'), label: c('text-muted'), text: c('text'),
+    box: c('line-hover'), selected: c('text'), focus: c('accent'), tint: c('hover-tint'), fail: c('fail'),
+    style: {
+      '': { stroke: c('line-hover'), fill: c('bg-panel') },
+      create: { stroke: c('ok'), fill: c('ok-bg'), tag: '+ create', tagColor: c('ok') },
+      update: { stroke: c('running'), fill: c('running-bg'), tag: '~ update', tagColor: c('running') },
+      replace: { stroke: c('fail'), fill: c('fail-bg'), tag: '± replace', tagColor: c('fail') },
+      delete: { stroke: c('fail'), fill: c('fail-bg'), tag: '− destroy', tagColor: c('fail') },
+      drift: { stroke: c('warn'), fill: c('warn-bg'), dash: '6 4', tag: 'drift', tagColor: c('warn') },
+    } as Record<string, { stroke: string; fill: string; dash?: string; tag?: string; tagColor?: string }>,
+  }
+})
 const look = (n: GNode) => {
-  const s = STYLE[n.state ?? ''] ?? STYLE['']
-  return n.errors ? { ...s, stroke: '#FF7A7A', dash: '5 3' } : s
+  const s = pal.value.style[n.state ?? ''] ?? pal.value.style['']
+  return n.errors ? { ...s, stroke: pal.value.fail, dash: '5 3' } : s
 }
 const trunc = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + '…' : s)
 const summary = computed(() => `${props.nodes.length} nodes, ${props.edges.length} edges`)
@@ -186,22 +197,22 @@ const summary = computed(() => `${props.nodes.length} nodes, ${props.edges.lengt
     <svg ref="svg" class="svg" role="img" :aria-label="`${ariaLabel}: ${summary}`" font-family="JetBrains Mono, ui-monospace, monospace">
       <defs>
         <marker id="gw-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M0,0 L8,4 L0,8 z" fill="#5B666D" />
+          <path d="M0,0 L8,4 L0,8 z" :fill="pal.edge" />
         </marker>
       </defs>
       <g data-viewport :transform="`translate(${view.x},${view.y}) scale(${view.k})`">
-        <rect :width="size.w" :height="size.h" fill="#0A0C0E" opacity="0" />
+        <rect :width="size.w" :height="size.h" :fill="pal.canvas" opacity="0" />
         <template v-for="b in boxes" :key="'c' + b.id">
           <g v-if="b.container" data-node class="node" role="button" tabindex="0" :aria-label="`${b.container.label} (contains ${b.container.children.length})`"
             @click="emit('select', b.id)" @keydown.enter="emit('select', b.id)">
-            <rect :x="b.x" :y="b.y" :width="b.w" :height="b.h" rx="12" fill="rgba(255,255,255,0.015)"
-              :stroke="b.id === focus ? '#B8F36B' : b.id === selected ? '#E6E9EB' : '#3A444B'" stroke-dasharray="6 5" />
-            <text :x="b.x + 16" :y="b.y + 24" font-size="12" fill="#A6B0B7">{{ b.container.label }}</text>
+            <rect :x="b.x" :y="b.y" :width="b.w" :height="b.h" rx="12" :fill="pal.tint" :data-focus="b.id === focus || undefined"
+              :stroke="b.id === focus ? pal.focus : b.id === selected ? pal.selected : pal.box" stroke-dasharray="6 5" />
+            <text :x="b.x + 16" :y="b.y + 24" font-size="12" :fill="pal.label">{{ b.container.label }}</text>
           </g>
         </template>
         <g v-for="p in paths" :key="p.key">
-          <path :d="p.d" fill="none" stroke="#5B666D" stroke-width="1.5" marker-end="url(#gw-arrow)" />
-          <text v-if="p.label" :x="p.lx! + 4" :y="p.ly! + 11" font-size="10.5" fill="#A6B0B7">{{ p.label }}</text>
+          <path :d="p.d" fill="none" :stroke="pal.edge" stroke-width="1.5" marker-end="url(#gw-arrow)" />
+          <text v-if="p.label" :x="p.lx! + 4" :y="p.ly! + 11" font-size="10.5" :fill="pal.label">{{ p.label }}</text>
         </g>
         <template v-for="b in boxes" :key="'n' + b.id">
           <g v-if="b.node" data-node :data-id="b.id" class="node" role="button" tabindex="0" :aria-label="`${b.node.title} ${b.node.label}${b.node.state ? ', ' + b.node.state : ''}`"
@@ -209,10 +220,10 @@ const summary = computed(() => `${props.nodes.length} nodes, ${props.edges.lengt
             <rect :x="b.x" :y="b.y" :width="b.w" :height="b.h" rx="8" :fill="look(b.node).fill" :stroke="look(b.node).stroke"
               :stroke-dasharray="look(b.node).dash" stroke-width="1.2" />
             <rect v-if="b.id === selected || b.id === focus" :x="b.x - 4" :y="b.y - 4" :width="b.w + 8" :height="b.h + 8" rx="11"
-              fill="none" :stroke="b.id === focus ? '#B8F36B' : '#E6E9EB'" stroke-opacity="0.8" stroke-width="2" />
-            <text :x="b.x + 14" :y="b.y + 24" font-size="11" :fill="look(b.node).tagColor ?? '#A6B0B7'">{{ trunc(b.node.title + (look(b.node).tag ? ' · ' + look(b.node).tag : ''), 30) }}</text>
-            <text :x="b.x + 14" :y="b.y + 44" font-size="13" font-weight="700" fill="#E6E9EB">{{ trunc(b.node.label, 22) }}<tspan v-if="b.node.count" fill="#A6B0B7" font-weight="400"> {{ b.node.count }}</tspan></text>
-            <text v-if="b.node.errors" :x="b.x + b.w - 12" :y="b.y + 20" font-size="11" text-anchor="end" fill="#FF7A7A">! {{ b.node.errors }}</text>
+              fill="none" :data-focus="b.id === focus || undefined" :stroke="b.id === focus ? pal.focus : pal.selected" stroke-opacity="0.8" stroke-width="2" />
+            <text :x="b.x + 14" :y="b.y + 24" font-size="11" :fill="look(b.node).tagColor ?? pal.label">{{ trunc(b.node.title + (look(b.node).tag ? ' · ' + look(b.node).tag : ''), 30) }}</text>
+            <text :x="b.x + 14" :y="b.y + 44" font-size="13" font-weight="700" :fill="pal.text">{{ trunc(b.node.label, 22) }}<tspan v-if="b.node.count" :fill="pal.label" font-weight="400"> {{ b.node.count }}</tspan></text>
+            <text v-if="b.node.errors" :x="b.x + b.w - 12" :y="b.y + 20" font-size="11" text-anchor="end" :fill="pal.fail">! {{ b.node.errors }}</text>
           </g>
         </template>
       </g>
@@ -223,9 +234,9 @@ const summary = computed(() => `${props.nodes.length} nodes, ${props.edges.lengt
 <style scoped>
 .canvas { position: relative; width: 100%; height: 100%; min-height: 320px; overflow: hidden; cursor: grab; touch-action: none; }
 .canvas:active { cursor: grabbing; }
-.gridbg { background-color: #0A0C0E; background-image: radial-gradient(#1C2226 1px, transparent 1px); background-size: 20px 20px; }
+.gridbg { background-color: var(--bg-inset); background-image: radial-gradient(var(--line-strong) 1px, transparent 1px); background-size: 20px 20px; }
 .svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .node { cursor: pointer; outline: none; }
-.node:focus-visible rect:first-child { stroke: #B8F36B; stroke-width: 2; }
+.node:focus-visible rect:first-child { stroke: var(--accent); stroke-width: 2; }
 .pad { position: absolute; padding: 16px; margin: 0; }
 </style>

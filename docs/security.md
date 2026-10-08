@@ -5,11 +5,13 @@ groundwork runs on your machine with your credentials and can run `terraform app
 ## The server
 
 - **Loopback only.** It listens on `127.0.0.1`. Listening elsewhere needs `--host` plus `--i-understand-remote-access`, and prints a warning: anyone who can reach the port and has the URL can run commands as you.
-- **Session token.** Each start generates a random 256-bit token. The URL it prints carries it once (`?t=…`); the server swaps it for an `HttpOnly`, `SameSite=Strict` cookie and redirects to a URL without it. API calls also need the token in an `X-Groundwork-Token` header, which other origins can't read or set, so a forged form or image request fails.
+- **Session token.** The service generates a random 256-bit token on first start and keeps it in its data directory (mode 0600), so open tabs survive a restart; delete the `token` file and restart to rotate it. The CLI reads it from there to talk to the service. The URL it prints carries it once (`?t=…`); the server swaps it for an `HttpOnly`, `SameSite=Strict` cookie and redirects to a URL without it. API calls also need the token in an `X-Groundwork-Token` header, which other origins can't read or set, so a forged form or image request fails.
 - **DNS rebinding.** Requests whose `Host` isn't `127.0.0.1`, `localhost` or `[::1]` with the right port are refused.
 - **CSRF.** State-changing requests need an `Origin` (or `Referer`) from the same host.
 - **Headers on every response.** A strict Content-Security-Policy (`script-src 'self'`, `frame-ancestors 'none'`), `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` (the token never leaks in a Referer), `nosniff`, and `Cache-Control: no-store` for the page and the API.
 - **Bounded input.** JSON bodies are capped at 1 MiB and file writes at 2 MiB.
+
+- **One service, many projects.** Every project's API sits behind the same checks; a project is only reachable once you've imported it. Importing a folder refuses `/` and your home directory. Cloning accepts only `https://`, `ssh://` and `git@host:path` URLs, runs `git` with `protocol.ext.allow=never` and with prompts disabled, and passes the URL after `--`.
 
 ## Files and commands
 

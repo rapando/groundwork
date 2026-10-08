@@ -1,19 +1,20 @@
 # groundwork
 
-A local web console for Terraform and Ansible. It runs as a background service on your machine and hosts all your infrastructure repositories as projects: it detects your infrastructure code, checks it as you edit, runs plans, applies and playbooks with live logs, and explains failures with a fix. One binary, no accounts, nothing leaves your machine except through the tools you already use.
+A local web console for Terraform and Ansible. It runs as a background service on your machine and hosts all your infrastructure repositories as projects. For each one it detects your infrastructure code, checks it as you edit, runs plans, applies and playbooks with live logs, and explains failures with a fix. One binary, no accounts, nothing leaves your machine except through the tools you already use.
 
 ```sh
+curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | sh
 cd your-infra-repo
-groundwork                  # starts the service if needed, imports this repo, opens it
-groundwork service install  # optional: start the service at login (launchd / systemd --user)
+groundwork
 ```
 
-The console lives at `http://127.0.0.1:7420`. Its project list imports more repositories, either a folder on this machine or a git URL that it clones with your own git and SSH keys.
+`groundwork` starts the service if it isn't running, imports the repository you're in as a project and opens it at `http://127.0.0.1:7420`. Run it in other repositories to add them, or import a folder or a git URL from the console's project list. `groundwork service install` starts the service at login.
 
 ![Overview: environments, a stale state lock under Needs attention, checks](docs/images/overview.png)
 
 ## What it does
 
+- **One service, many projects**: every repository you import gets its own checks, runs, file watching and drift schedule, behind one console. Import a folder in place, or a git URL that groundwork clones with your own git and SSH keys ([service and projects](docs/service.md)).
 - **Detects** Terraform roots, modules and Ansible projects, in a dedicated infrastructure repo or in an application repo that keeps them in a subfolder, and writes a `groundwork.yaml` you can review. An empty repo gets a scaffold instead ([setup](docs/setup.md)).
 - **Checks on every save**: `fmt`, `validate`, tflint, checkov, yamllint, ansible-lint, playbook syntax and a plaintext-secret scan, with problems inline in the editor ([checks](docs/checks.md)).
 - **Plans, then applies only what you approved**: plan review with masked sensitive values and danger flags, typed confirmation for production, and the exact saved plan applied. A plan that went stale (code, state or time) can't be applied ([runs](docs/runs.md)).
@@ -27,6 +28,9 @@ The console lives at `http://127.0.0.1:7420`. Its project list imports more repo
 | ![Editor with the architecture view](docs/images/code-split.png) | ![Plan review with a danger warning](docs/images/plan-danger.png) |
 | ![Live apply](docs/images/run-applying.png) | ![Dependency graph with drift](docs/images/graph-drift.png) |
 | ![Ansible inventory](docs/images/inventory.png) | ![Variables and secrets](docs/images/variables.png) |
+| ![Projects](docs/images/projects.png) | ![Troubleshoot with Doctor](docs/images/troubleshoot.png) |
+
+The console comes in two themes, **Paper** (the default) and **Dark**, switchable from the sidebar or ⌘K; the code editor and graph follow the theme.
 
 ## Install
 
@@ -38,15 +42,26 @@ curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh 
 go install github.com/rapando/groundwork/cmd/groundwork@latest
 ```
 
-groundwork uses the `terraform` (or `tofu`) and `ansible` on your PATH, plus any linters you have. `groundwork doctor` shows what it found. See [install](docs/install.md) for checksums and the install script's options.
+The script verifies the download against the release checksums and installs to `~/.local/bin` without `sudo`. Then, optionally, start the service at login:
+
+```sh
+groundwork service install   # launchd on macOS, systemd --user on Linux
+groundwork service status
+```
+
+Run `install` from a shell where `terraform` and `ansible` work: the login service keeps that shell's `PATH`. groundwork uses the `terraform` (or `tofu`) and `ansible` it finds there, plus any linters you have; `groundwork doctor` shows what it found.
+
+**Upgrading:** install again, then `groundwork service stop && groundwork service start`. Coming from 0.1, where groundwork ran one server per repository in your terminal, see [upgrading to 0.2](docs/install.md#from-01-to-02).
+
+See [install](docs/install.md) for manual downloads, checksums, the install script's options and removal.
 
 ## Commands
 
 | | |
 |---|---|
-| `groundwork` | import this repository into the service (starting it if needed) and open it (`--port`, `--no-open`, `--foreground`) |
+| `groundwork` | import this repository into the service (starting it if needed) and open it (`--no-open`, `--port`; `--foreground` serves in this terminal instead) |
 | `groundwork add <folder \| git URL>…` | import projects; a URL is cloned into the service's data directory |
-| `groundwork projects` · `remove <project>` · `open [project]` | list, stop managing (files stay), open in the browser |
+| `groundwork projects` · `open [project]` · `remove <project>` | list with status, open in the browser, stop managing (files stay) |
 | `groundwork service install \| uninstall \| start \| stop \| status` | run at login, or control the background service |
 | `groundwork serve [folder…]` | run the service in the foreground (what the login service runs) |
 | `groundwork init [--detect] [--yes]` | write `groundwork.yaml` (or scaffold an empty repo) without the UI |
@@ -60,15 +75,17 @@ groundwork uses the `terraform` (or `tofu`) and `ansible` on your PATH, plus any
 - The server listens on `127.0.0.1` only. Every request needs the session token from the URL it prints; other websites can't reach it (Host and Origin checks, strict CSP). See [security](docs/security.md).
 - Nothing changes infrastructure without a plan you reviewed and approved. Production-like environments need their name typed.
 - Each project's state (runs, plans, history) lives in its own `.groundwork/` (git-ignored). The only file groundwork adds to your repo is `groundwork.yaml`.
-- The service keeps its project list, session token and log in `~/Library/Application Support/groundwork` (macOS) or `~/.config/groundwork` (Linux); set `GROUNDWORK_HOME` to move it.
-- A login service runs with the `PATH` of the shell you ran `groundwork service install` from, so it finds the same terraform, ansible and linters.
+- The service keeps its project list, session token, log and cloned repositories in `~/Library/Application Support/groundwork` (macOS) or `~/.config/groundwork` (Linux); set `GROUNDWORK_HOME` to move it.
 
 ## Try it
 
 [`examples/`](examples/) has three small repos: Terraform only, Ansible only, and an app with both. They use local providers, so they work without a cloud account:
 
 ```sh
-cp -R examples/app-with-infra /tmp/demo && cd /tmp/demo && git init -q && groundwork
+cp -R examples/app-with-infra /tmp/demo && git -C /tmp/demo init -q
+cp -R examples/ansible-only /tmp/demo-ansible && git -C /tmp/demo-ansible init -q
+cd /tmp/demo && groundwork                 # opens the first project
+groundwork add /tmp/demo-ansible           # a second project, on the same console
 ```
 
 ## Development

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # End-to-end check of a clean install: install from release archives with
 # install.sh, then on the demo repo (examples/app-with-infra) run init, check,
-# doctor, and plan → approve → apply → drift through the running server's API.
+# doctor, then start the service with the demo as a project and drive
+# plan → approve → apply → drift through that project's API.
 # Fails if anything breaks or the whole thing takes more than 5 minutes.
 #
 #   make release-snapshot && scripts/demo.sh        # uses ./dist
@@ -45,19 +46,23 @@ step "groundwork check"
 step "groundwork doctor"
 "$gw" doctor || true # missing optional tools are warnings; a fail here is shown, not fatal
 
-step "serve"
+step "service, with the demo as a project"
 port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])')
-GROUNDWORK_TIPS=off "$gw" --no-open --port "$port" >"$work/server.log" 2>&1 &
+# foreground, with its own data dir, so the run can't touch a real service
+export GROUNDWORK_HOME="$work/home"
+GROUNDWORK_TIPS=off "$gw" serve --no-open --port "$port" . >"$work/server.log" 2>&1 &
 server=$!
 for _ in $(seq 100); do grep -q '?t=' "$work/server.log" 2>/dev/null && break; sleep 0.1; done
-url=$(grep -o 'http://[^ ]*?t=[0-9a-f]*' "$work/server.log") || fail "server didn't start: $(cat "$work/server.log")"
+url=$(grep -o 'http://[^ ]*/p/[a-z0-9-]*/?t=[0-9a-f]*' "$work/server.log") || fail "service didn't start: $(cat "$work/server.log")"
 token="${url##*t=}"
+project=$(printf '%s' "$url" | sed -E 's|.*/p/([a-z0-9-]+)/.*|\1|')
 origin="http://127.0.0.1:$port"
 curl -fsS -c "$work/jar" -o /dev/null "$url"
-api() { # method path [json]
+api() { # method path [json]: the demo project's API
   curl -fsS -b "$work/jar" -H "X-Groundwork-Token: $token" -H "Origin: $origin" -H 'Content-Type: application/json' \
-    -X "$1" "$origin/api$2" ${3:+--data "$3"}
+    -X "$1" "$origin/api/p/$project$2" ${3:+--data "$3"}
 }
+"$gw" projects | grep -q "$project" || fail "groundwork projects doesn't list $project"
 field() { python3 -c "import json,sys; d=json.load(sys.stdin); print(eval(sys.argv[1], {}, {'d': d}))" "$1"; }
 wait_run() { # id status...
   local id=$1; shift

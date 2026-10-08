@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, shallowRef, watch } from 'vue'
-import { EditorState, type Extension } from '@codemirror/state'
+import { Compartment, EditorState, type Extension } from '@codemirror/state'
 import {
   EditorView, drawSelection, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers,
 } from '@codemirror/view'
@@ -16,6 +16,7 @@ import { properties } from '@codemirror/legacy-modes/mode/properties'
 import { tags as t } from '@lezer/highlight'
 import { hcl } from 'codemirror-lang-hcl'
 import type { Diagnostic, Edit } from '../api/types'
+import { theme } from '../composables/theme'
 
 const props = defineProps<{
   path: string
@@ -43,39 +44,48 @@ function language(path: string): Extension[] {
   return []
 }
 
-// Colours follow the design: keywords blue, strings lime, references amber, comments grey.
+// Colours come from the theme tokens (--syn-*): keywords blue, strings green,
+// references amber, comments grey, in a light and a dark palette.
 const highlight = HighlightStyle.define([
-  { tag: [t.keyword, t.definitionKeyword, t.modifier], color: '#7CC0FF' },
-  { tag: [t.string, t.special(t.string)], color: '#B8F36B' },
-  { tag: [t.variableName, t.propertyName, t.labelName], color: '#F5B647' },
-  { tag: [t.bool, t.null, t.number, t.atom], color: '#7CC0FF' },
-  { tag: [t.comment, t.lineComment, t.blockComment], color: '#8D99A1', fontStyle: 'italic' },
-  { tag: [t.operator, t.punctuation, t.bracket], color: '#9AA4AB' },
-  { tag: [t.typeName, t.className], color: '#B79CFF' },
+  { tag: [t.keyword, t.definitionKeyword, t.modifier], color: 'var(--syn-keyword)' },
+  { tag: [t.string, t.special(t.string)], color: 'var(--syn-string)' },
+  { tag: [t.variableName, t.propertyName, t.labelName], color: 'var(--syn-property)' },
+  { tag: [t.bool, t.null, t.number, t.atom], color: 'var(--syn-number)' },
+  { tag: [t.comment, t.lineComment, t.blockComment], color: 'var(--syn-comment)', fontStyle: 'italic' },
+  { tag: [t.operator, t.punctuation, t.bracket], color: 'var(--syn-operator)' },
+  { tag: [t.typeName, t.className], color: 'var(--syn-type)' },
 ])
 
-const theme = EditorView.theme({
-  '&': { height: '100%', backgroundColor: '#0D1012', color: '#E6E9EB', fontSize: '14px' },
+const styles = {
+  '&': { height: '100%', backgroundColor: 'var(--bg-card)', color: 'var(--text)', fontSize: '14px' },
   '.cm-scroller': { fontFamily: "var(--font-mono)", lineHeight: '23px', fontVariantLigatures: 'none' },
-  '.cm-content': { caretColor: '#B8F36B', padding: '14px 0' },
-  '.cm-gutters': { backgroundColor: '#0D1012', color: '#7A868E', border: 'none' },
+  '.cm-content': { caretColor: 'var(--text)', padding: '14px 0' },
+  '.cm-gutters': { backgroundColor: 'var(--bg-card)', color: 'var(--syn-gutter)', border: 'none' },
   '.cm-lineNumbers .cm-gutterElement': { padding: '0 16px 0 8px', minWidth: '44px' },
-  '.cm-activeLine': { backgroundColor: 'rgba(255,255,255,.03)' },
-  '.cm-activeLineGutter': { backgroundColor: 'rgba(255,255,255,.03)', color: '#C3CBD0' },
+  '.cm-activeLine': { backgroundColor: 'var(--syn-active-line)' },
+  '.cm-activeLineGutter': { backgroundColor: 'var(--syn-active-line)', color: 'var(--text-soft)' },
   '&.cm-focused': { outline: 'none' },
-  '&.cm-focused .cm-cursor': { borderLeftColor: '#B8F36B' },
-  '.cm-selectionBackground, &.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(124,192,255,.25) !important' },
-  '.cm-tooltip': { backgroundColor: '#12161A', border: '1px solid #2A3238', color: '#E6E9EB', borderRadius: '6px' },
-  '.cm-tooltip-lint .cm-diagnostic': { padding: '8px 10px', borderLeft: '3px solid #FF7A7A', whiteSpace: 'pre-wrap' },
-  '.cm-diagnostic-warning': { borderLeftColor: '#F5B647 !important' },
-  '.cm-diagnostic-info': { borderLeftColor: '#7CC0FF !important' },
-  '.cm-diagnosticAction': { backgroundColor: '#B8F36B', color: '#0D1012', borderRadius: '4px', padding: '2px 8px', marginLeft: '0', marginTop: '6px' },
-  '.cm-diagnostic-error': { borderLeftColor: '#FF7A7A' },
-  '.cm-lintRange-error': { backgroundImage: 'none', textDecoration: 'underline wavy #FF7A7A', textUnderlineOffset: '4px' },
-  '.cm-lintRange-warning': { backgroundImage: 'none', textDecoration: 'underline wavy #F5B647', textUnderlineOffset: '4px' },
-  '.cm-lintRange-info': { backgroundImage: 'none', textDecoration: 'underline wavy #7CC0FF', textUnderlineOffset: '4px' },
-  '.cm-foldGutter span': { color: '#7A868E' },
-}, { dark: true })
+  '&.cm-focused .cm-cursor': { borderLeftColor: 'var(--text)' },
+  '.cm-selectionBackground, &.cm-focused .cm-selectionBackground': { backgroundColor: 'var(--syn-selection) !important' },
+  '.cm-selectionMatch': { backgroundColor: 'var(--syn-selection)' },
+  '.cm-matchingBracket, &.cm-focused .cm-matchingBracket': { backgroundColor: 'var(--syn-selection)', outline: 'none' },
+  '.cm-tooltip': { backgroundColor: 'var(--bg-panel)', border: '1px solid var(--line-strong)', color: 'var(--text)', borderRadius: '6px', boxShadow: 'var(--shadow)' },
+  '.cm-tooltip-lint .cm-diagnostic': { padding: '8px 10px', borderLeft: '3px solid var(--fail)', whiteSpace: 'pre-wrap' },
+  '.cm-diagnostic-warning': { borderLeftColor: 'var(--warn) !important' },
+  '.cm-diagnostic-info': { borderLeftColor: 'var(--running) !important' },
+  '.cm-diagnosticAction': { backgroundColor: 'var(--accent)', color: 'var(--on-accent)', borderRadius: '4px', padding: '2px 8px', marginLeft: '0', marginTop: '6px' },
+  '.cm-diagnostic-error': { borderLeftColor: 'var(--fail)' },
+  '.cm-lintRange-error': { backgroundImage: 'none', textDecoration: 'underline wavy var(--fail)', textUnderlineOffset: '4px' },
+  '.cm-lintRange-warning': { backgroundImage: 'none', textDecoration: 'underline wavy var(--warn)', textUnderlineOffset: '4px' },
+  '.cm-lintRange-info': { backgroundImage: 'none', textDecoration: 'underline wavy var(--running)', textUnderlineOffset: '4px' },
+  '.cm-foldGutter span': { color: 'var(--syn-gutter)' },
+  '.cm-panels': { backgroundColor: 'var(--bg-panel)', color: 'var(--text)' },
+  '.cm-searchMatch': { backgroundColor: 'color-mix(in srgb, var(--warn) 25%, transparent)' },
+}
+// The colours above follow the tokens on their own; the compartment switches
+// CodeMirror's own light/dark defaults (panels, search, scrollbars) to match.
+const themes = { paper: EditorView.theme(styles, { dark: false }), dark: EditorView.theme(styles, { dark: true }) }
+const themeSlot = new Compartment()
 
 function makeState(doc: string, path: string): EditorState {
   return EditorState.create({
@@ -83,7 +93,7 @@ function makeState(doc: string, path: string): EditorState {
     extensions: [
       lineNumbers(), foldGutter(), lintGutter(), highlightActiveLine(), highlightActiveLineGutter(),
       drawSelection(), history(), indentOnInput(), bracketMatching(), highlightSelectionMatches(),
-      syntaxHighlighting(highlight), theme, language(path),
+      syntaxHighlighting(highlight), themeSlot.of(themes[theme.value]), language(path),
       keymap.of([
         { key: 'Mod-s', preventDefault: true, run: () => { emit('save'); return true } },
         indentWithTab, ...searchKeymap, ...historyKeymap, ...defaultKeymap,
@@ -147,6 +157,7 @@ onBeforeUnmount(() => view.value?.destroy())
 
 watch(() => props.version, setDoc)
 watch(() => props.diagnostics, paintDiagnostics, { deep: true })
+watch(theme, (th) => view.value?.dispatch({ effects: themeSlot.reconfigure(themes[th]) }))
 
 /** Apply a quick-fix edit if the text still matches what the fix expects. */
 function applyEdit(e: Edit): boolean {

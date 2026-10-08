@@ -36,6 +36,8 @@ Each `*.dc.html` file is one screen ("artboard"). They are Design Component sour
 | Fonts | IBM Plex Sans (UI), JetBrains Mono (code, paths, numbers) |
 | Radii | 6px controls, 8–10px cards, 12px large panels |
 
+The app now ships two themes, switchable from the sidebar (or ⌘K → "Switch theme") and remembered per browser: **Paper** (the default: warm off-white `#F6F3EB`, ink text `#1F1C17`, olive accent `#4C7514`) and **Dark** (the tokens above). Both live in `web/src/styles/tokens.css`, including each theme's code-editor syntax palette (`--syn-*`); components use only those variables.
+
 Every status is shown with a text label as well as a colour, so colour is never the only signal.
 
 All data in the designs (hosts, IDs, versions, timings) is made up for the mockups. Values like `[YOUR REGION]` and `[VERSION]` are placeholders.

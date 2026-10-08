@@ -1,6 +1,14 @@
 # Install
 
-groundwork is one static binary for macOS and Linux, on amd64 and arm64. Windows isn't supported.
+groundwork is one static binary for macOS and Linux, on amd64 and arm64. Windows isn't supported. The same binary is the CLI and the background service that hosts your projects.
+
+In short:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | sh
+groundwork service install    # optional: start the service at login
+cd ~/code/your-infra-repo && groundwork
+```
 
 ## Install script
 
@@ -37,6 +45,19 @@ go install github.com/rapando/groundwork/cmd/groundwork@latest   # or @v0.1.0
 
 Versions follow [semantic versioning](https://semver.org): a major bump (or a minor bump while on `0.x`) signals a breaking change. See [releasing](releasing.md) for how versions are chosen.
 
+## Start the service
+
+After installing, run `groundwork` in a repository: it starts the service in the background (if it isn't running), imports that repository as a project and opens it in your browser.
+
+To start the service at login instead (launchd on macOS, systemd `--user` on Linux):
+
+```sh
+groundwork service install
+groundwork service status     # running, data directory, log, console URL
+```
+
+Run `install` from a shell where `terraform` and `ansible` work: the login service keeps that shell's `PATH`. See [the service and projects](service.md) for everything else.
+
 ## What else you need
 
 groundwork runs your tools; it doesn't bundle them. `groundwork doctor` lists what it found.
@@ -49,6 +70,32 @@ groundwork runs your tools; it doesn't bundle them. `groundwork doctor` lists wh
 | tflint, checkov, yamllint, ansible-lint | optional checks; skipped with a hint when missing |
 | `sops`, `ansible-vault` | revealing encrypted values |
 
-## Upgrading and removing
+## Upgrading
 
-Install again to upgrade. To remove: delete the binary; each repository's `.groundwork/` folder holds its run history and can be deleted too.
+Install again, then restart the service so it runs the new binary:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | sh
+groundwork service stop && groundwork service start
+```
+
+The install script reminds you if it sees a service still running. If you moved the binary, run `groundwork service install` again so the login service points at the new location.
+
+### From 0.1 to 0.2
+
+0.2 turns groundwork from a per-repository server into one service for all your repositories:
+
+- `groundwork` in a repository now starts (or reuses) the background service and returns, instead of serving in that terminal until Ctrl-C. `groundwork --foreground` keeps the old behaviour.
+- Each repository you open becomes a project, and its URL moves under `/p/<id>/`. Old bookmarks land on the project list.
+- Each repository's `.groundwork/` (run history, plans, rules) is used as-is: there's nothing to migrate. Run `groundwork` in each repository once, or `groundwork add <folder>…`, to bring them in.
+- Scripts that started `groundwork --no-open` to drive the API should run `groundwork serve --no-open <folder>` and call `/api/p/<id>/…`. The project id is in the URL it prints.
+
+## Removing
+
+```sh
+groundwork service uninstall          # if you installed the login service
+groundwork service stop               # otherwise
+rm "$(command -v groundwork)"
+```
+
+Then, if you want nothing left behind, delete the data directory (`~/Library/Application Support/groundwork` on macOS, `~/.config/groundwork` on Linux; it includes any repositories groundwork cloned for you) and each repository's `.groundwork/` folder (its run history).

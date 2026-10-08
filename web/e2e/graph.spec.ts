@@ -31,7 +31,7 @@ test('the architecture view follows unsaved edits, with cursor sync both ways', 
 
   // cursor in the subnet block → that box is outlined
   await page.locator('.cm-line', { hasText: 'cidr_block = cidrsubnet' }).click()
-  await expect(arch.locator('svg rect[stroke="#B8F36B"]')).toHaveCount(1)
+  await expect(arch.locator('svg rect[data-focus]')).toHaveCount(1)
 
   // remove the subnet's vpc_id in the buffer, without saving
   await page.locator('.cm-line', { hasText: 'vpc_id     = aws_vpc.main.id' }).click()

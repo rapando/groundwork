@@ -1,6 +1,7 @@
 # groundwork documentation
 
 - [Install](install.md)
+- [The service and projects](service.md)
 - [Setup: detection, scaffolding and groundwork.yaml](setup.md)
 - [Checks](checks.md)
 - [Runs: plan, approve, apply](runs.md)

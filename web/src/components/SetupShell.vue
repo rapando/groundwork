@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useWorkspace } from '../stores/workspace'
+import ThemeToggle from './ThemeToggle.vue'
 
 defineProps<{ title: string }>()
 const store = useWorkspace()
@@ -15,7 +16,7 @@ const meta = computed(() => {
   <div class="shell">
     <header class="top">
       <div class="logo" aria-hidden="true">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1012" stroke-width="2.4" stroke-linecap="round">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
           <path d="M3 20h18" /><path d="M5 16h14" /><path d="M8 12h8" /><path d="M11 8h2" />
         </svg>
       </div>
@@ -23,6 +24,7 @@ const meta = computed(() => {
       <span class="sep">/</span>
       <span class="muted">{{ title }}</span>
       <span class="mono meta">{{ meta }}</span>
+      <ThemeToggle />
     </header>
     <main class="body"><slot /></main>
   </div>
@@ -31,7 +33,7 @@ const meta = computed(() => {
 <style scoped>
 .shell { min-height: 100vh; }
 .top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px 32px; border-bottom: 1px solid var(--line); }
-.logo { width: 28px; height: 28px; border-radius: 6px; background: var(--accent); display: grid; place-items: center; }
+.logo { flex: none; width: 28px; height: 28px; border-radius: 6px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; }
 .name { font-weight: 700; color: var(--text); text-decoration: none; }
 .name:hover { color: var(--accent-hover); }
 .sep { color: var(--text-faint); }

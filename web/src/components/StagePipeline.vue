@@ -42,11 +42,11 @@ const items = computed(() => props.stages.filter((s) => s.name !== 'summary' || 
 <style scoped>
 .stages { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .arrow { color: var(--text-faint); }
-.stage { display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; border: 1px solid #232A2F; border-radius: 8px; background: var(--bg-panel); min-width: 104px; }
+.stage { display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--bg-panel); min-width: 104px; }
 .n { font-size: 13px; }
 .note { font-size: 12px; color: var(--text-label); }
-.stage.succeeded { border-color: #24402F; } .stage.succeeded .note { color: var(--ok); }
-.stage.running { border-color: #2E4D6E; background: #121A22; box-shadow: 0 0 0 3px rgba(124, 192, 255, .08); } .stage.running .note { color: var(--running); }
-.stage.failed { border-color: #5A2E2E; } .stage.failed .note { color: var(--fail); }
+.stage.succeeded { border-color: var(--ok-line); } .stage.succeeded .note { color: var(--ok); }
+.stage.running { border-color: var(--running-line); background: var(--running-bg); box-shadow: 0 0 0 3px color-mix(in srgb, var(--running) 8%, transparent); } .stage.running .note { color: var(--running); }
+.stage.failed { border-color: var(--fail-line); } .stage.failed .note { color: var(--fail); }
 .stage.pending, .stage.skipped, .stage.cancelled { border-style: dashed; color: var(--text-label); }
 </style>

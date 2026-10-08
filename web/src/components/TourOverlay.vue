@@ -72,19 +72,19 @@ function finish() { emit('done') }
 </template>
 
 <style scoped>
-.tour-dim { position: fixed; inset: 0; z-index: 40; background: rgba(5, 7, 8, .62); pointer-events: none; }
+.tour-dim { position: fixed; inset: 0; z-index: 40; background: var(--scrim); pointer-events: none; }
 .tour-ring { position: fixed; z-index: 45; border: 2px solid var(--accent); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(5, 7, 8, .0); pointer-events: none; transition: all .15s ease; }
-.tip { position: fixed; z-index: 60; width: 360px; max-width: calc(100% - 32px); box-sizing: border-box; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; border: 1px solid #3A4A2A; border-radius: 12px; background: #151A13; box-shadow: 0 18px 48px rgba(0, 0, 0, .55); }
+.tip { position: fixed; z-index: 60; width: 360px; max-width: calc(100% - 32px); box-sizing: border-box; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; border: 1px solid var(--accent-line); border-radius: 12px; background: var(--accent-bg); box-shadow: 0 18px 48px var(--scrim); }
 .th { display: flex; align-items: center; justify-content: space-between; }
 .tn { font-size: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; }
 .x { width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 16px; }
 h2 { margin: 0; font-size: 17px; font-weight: 600; line-height: 1.3; }
-p { margin: 0; font-size: 14.5px; color: #C3CBD0; line-height: 1.55; }
+p { margin: 0; font-size: 14.5px; color: var(--text-code); line-height: 1.55; }
 .keys { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 13px; color: var(--text-muted); }
 kbd { font: 500 12px var(--font-mono); border: 1px solid var(--line-strong); border-radius: 4px; padding: 1px 5px; }
 .tf { display: flex; align-items: center; gap: 10px; padding-top: 4px; }
 .dots { display: flex; gap: 5px; }
-.dot { width: 6px; height: 6px; border-radius: 50%; background: #3A4450; } .dot.on { background: var(--accent); }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--running-line); } .dot.on { background: var(--accent); }
 .btns { margin-left: auto; display: flex; gap: 8px; }
 .skip { align-self: flex-start; border: 0; background: transparent; color: var(--text-label); font: inherit; font-size: 13px; padding: 0; cursor: pointer; text-decoration: underline; }
 </style>

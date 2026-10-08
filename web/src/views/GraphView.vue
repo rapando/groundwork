@@ -229,14 +229,14 @@ async function applyPreview() {
 .ghead { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 24px; border-bottom: 1px solid var(--line); }
 h1 { margin: 0; font-size: 18px; font-weight: 600; } h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .small { font-size: 13px; } .pad { padding: 24px; margin: 0; } .pad0 { margin: 0; padding: 8px 14px; }
-.seg-group { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line-strong); border-radius: 7px; background: #111518; }
+.seg-group { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--bg-card); }
 .seg { font-size: 14px; height: 30px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; color: var(--text-muted); cursor: pointer; }
 .seg.on { background: var(--line-strong); color: var(--text); }
 .stack { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-muted); }
-.sel { height: 32px; background: #111518; color: var(--text); border: 1px solid var(--line-strong); border-radius: 6px; padding: 0 8px; font-size: 14px; }
+.sel { height: 32px; background: var(--bg-card); color: var(--text); border: 1px solid var(--line-strong); border-radius: 6px; padding: 0 8px; font-size: 14px; }
 .legend { margin-left: auto; display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--text-muted); }
 .legend span { display: flex; align-items: center; gap: 6px; }
-.lg { width: 14px; height: 10px; border: 1px solid #3A444B; border-radius: 3px; display: inline-block; }
+.lg { width: 14px; height: 10px; border: 1px solid var(--line-hover); border-radius: 3px; display: inline-block; }
 .lg.drift { border: 1px dashed var(--warn); } .lg.update { border-color: var(--running); } .lg.create { border-color: var(--ok); } .lg.replace { border-color: var(--fail); }
 .body { padding: 24px; display: flex; flex-direction: column; gap: 20px; overflow: auto; }
 .gpanel { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
@@ -246,7 +246,7 @@ h1 { margin: 0; font-size: 18px; font-weight: 600; } h2 { margin: 0; font-size: 
 .btn.sq { height: 30px; width: 30px; padding: 0; justify-content: center; }
 .cwrap { height: 460px; }
 .inspector { border: 1px solid var(--line); border-radius: 10px; background: var(--bg-panel); display: flex; flex-wrap: wrap; }
-.inspector.drifted { border-color: #3A3220; }
+.inspector.drifted { border-color: var(--warn-line); }
 .meta { flex: 1 1 300px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; border-right: 1px solid var(--line); }
 .addr { font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
 .kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: 13px; color: var(--text-muted); }
@@ -259,9 +259,9 @@ h1 { margin: 0; font-size: 18px; font-weight: 600; } h2 { margin: 0; font-size: 
 .acts { display: flex; gap: 6px; flex-wrap: wrap; }
 .btn.xs { height: 26px; font-size: 12px; padding: 0 8px; }
 .pill { font: 500 12px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; align-self: flex-start; }
-.st-warn { color: var(--warn); background: rgba(245, 182, 71, .10); } .st-run { color: var(--running); background: rgba(124, 192, 255, .12); }
+.st-warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); } .st-run { color: var(--running); background: color-mix(in srgb, var(--running) 12%, transparent); }
 .link { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font: inherit; }
-.modal { position: fixed; inset: 0; background: rgba(0, 0, 0, .55); display: grid; place-items: center; z-index: 50; padding: 16px; }
+.modal { position: fixed; inset: 0; background: var(--scrim); display: grid; place-items: center; z-index: 50; padding: 16px; }
 .dlg { width: min(720px, 100%); }
 .diffbox { max-height: 360px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
 .dact { display: flex; justify-content: flex-end; gap: 8px; }
