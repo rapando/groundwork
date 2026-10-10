@@ -33,11 +33,16 @@ const visible = computed(() => {
   return { start, items: rows.value.slice(start, end), pad: start * ROW, total: rows.value.length * ROW }
 })
 
+// Following stops only when the reader scrolls up: a scroll event that lands
+// short of the bottom because new lines arrived meanwhile must not end it.
+// Scrolling back to the bottom resumes it.
 function onScroll() {
   const el = box.value!
+  const up = el.scrollTop < top.value - 2
   top.value = el.scrollTop
   const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 8
-  if (!atBottom && props.follow) emit('update:follow', false)
+  if (up && !atBottom && props.follow) emit('update:follow', false)
+  else if (atBottom && !props.follow) emit('update:follow', true)
 }
 
 function toBottom() {

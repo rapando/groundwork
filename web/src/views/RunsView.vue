@@ -46,7 +46,7 @@ async function loadDetail() {
     loadError.value = e instanceof ApiError && e.status === 404 ? 'No such run.' : String(e)
   }
 }
-watch(id, () => { resMap.clear(); results.value = []; openHost.value = ''; loadResources(); loadResults(); loadDetail() }, { immediate: false })
+watch(id, () => { resMap.clear(); results.value = []; openHost.value = ''; follow.value = true; loadResources(); loadResults(); loadDetail() }, { immediate: false })
 onEvent('run.updated', (d: { id: number }) => { if (d.id === id.value) loadDetail() })
 onEvent('reconnected', () => loadDetail())
 
@@ -337,7 +337,8 @@ const downloadHref = computed(() => (id.value ? `${apiBase}/runs/${id.value}/log
 </template>
 
 <style scoped>
-.split { display: flex; flex-wrap: wrap; flex: 1; min-height: 0; }
+/* one row on desktop, so the log has a definite height and scrolls inside it */
+.split { display: flex; flex: 1; min-height: 0; }
 .runs { flex: 1 1 272px; max-width: 320px; border-right: 1px solid var(--line); padding: 16px 10px; display: flex; flex-direction: column; gap: 10px; background: var(--bg-sunken); overflow: auto; }
 .rhead { display: flex; align-items: center; justify-content: space-between; padding: 0 6px; }
 h1 { margin: 0; font-size: 20px; font-weight: 700; }
@@ -368,7 +369,7 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .banner.fail { background: var(--fail-bg); border: 1px solid var(--fail-line); color: var(--fail-strong); }
 .banner.ok { background: var(--ok-bg); border: 1px solid var(--ok-line); color: var(--ok); }
 .banner.warnb { background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-strong); }
-.cols { display: flex; flex-wrap: wrap; flex: 1; min-height: 0; }
+.cols { display: flex; flex: 1; min-height: 0; }
 .changes { flex: 1 1 300px; max-width: 420px; border-right: 1px solid var(--line); padding: 18px; display: flex; flex-direction: column; gap: 14px; overflow: auto; }
 .bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
 .bar span { display: block; height: 100%; background: var(--ok); transition: width .3s; }
@@ -400,5 +401,5 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .tmsg, .tdiff { margin: 0; font: 12.5px/1.5 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg-inset); padding: 6px 8px; border-radius: 4px; max-height: 240px; overflow: auto; }
 .tmsg { color: var(--fail-strong); }
 .tdiff { color: var(--text-code); }
-@media (max-width: 900px) { .runs, .changes { max-width: 100%; border-right: 0; } }
+@media (max-width: 900px) { .split, .cols { flex-wrap: wrap; } .runs, .changes { max-width: 100%; border-right: 0; } }
 </style>

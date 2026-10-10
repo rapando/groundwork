@@ -312,7 +312,8 @@ function gotoFrom(file: string, line: number) {
 .banner { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 24px; font-size: 14px; border-bottom: 1px solid var(--line); }
 .banner.fail { background: var(--fail-bg); color: var(--fail-strong); }
 .banner.warn { background: var(--warn-bg); color: var(--warn-strong); }
-.work { display: flex; flex-wrap: wrap; flex: 1; min-height: 0; }
+/* one row on desktop, so the pane has a definite height and the editor scrolls inside it */
+.work { display: flex; flex: 1; min-height: 0; }
 .tree { flex: 1 1 248px; max-width: 320px; border-right: 1px solid var(--line); }
 .pane { flex: 999 1 480px; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
 .editor-area { flex: 1; min-height: 240px; min-width: 0; display: flex; }
@@ -326,5 +327,5 @@ function gotoFrom(file: string, line: number) {
 .status { padding: 6px 16px; font-size: 12.5px; color: var(--text-faint); border-top: 1px solid var(--bg-hover); display: flex; gap: 12px; }
 .notice { margin-left: auto; color: var(--ok); }
 :deep(.tray) { max-height: 40vh; }
-@media (max-width: 900px) { .tree { max-width: 100%; max-height: 260px; } }
+@media (max-width: 900px) { .work { flex-wrap: wrap; } .tree { max-width: 100%; max-height: 260px; } }
 </style>

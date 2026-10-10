@@ -143,3 +143,35 @@ test('a plan waiting for approval survives a restart; a crashed apply is marked 
   await expect(page.locator('.dhead .pill', { hasText: 'failed' })).toBeVisible()
   await expect(page.getByText(/interrupted: groundwork stopped/)).toBeVisible()
 })
+
+test('a streaming log follows the newest line; scrolling up pauses, the bottom resumes', async ({ page }) => {
+  const tasks = Array.from({ length: 60 }, (_, i) => `    - name: step ${i}\n      ansible.builtin.command: sleep 0.15\n      changed_when: false\n`).join('')
+  gw = await start(undefined, { init: true, files: {
+    'ansible.cfg': '[defaults]\ninventory = inventory/dev.yml\n',
+    'inventory/dev.yml': 'all:\n  children:\n    web:\n      hosts:\n        web-1:\n          ansible_connection: local\n',
+    'site.yml': `- hosts: web\n  gather_facts: false\n  tasks:\n${tasks}`,
+  } })
+  await page.goto(gw.url)
+  await page.getByRole('link', { name: 'Inventory', exact: true }).click()
+  await page.getByRole('button', { name: 'Run playbook' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Start' }).click()
+  await page.waitForURL(/\/runs\/\d+/)
+  const log = page.getByRole('log', { name: 'Log output' })
+  const follow = page.getByRole('checkbox', { name: 'Follow' })
+  const gap = () => log.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight)
+  const height = () => log.evaluate((el) => el.scrollHeight)
+
+  // the log outgrows its box while staying pinned to the bottom
+  await expect.poll(height, { timeout: 30_000 }).toBeGreaterThan(900)
+  expect(await gap()).toBeLessThan(8)
+
+  await log.hover()
+  await page.mouse.wheel(0, -600)
+  await expect(follow).not.toBeChecked()
+  const h = await height()
+  await expect.poll(height).toBeGreaterThan(h + 100) // more lines arrive…
+  expect(await gap()).toBeGreaterThan(100) // …without moving the reader
+
+  await log.evaluate((el) => { el.scrollTop = el.scrollHeight })
+  await expect(follow).toBeChecked()
+})

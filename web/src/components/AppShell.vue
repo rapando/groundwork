@@ -104,8 +104,10 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
 
 <style scoped>
 .app { min-height: 100vh; display: flex; flex-wrap: wrap; }
-.side { flex: 1 1 232px; max-width: 232px; padding: 20px 14px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 24px; background: var(--bg-sidebar); }
-.main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; height: 100vh; }
+.side { flex: 1 1 232px; max-width: 232px; padding: 20px 14px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 24px; background: var(--bg-sidebar);
+  /* pinned, so it stays in view while long code or logs scroll the page */
+  position: fixed; top: 0; bottom: 0; left: 0; width: 232px; overflow-y: auto; }
+.main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; height: 100vh; margin-left: 232px; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 6px; color: inherit; text-decoration: none; }
 .between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .switch { font-size: 14px; text-decoration: none; }
@@ -128,5 +130,5 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-disabled); }
 .dot.ok { background: var(--ok); } .dot.pending, .dot.drift { background: var(--warn); } .dot.failed { background: var(--fail); } .dot.running { background: var(--running); }
 .badge.run { color: var(--running); }
-@media (max-width: 900px) { .side { max-width: 100%; flex-basis: 100%; } .main { height: auto; min-height: 70vh; } }
+@media (max-width: 900px) { .side { max-width: 100%; flex-basis: 100%; position: static; width: auto; overflow: visible; } .main { height: auto; min-height: 70vh; margin-left: 0; } }
 </style>
