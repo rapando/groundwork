@@ -329,8 +329,11 @@ func (s *Service) addProject(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Minute)
 		defer cancel()
 		p, added, err = s.Clone(ctx, req.URL)
+	} else if path := strings.TrimSpace(req.Path); path != "" && path != "~" && !strings.HasPrefix(path, "~/") && !filepath.IsAbs(path) {
+		// The service's working directory means nothing to the caller.
+		err = fmt.Errorf("%s: path must be absolute", path)
 	} else {
-		p, added, err = s.AddPath(req.Path, "")
+		p, added, err = s.AddPath(path, "")
 	}
 	if err != nil {
 		writeError(w, 422, "import_failed", err.Error())

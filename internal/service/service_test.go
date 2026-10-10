@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -209,7 +210,7 @@ func TestMissingFolderIsReportedNotFatal(t *testing.T) {
 
 func TestAddRefusesBroadOrMissingFolders(t *testing.T) {
 	e := newEnv(t)
-	for _, p := range []string{"", "/definitely/not/here", "/"} {
+	for _, p := range []string{"", "/definitely/not/here", "/", ".", "arch"} {
 		if resp, _ := e.call(t, "POST", "/api/projects", map[string]string{"path": p}, true); resp.StatusCode != 422 {
 			t.Errorf("%q: got %d, want 422", p, resp.StatusCode)
 		}
@@ -258,4 +259,25 @@ func mustReal(t *testing.T, p string) string {
 		t.Fatal(err)
 	}
 	return r
+}
+
+func TestClientResolvesRelativePathsFromTheCaller(t *testing.T) {
+	e := newEnv(t)
+	dir := repo(t)
+	sub := filepath.Join(dir, "terraform")
+	_ = os.MkdirAll(sub, 0o755)
+	t.Chdir(sub)
+
+	port, _ := strconv.Atoi(e.base[strings.LastIndex(e.base, ":")+1:])
+	c := NewClient(ServerInfo{Port: port, Token: tok})
+	for _, rel := range []string{".", "./", "../terraform"} {
+		p, err := c.AddPath(rel)
+		if err != nil {
+			t.Fatalf("%q: %v", rel, err)
+		}
+		real, _ := filepath.EvalSymlinks(dir)
+		if p.Path != real {
+			t.Fatalf("%q: path = %s, want %s", rel, p.Path, real)
+		}
+	}
 }

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -58,9 +59,15 @@ func (c *Client) do(method, path string, body, out any) error {
 	return json.NewDecoder(resp.Body).Decode(out)
 }
 
+// AddPath resolves path against the caller's working directory before sending
+// it: the service runs elsewhere (often with / as its working directory).
 func (c *Client) AddPath(path string) (Project, error) {
+	abs, err := expandHome(strings.TrimSpace(path))
+	if err != nil {
+		return Project{}, err
+	}
 	var p Project
-	return p, c.do("POST", "/projects", addRequest{Path: path}, &p)
+	return p, c.do("POST", "/projects", addRequest{Path: abs}, &p)
 }
 
 func (c *Client) AddURL(u string) (Project, error) {
