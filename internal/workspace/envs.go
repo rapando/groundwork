@@ -31,11 +31,14 @@ func envFromTfvars(file string) string {
 	return NormalizeEnv(b)
 }
 
+// isEnvsDir reports whether a directory name holds one subdirectory per environment.
+func isEnvsDir(n string) bool { return n == "envs" || n == "environments" || n == "env" }
+
 // EnvForTFRoot infers the environment of a dir-per-env root from its path.
 func EnvForTFRoot(p string) string {
 	segs := strings.Split(p, "/")
 	for i, s := range segs {
-		if (s == "envs" || s == "environments" || s == "env") && i+1 < len(segs) {
+		if isEnvsDir(s) && i+1 < len(segs) {
 			return NormalizeEnv(segs[i+1])
 		}
 	}
@@ -43,10 +46,14 @@ func EnvForTFRoot(p string) string {
 }
 
 // EnvForInventory infers the environment from an inventory path
-// (inventory/dev.yml, inventory/prod/hosts.yml, inventories/staging).
+// (inventory/dev.yml, inventory/prod/hosts.yml, inventories/staging,
+// environments/dev/hosts.yml).
 func EnvForInventory(p string) string {
 	segs := strings.Split(p, "/")
 	for i, s := range segs {
+		if isEnvsDir(s) && i+2 < len(segs) { // environments/<env>/…, never a file directly in it
+			return NormalizeEnv(segs[i+1])
+		}
 		if (s == "inventory" || s == "inventories") && i+1 < len(segs)-0 {
 			next := segs[i+1]
 			if i+1 == len(segs)-1 { // a file directly in inventory/
@@ -77,10 +84,22 @@ func buildEnvs(roots []TFDir, projects []AnsibleProject) []Env {
 			get(e).Terraform = append(get(e).Terraform, r.Path)
 			continue
 		}
+		var tfvarsEnvs []string
 		for _, f := range r.Tfvars {
-			if e := envFromTfvars(f); e != "" {
+			if e := envFromTfvars(f); e != "" && !contains(tfvarsEnvs, e) {
+				tfvarsEnvs = append(tfvarsEnvs, e)
+			}
+		}
+		if len(tfvarsEnvs) >= 2 { // workspace style, as config.rootFor
+			for _, e := range tfvarsEnvs {
 				get(e).Terraform = append(get(e).Terraform, r.Path+"#"+e)
 			}
+			continue
+		}
+		// a single-environment root is named after its directory (terraform/dev)
+		if b := path.Base(r.Path); r.Path != "." && b != "terraform" {
+			e := NormalizeEnv(b)
+			get(e).Terraform = append(get(e).Terraform, r.Path)
 		}
 	}
 	for _, p := range projects {

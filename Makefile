@@ -14,8 +14,9 @@ test:
 lint:
 	golangci-lint run
 # Browser tests drive the installed Chrome against the built binary.
+# E2E_ARGS passes Playwright flags through, e.g. E2E_ARGS=--shard=1/3.
 e2e: build
-	cd web && GW_BIN=$(CURDIR)/bin/groundwork npx playwright test
+	cd web && GW_BIN=$(CURDIR)/bin/groundwork npx playwright test $(E2E_ARGS)
 # Real terraform/tflint/yamllint/ansible-lint (whatever is installed). GW_TEST_NETWORK=1 adds provider downloads.
 integration:
 	go test -tags integration ./...

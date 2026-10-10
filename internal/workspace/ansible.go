@@ -83,8 +83,33 @@ func looksLikeInventoryYAML(n *yaml.Node) bool {
 		_, v := ak["vars"]
 		return c || h || v
 	}
-	_, c := k["children"]
-	return c
+	if _, c := k["children"]; c {
+		return true
+	}
+	// Top-level groups without `all:` (p2p: {children: …}, local: {hosts: {}}):
+	// every value is a group, and at least one declares hosts or children.
+	if len(k) == 0 {
+		return false
+	}
+	found := false
+	for _, g := range k {
+		if g.Kind == yaml.ScalarNode && g.Tag == "!!null" {
+			continue // an empty group
+		}
+		if g.Kind != yaml.MappingNode {
+			return false
+		}
+		for key := range mapKeys(g) {
+			switch key {
+			case "hosts", "children":
+				found = true
+			case "vars":
+			default:
+				return false
+			}
+		}
+	}
+	return found
 }
 
 type ansArtefacts struct {
@@ -258,10 +283,11 @@ func buildAnsibleProjects(a *ansArtefacts) []AnsibleProject {
 }
 
 // inventoryRoot returns the project dir an inventory file belongs to: the
-// parent of the nearest inventory/ or inventories/ ancestor, else its own dir.
+// parent of the nearest inventory/, inventories/ or environments/ (envs/,
+// env/) ancestor, else its own dir.
 func inventoryRoot(file string) string {
 	for d := parentOrDot(file); d != "." && d != "/"; d = parentOrDot(d) {
-		if b := path.Base(d); b == "inventory" || b == "inventories" {
+		if b := path.Base(d); b == "inventory" || b == "inventories" || isEnvsDir(b) {
 			return parentOrDot(d)
 		}
 	}

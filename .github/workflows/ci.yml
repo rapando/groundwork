@@ -34,8 +34,21 @@ jobs:
       - name: embedded dist is up to date
         run: git diff --exit-code -- internal/server/dist
       - run: cd web && npm test
+  e2e:
+    # split across runners: on one runner, parallel tests starve each other's ansible/terraform runs
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with: { go-version-file: go.mod }
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm, cache-dependency-path: web/package-lock.json }
       - run: pipx install ansible-core   # e2e drives real ansible against local-connection hosts
-      - run: make e2e
+      - run: make e2e E2E_ARGS=--shard=${{ matrix.shard }}/3
   integration:
     runs-on: ubuntu-latest
     steps:
