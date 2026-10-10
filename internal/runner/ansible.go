@@ -51,14 +51,7 @@ func ResolveAnsibleTarget(cfg *config.Config, root string, req SubmitRequest) (T
 		t.Env = "default"
 	}
 	t.ApprovalRequired = config.IsProdLike(t.Env)
-	if v := proj.VaultPasswordFile; v != "" {
-		if strings.HasPrefix(v, "~/") {
-			if home, err := os.UserHomeDir(); err == nil {
-				v = filepath.Join(home, v[2:])
-			}
-		}
-		t.Vault = v
-	}
+	t.Vault = proj.VaultPath()
 	for name, v := range map[string]string{"limit": req.Limit, "tags": req.Tags, "skip_tags": req.SkipTags} {
 		if v != "" && !ansible.ValidPattern(v) {
 			return bad("invalid %s %q", name, v)

@@ -179,12 +179,21 @@ func AdhocArgs(inventory, pattern, module, args string, check bool, vault string
 	return append(a, "--", pattern)
 }
 
-func InventoryListArgs(inventory, playbookDir string) []string {
-	return append(append([]string{"ansible-inventory"}, invArgs(inventory)...), "--list", "--playbook-dir="+playbookDir)
+// InventoryListArgs lists an inventory with its vars, so vault-encrypted
+// group_vars need the vault password file ("" = none).
+func InventoryListArgs(inventory, playbookDir, vault string) []string {
+	return append(append([]string{"ansible-inventory"}, invArgs(inventory)...), append(vaultArgs(vault), "--list", "--playbook-dir="+playbookDir)...)
 }
 
-func InventoryHostArgs(inventory, playbookDir, host string) []string {
-	return append(append([]string{"ansible-inventory"}, invArgs(inventory)...), "--host="+host, "--playbook-dir="+playbookDir)
+func InventoryHostArgs(inventory, playbookDir, host, vault string) []string {
+	return append(append([]string{"ansible-inventory"}, invArgs(inventory)...), append(vaultArgs(vault), "--host="+host, "--playbook-dir="+playbookDir)...)
+}
+
+func vaultArgs(vault string) []string {
+	if vault == "" {
+		return nil
+	}
+	return []string{"--vault-password-file=" + vault}
 }
 
 // ReadOnlyModules never change a host, so ad-hoc runs of them need no approval.

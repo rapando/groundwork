@@ -1,8 +1,10 @@
 package api
 
 import (
+	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -87,5 +89,58 @@ func TestInventoryOverHTTPWithRealAnsible(t *testing.T) {
 	}
 	if rec := call(t, h, "GET", "/inventory?project=.&env=nope", nil); into(t, rec)["error"] == nil {
 		t.Fatal("unknown env should report an error")
+	}
+}
+
+// Encrypted group_vars: the inventory needs the project's vault password
+// file, and says which setting to fix when there is none.
+func TestInventoryDecryptsVaultedGroupVars(t *testing.T) {
+	if _, err := exec.LookPath("ansible-vault"); err != nil {
+		t.Skip("ansible not installed")
+	}
+	root := t.TempDir()
+	write := func(p, s string) {
+		full := filepath.Join(root, filepath.FromSlash(p))
+		os.MkdirAll(filepath.Dir(full), 0o755)
+		os.WriteFile(full, []byte(s), 0o600)
+	}
+	write("site.yml", "- hosts: dev\n  gather_facts: false\n  tasks:\n    - ansible.builtin.ping:\n")
+	write("environments/dev/hosts.yml", "p2p:\n  children:\n    dev:\n      hosts:\n        dev-1:\n          ansible_connection: local\n")
+	write("environments/dev/group_vars/dev/vault.yml", "vault_secret: s3cret\n")
+	pw := filepath.Join(t.TempDir(), "vault-pass")
+	os.WriteFile(pw, []byte("pw\n"), 0o600)
+	if out, err := exec.Command("ansible-vault", "encrypt", "--vault-password-file="+pw, filepath.Join(root, "environments/dev/group_vars/dev/vault.yml")).CombinedOutput(); err != nil {
+		t.Fatalf("%v %s", err, out)
+	}
+	cfg := "version: 1\nmode: standalone\nansible:\n  projects:\n    - path: .\n      inventories:\n        dev: environments/dev/hosts.yml\n"
+	write("groundwork.yaml", cfg)
+
+	st, _ := store.Open(filepath.Join(t.TempDir(), "s.db"))
+	defer st.Close()
+	a := New(root, "test", events.NewBus(), st)
+	t.Cleanup(a.Checks.Close)
+	h := chi.NewRouter()
+	a.Routes(h)
+
+	inv := into(t, call(t, h, "GET", "/inventory", nil))
+	if msg, _ := inv["error"].(string); !strings.Contains(msg, "Set vault_password_file for Ansible project . in groundwork.yaml") {
+		t.Fatalf("want a vault hint, got %v", inv["error"])
+	}
+
+	write("groundwork.yaml", strings.Replace(cfg, "    - path: .\n", "    - path: .\n      vault_password_file: "+pw+"\n", 1))
+	a.reloadConfig()
+	inv = into(t, call(t, h, "GET", "/inventory", nil))
+	if inv["error"] != nil {
+		t.Fatalf("%v", inv["error"])
+	}
+	if hosts := inv["hosts"].([]any); len(hosts) != 1 {
+		t.Fatalf("%v", hosts)
+	}
+	if pbs := inv["playbooks"].([]any); len(pbs) != 1 || pbs[0] != "site.yml" {
+		t.Fatalf("%v", pbs)
+	}
+	host := into(t, call(t, h, "GET", "/inventory/host?project=.&env=dev&host=dev-1", nil))
+	if host["error"] != nil {
+		t.Fatalf("%v", host["error"])
 	}
 }

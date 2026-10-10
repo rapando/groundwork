@@ -34,6 +34,11 @@ async function load() {
     if (want && data.value.hosts?.some((h) => h.name === want)) selectHost(want)
     else if (!selected.value && data.value.hosts?.length) selectHost(data.value.hosts[0].name)
     else if (selected.value) selectHost(selected.value)
+    if (route.query.run === 'playbook') { // from the Overview's "Run playbook"
+      router.replace({ query: { ...route.query, run: undefined } })
+      if (data.value.playbooks?.length) openPlaybook()
+      else if (!data.value.error) say('No playbooks were found in this Ansible project.')
+    }
   } finally { loading.value = false }
 }
 onMounted(load)

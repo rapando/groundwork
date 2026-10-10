@@ -26,6 +26,7 @@ type invScope struct {
 	Project   string `json:"project"`
 	Env       string `json:"env"`
 	Inventory string `json:"inventory"` // relative to the project ("" = ansible.cfg default)
+	Vault     string `json:"-"`         // vault password file ("" = none)
 }
 
 func scopesFor(cfg *config.Config) []invScope {
@@ -35,7 +36,7 @@ func scopesFor(cfg *config.Config) []invScope {
 	}
 	for _, p := range cfg.Ansible.Projects {
 		if len(p.Inventories) == 0 {
-			out = append(out, invScope{Project: path.Clean(p.Path), Env: "default"})
+			out = append(out, invScope{Project: path.Clean(p.Path), Env: "default", Vault: p.VaultPath()})
 			continue
 		}
 		envs := make([]string, 0, len(p.Inventories))
@@ -46,7 +47,7 @@ func scopesFor(cfg *config.Config) []invScope {
 			return envRank(envs[i]) < envRank(envs[j]) || envRank(envs[i]) == envRank(envs[j]) && envs[i] < envs[j]
 		})
 		for _, e := range envs {
-			out = append(out, invScope{Project: path.Clean(p.Path), Env: e, Inventory: p.Inventories[e]})
+			out = append(out, invScope{Project: path.Clean(p.Path), Env: e, Inventory: p.Inventories[e], Vault: p.VaultPath()})
 		}
 	}
 	return out
@@ -96,9 +97,9 @@ func (a *API) loadInventory(ctx context.Context, s invScope) (*ansible.Inventory
 	if e, ok := invCache.Load(key); ok && e.(invCacheEntry).fp == fp { // loaded while we waited
 		return e.(invCacheEntry).inv, nil
 	}
-	out, err := ansible.Query(ctx, dir, a.ansibleHome(), ansible.InventoryListArgs(s.Inventory, dir))
+	out, err := ansible.Query(ctx, dir, a.ansibleHome(), ansible.InventoryListArgs(s.Inventory, dir, s.Vault))
 	if err != nil {
-		return nil, err
+		return nil, vaultHint(err, s)
 	}
 	inv, err := ansible.ParseInventoryList(out)
 	if err != nil {
@@ -106,6 +107,19 @@ func (a *API) loadInventory(ctx context.Context, s invScope) (*ansible.Inventory
 	}
 	invCache.Store(key, invCacheEntry{fp, inv})
 	return inv, nil
+}
+
+// vaultHint says what to change in groundwork.yaml when ansible couldn't
+// decrypt a vault: groundwork can't answer --ask-vault-pass.
+func vaultHint(err error, s invScope) error {
+	msg := err.Error()
+	if !strings.Contains(msg, "no vault secrets") && !strings.Contains(msg, "Decryption failed") {
+		return err
+	}
+	if s.Vault == "" {
+		return fmt.Errorf("%s. Set vault_password_file for Ansible project %s in groundwork.yaml", strings.TrimSuffix(msg, "."), s.Project)
+	}
+	return fmt.Errorf("%s. Check vault_password_file (%s) for Ansible project %s in groundwork.yaml", strings.TrimSuffix(msg, "."), s.Vault, s.Project)
 }
 
 func (a *API) scopeFromQuery(r *http.Request) (invScope, []invScope, error) {
@@ -330,9 +344,9 @@ func (a *API) getInventoryHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	dir := filepath.Join(a.Root, filepath.FromSlash(s.Project))
-	out, err := ansible.Query(r.Context(), dir, a.ansibleHome(), ansible.InventoryHostArgs(s.Inventory, dir, host))
+	out, err := ansible.Query(r.Context(), dir, a.ansibleHome(), ansible.InventoryHostArgs(s.Inventory, dir, host, s.Vault))
 	if err != nil {
-		writeError(w, 502, "ansible_failed", err.Error(), nil)
+		writeError(w, 502, "ansible_failed", vaultHint(err, s).Error(), nil)
 		return
 	}
 	var actual map[string]any

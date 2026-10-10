@@ -146,7 +146,10 @@ const hasTerraform = computed(() => (ws.ws?.config?.terraform?.roots ?? []).leng
             </div>
             <div class="foot">
               <span class="small muted">{{ a.last_run ? `${kindLabel(a.last_run)} #${a.last_run.id} ${a.last_run.status.replace('_', ' ')}` : 'No playbook runs yet' }}</span>
-              <RouterLink class="small" :to="{ path: '/inventory', query: { project: a.project, env: e.name } }">Inventory →</RouterLink>
+              <span class="acts">
+                <RouterLink class="small" :to="{ path: '/inventory', query: { project: a.project, env: e.name } }">Inventory →</RouterLink>
+                <button class="btn sm" type="button" @click="router.push({ path: '/inventory', query: { project: a.project, env: e.name, run: 'playbook' } })">Run playbook</button>
+              </span>
             </div>
           </div>
           <div v-for="t in e.targets" :key="t.root" class="target">

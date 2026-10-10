@@ -86,3 +86,12 @@ test('a mutating ad-hoc command needs the environment typed', async ({ page }) =
   await dlg.getByRole('button', { name: 'Run' }).click()
   await expect(page.locator('.dhead .pill', { hasText: 'succeeded' })).toBeVisible({ timeout: 30_000 })
 })
+
+test('Overview: an Ansible environment opens the playbook dialog', async ({ page }) => {
+  gw = await start('ansible-lab', { init: true })
+  await page.goto(gw.url)
+  const dev = page.locator('article.env', { has: page.getByText('dev', { exact: true }) })
+  await dev.getByRole('button', { name: 'Run playbook' }).click()
+  await expect(page).toHaveURL(/\/inventory\?project=\.&env=dev$/)
+  await expect(page.getByRole('heading', { name: 'Run playbook · dev' })).toBeVisible()
+})

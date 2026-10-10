@@ -203,6 +203,12 @@ func TestArgvSafety(t *testing.T) {
 	if strings.Join(a, " ") != want {
 		t.Fatalf("%s", strings.Join(a, " "))
 	}
+	if l := InventoryListArgs("inventory/dev.yml", "/p", "/k/pw"); strings.Join(l, " ") != "ansible-inventory -i inventory/dev.yml --vault-password-file=/k/pw --list --playbook-dir=/p" {
+		t.Fatalf("%v", l)
+	}
+	if l := InventoryHostArgs("", "/p", "web-1", ""); strings.Join(l, " ") != "ansible-inventory --host=web-1 --playbook-dir=/p" {
+		t.Fatalf("%v", l)
+	}
 	ad := AdhocArgs("", "web", "ping", "", false, "")
 	if strings.Join(ad, " ") != "ansible -m ping -- web" {
 		t.Fatalf("%v", ad)

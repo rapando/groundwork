@@ -71,6 +71,18 @@ type AnsibleProject struct {
 	VaultPasswordFile string            `yaml:"vault_password_file,omitempty"`
 }
 
+// VaultPath is the vault password file with a leading ~/ expanded ("" = none).
+// A relative path is relative to the project, where ansible runs.
+func (p AnsibleProject) VaultPath() string {
+	v := p.VaultPasswordFile
+	if strings.HasPrefix(v, "~/") {
+		if home, err := os.UserHomeDir(); err == nil {
+			v = filepath.Join(home, v[2:])
+		}
+	}
+	return v
+}
+
 type Checks struct {
 	Enabled []string `yaml:"enabled,omitempty"`
 	OnSave  bool     `yaml:"on_save"`
