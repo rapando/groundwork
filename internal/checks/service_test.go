@@ -362,12 +362,18 @@ func TestCacheSkipsUnchangedAndRerunsOnEdit(t *testing.T) {
 
 func TestOnChangeDebouncesBurstsAndMapsToUnits(t *testing.T) {
 	e := newEnv(t, realisticExec())
+	// wide next to the ~25ms burst: on a loaded CI runner a stall between two
+	// calls would rightly split a narrow window into two runs
+	e.svc.debounce = 300 * time.Millisecond
 	for i := 0; i < 5; i++ {
 		e.svc.OnChange([]string{"terraform/modules/network/main.tf"})
 		time.Sleep(5 * time.Millisecond)
 	}
 	e.svc.OnChange([]string{".git/index", ".groundwork/state.db", "README.md", "terraform/envs/dev/.terraform/x.tf"})
-	time.Sleep(400 * time.Millisecond)
+	for i := 0; i < 150 && (e.fx.count("terraform/envs/dev validate") == 0 || e.fx.count("terraform/envs/prod validate") == 0); i++ {
+		time.Sleep(20 * time.Millisecond)
+	}
+	time.Sleep(e.svc.debounce + 100*time.Millisecond) // a second run would have started by now
 	// module edit → module unit + both roots, once each
 	if got := e.fx.count("terraform/envs/dev validate"); got != 1 {
 		t.Fatalf("dev validated %d times after a burst, want 1", got)

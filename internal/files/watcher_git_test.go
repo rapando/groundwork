@@ -68,7 +68,11 @@ func testWatcher(t *testing.T) {
 	os.MkdirAll(filepath.Join(root, "terraform"), 0o755)
 	os.MkdirAll(filepath.Join(root, ".git"), 0o755)
 	col := &collector{}
-	w, err := NewWatcher(root, nil, 60*time.Millisecond, col.add, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	// The window is wide next to the burst below: on a loaded CI runner a
+	// goroutine can stall for tens of milliseconds between two writes, which
+	// would rightly split a narrow window into two batches.
+	const debounce = 300 * time.Millisecond
+	w, err := NewWatcher(root, nil, debounce, col.add, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +84,7 @@ func testWatcher(t *testing.T) {
 		os.WriteFile(f, []byte{byte('a' + i)}, 0o644)
 	}
 	waitFor(t, "main.tf event", func() bool { return has(col.all(), "terraform/main.tf") })
-	time.Sleep(150 * time.Millisecond)
+	time.Sleep(debounce + 100*time.Millisecond) // a second batch would have arrived by now
 	n := 0
 	for _, p := range col.all() {
 		if p == "terraform/main.tf" {
