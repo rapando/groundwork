@@ -60,20 +60,28 @@ func StartBackground(home string, port int) (ServerInfo, error) {
 }
 
 // Stop asks a running service to shut down (SIGTERM: runs stop gracefully).
-// Under launchd/systemd the unit is stopped instead, so it isn't restarted.
+// When the login service is installed its unit is stopped first, so
+// launchd/systemd don't start it again. A service started outside the unit
+// (a plain `groundwork` runs one in the background) isn't the unit's to
+// stop, so whatever still answers is then signalled directly.
 func Stop(home string) error {
+	unitStopped := false
 	if m := manager(); m != nil && m.installed() {
-		return m.stop()
+		unitStopped = m.stop() == nil // fails when the unit isn't loaded
 	}
 	si, ok := Running(home)
 	if !ok {
+		if unitStopped {
+			return nil
+		}
 		return errors.New("groundwork service is not running")
 	}
 	p, err := os.FindProcess(si.PID)
 	if err != nil {
 		return err
 	}
-	if err := p.Signal(syscall.SIGTERM); err != nil {
+	// the unit's own process may already be shutting down: a second signal is ignored
+	if err := p.Signal(syscall.SIGTERM); err != nil && !errors.Is(err, os.ErrProcessDone) {
 		return err
 	}
 	for range 120 { // runs get up to 25s to release state locks
@@ -97,7 +105,7 @@ type svcManager interface {
 	render(exe, home, path string) (string, error)
 }
 
-func manager() svcManager {
+var manager = func() svcManager { // a variable so tests can fake the login service
 	switch runtime.GOOS {
 	case "darwin":
 		return launchd{}
