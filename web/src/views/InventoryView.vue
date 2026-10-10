@@ -284,7 +284,8 @@ h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .seg { font-size: 14px; height: 30px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; color: var(--text-muted); cursor: pointer; }
 .seg.on { background: var(--line-strong); color: var(--text); }
 .actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
-.cols { display: flex; flex-wrap: wrap; flex: 1; min-height: 0; }
+/* one row on desktop, so each column has a definite height and scrolls inside it */
+.cols { display: flex; flex: 1; min-height: 0; }
 .groups { flex: 1 1 200px; max-width: 260px; padding: 16px 10px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; background: var(--bg-sunken); overflow: auto; }
 .pl { padding: 4px 10px 8px; } .top { padding-top: 18px; }
 .grp { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 5px; color: var(--text-code); font-size: 13.5px; cursor: pointer; text-decoration: none; word-break: break-all; }
@@ -294,6 +295,7 @@ h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .cnt { margin-left: auto; color: var(--text-label); white-space: nowrap; }
 .cnt.warn { color: var(--warn); }
 .main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; overflow: auto; }
+.main > * { flex-shrink: 0; } /* the column scrolls as one, not each section */
 .hosts { overflow-x: auto; }
 .hr { display: grid; grid-template-columns: 28px minmax(130px, 1.2fr) 120px minmax(120px, 1fr) 130px 150px; gap: 12px; align-items: center; padding: 9px 16px; border-top: 1px solid var(--bg-hover); font-size: 13.5px; min-width: 720px; }
 .hr.head { border-top: 0; color: var(--text-label); font-size: 13px; }
@@ -331,5 +333,5 @@ h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .modes { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
 .modes .opt { flex-wrap: wrap; padding: 10px 14px; }
 .dact { display: flex; justify-content: flex-end; gap: 8px; }
-@media (max-width: 900px) { .groups { max-width: 100%; } }
+@media (max-width: 900px) { .cols { flex-wrap: wrap; } .groups { max-width: 100%; } }
 </style>

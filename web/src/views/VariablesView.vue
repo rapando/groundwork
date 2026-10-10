@@ -353,8 +353,10 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .search { flex: 1 1 200px; max-width: 320px; margin-left: auto; display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--text-label); }
 .search input { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: var(--text); font: inherit; font-size: 14px; }
 .search:focus-within { border-color: var(--accent); }
-.cols { display: flex; flex-wrap: wrap; flex: 1; min-height: 0; }
-.body { flex: 999 1 600px; min-width: 0; display: flex; flex-direction: column; gap: 20px; padding: 20px 24px 28px; }
+/* one row on desktop, so each column has a definite height and scrolls inside it */
+.cols { display: flex; flex: 1; min-height: 0; }
+.body { flex: 999 1 600px; min-width: 0; display: flex; flex-direction: column; gap: 20px; padding: 20px 24px 28px; overflow: auto; }
+.body > * { flex-shrink: 0; } /* the column scrolls as one, not the table inside it */
 .legend { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
 .chk { margin-left: auto; display: flex; align-items: center; gap: 6px; }
 .chk input { accent-color: var(--accent); }
@@ -388,7 +390,7 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .finding a { color: var(--text); text-decoration: none; }
 .fmsg { color: var(--text-soft); flex: 1 1 240px; }
 .audit { display: flex; flex-direction: column; gap: 4px; padding: 12px 18px; border-top: 1px solid var(--line); }
-.detail { flex: 1 1 300px; max-width: 100%; box-sizing: border-box; border-left: 1px solid var(--line); padding: 20px; display: flex; flex-direction: column; gap: 18px; background: var(--bg-sunken); }
+.detail { flex: 1 1 300px; max-width: 100%; box-sizing: border-box; border-left: 1px solid var(--line); padding: 20px; display: flex; flex-direction: column; gap: 18px; background: var(--bg-sunken); overflow: auto; }
 .col { display: flex; flex-direction: column; gap: 6px; }
 .dname { font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
 .kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: 13px; color: var(--text-muted); }
@@ -403,4 +405,5 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .modal { position: fixed; inset: 0; background: var(--scrim); display: grid; place-items: center; z-index: 50; padding: 16px; }
 .dlg { width: min(560px, 100%); display: flex; flex-direction: column; gap: 12px; }
 .dact { display: flex; justify-content: flex-end; gap: 8px; }
+@media (max-width: 900px) { .cols { flex-wrap: wrap; } .detail { border-left: 0; border-top: 1px solid var(--line); } }
 </style>

@@ -306,7 +306,8 @@ h1 { margin: 0; font-size: 20px; font-weight: 700; }
 .dsub { color: var(--fail-strong); }
 .stale { padding: 12px 16px; border: 1px solid var(--warn-line); border-radius: 8px; background: var(--warn-bg); color: var(--warn-strong); font-size: 14px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .stale ul { margin: 0; padding-left: 18px; }
-.cols { display: flex; flex-wrap: wrap; flex: 1; min-height: 0; }
+/* one row on desktop, so each column has a definite height and scrolls inside it */
+.cols { display: flex; flex: 1; min-height: 0; }
 .reslist { flex: 1 1 300px; max-width: 360px; padding: 16px 10px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; background: var(--bg-sunken); overflow: auto; }
 .seg-group { display: flex; flex-wrap: wrap; gap: 2px; padding: 2px; margin: 0 4px 8px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--bg-card); align-self: flex-start; }
 .seg { font-size: 13px; height: 28px; padding: 0 10px; border: 0; border-radius: 5px; background: transparent; color: var(--text-muted); cursor: pointer; }
@@ -320,6 +321,7 @@ h1 { margin: 0; font-size: 20px; font-weight: 700; }
 .sym { font-weight: 700; text-align: center; }
 .a-create { color: var(--ok); } .a-update { color: var(--running); } .a-replace { color: var(--fail); } .a-delete { color: var(--fail); } .a-read { color: var(--text-label); }
 .diffpane { flex: 999 1 440px; min-width: 0; display: flex; flex-direction: column; overflow: auto; }
+.diffpane > * { flex-shrink: 0; } /* the pane scrolls as one, not the table inside it */
 .dhdr { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
 .daddr { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
 .loc { margin-left: auto; }
@@ -339,7 +341,7 @@ h1 { margin: 0; font-size: 20px; font-weight: 700; }
 .why { margin: 6px 16px 16px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-panel); display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .whytext { font-size: 14px; color: var(--text-code); line-height: 1.55; }
 .code { font-size: 13px; padding: 1px 5px; border-radius: 4px; background: var(--bg-inset); border: 1px solid var(--line); }
-.approve { flex: 1 1 300px; max-width: 380px; border-left: 1px solid var(--line); padding: 18px; display: flex; flex-direction: column; gap: 18px; background: var(--bg-sunken); }
+.approve { flex: 1 1 300px; max-width: 380px; border-left: 1px solid var(--line); padding: 18px; display: flex; flex-direction: column; gap: 18px; background: var(--bg-sunken); overflow: auto; }
 .checks { display: flex; flex-direction: column; gap: 10px; }
 .cgrid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 8px; align-items: center; }
 .pill { font: 500 12px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; justify-self: end; }
@@ -356,5 +358,5 @@ h1 { margin: 0; font-size: 20px; font-weight: 700; }
 .applybtn { height: 40px; justify-content: center; background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
 .applybtn.hotbtn { background: var(--fail); border-color: var(--fail); color: var(--fail-bg); }
 .applybtn:disabled { opacity: .4; }
-@media (max-width: 1100px) { .reslist, .approve { max-width: 100%; border: 0; } }
+@media (max-width: 1100px) { .cols { flex-wrap: wrap; } .reslist, .approve { max-width: 100%; border: 0; } }
 </style>
