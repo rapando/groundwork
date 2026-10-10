@@ -312,18 +312,15 @@ func TestSameRootJobsNeverOverlapDifferentRootsDo(t *testing.T) {
 	a, _ := g.r.Submit(SubmitRequest{Kind: KindPlan, Root: "terraform/envs/dev", Env: "dev"})
 	b, _ := g.r.Submit(SubmitRequest{Kind: KindPlan, Root: "terraform/envs/dev", Env: "dev"})
 	c, _ := g.r.Submit(SubmitRequest{Kind: KindPlan, Root: "terraform/envs/prod", Env: "prod"})
-	time.Sleep(150 * time.Millisecond)
-	if d, _ := g.r.Detail(b.ID); d.Run.Status != store.StatusQueued {
-		t.Fatalf("second job on the same root must queue, is %s", d.Run.Status)
-	}
-	if d, _ := g.r.Detail(c.ID); d.Run.Status != store.StatusRunning {
-		t.Fatalf("a different root must not wait, is %s", d.Run.Status)
-	}
 	for _, id := range []int64{a.ID, b.ID, c.ID} {
 		g.wait(t, id, store.StatusWaitingApproval)
 	}
-	// replay the command log: between "start plan <dev>" and its "end", no other dev command starts
+	// Judged from the command log, not status snapshots: either dev job may take
+	// the root first, and a fixed sleep overruns a plan on a loaded machine.
+	// Between "start plan <dev>" and its "end", no other dev command starts,
+	// and prod starts before dev's first plan ends (it didn't wait for dev).
 	open := map[string]int{}
+	prodStarted, devPlanEnded := false, false
 	for _, l := range g.tfLog(t) {
 		f := strings.Fields(l)
 		if len(f) < 3 || (f[0] != "start" && f[0] != "end") {
@@ -334,9 +331,18 @@ func TestSameRootJobsNeverOverlapDifferentRootsDo(t *testing.T) {
 			if open[f[2]] > 1 {
 				t.Fatalf("two commands ran at once in %s", f[2])
 			}
+			if strings.HasSuffix(f[2], "envs/prod") && !devPlanEnded {
+				prodStarted = true
+			}
 		} else {
 			open[f[2]]--
+			if f[1] == "plan" && strings.HasSuffix(f[2], "envs/dev") {
+				devPlanEnded = true
+			}
 		}
+	}
+	if !prodStarted {
+		t.Fatalf("a different root must not wait\nlog: %v", g.tfLog(t))
 	}
 }
 

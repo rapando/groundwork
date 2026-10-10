@@ -13,6 +13,8 @@ func TestIssuesOverHTTP(t *testing.T) {
 	t.Setenv("FAKE_LOCKED", lock)
 	os.WriteFile(lock, nil, 0o644)
 	e := newConfigured(t)
+	// not the real ps: under `go test ./...` other packages run real terraform
+	e.a.Issues.PS = func() (string, error) { return "  1 /sbin/init\n", nil }
 
 	rec := call(t, e.h, "POST", "/runs", map[string]any{"kind": "tf.plan", "root": "terraform/envs/dev", "env": "dev"})
 	id := into(t, rec)["run"].(map[string]any)["id"].(float64)

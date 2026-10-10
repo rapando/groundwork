@@ -143,7 +143,9 @@ type Engine struct {
 	rules    []*Rule
 	ruleErrs []error
 	done     map[int64]string // run id → status already processed
-	psOutput func() (string, error)
+
+	// PS lists this machine's processes as "pid comm" lines; tests replace it.
+	PS func() (string, error)
 }
 
 func New(root string, st *store.Store, rn *runner.Runner, ck *checks.Service, bus *events.Bus, log *slog.Logger) *Engine {
@@ -151,7 +153,7 @@ func New(root string, st *store.Store, rn *runner.Runner, ck *checks.Service, bu
 		log = slog.Default()
 	}
 	e := &Engine{Root: root, Store: st, Runner: rn, Checks: ck, Bus: bus, Log: log, done: map[int64]string{}}
-	e.psOutput = func() (string, error) {
+	e.PS = func() (string, error) {
 		out, err := exec.Command("ps", "-A", "-o", "pid=,comm=").Output()
 		return string(out), err
 	}
@@ -449,7 +451,7 @@ func (e *Engine) Prechecks(is store.Issue) []CheckResult {
 				}
 			case "no_local_process":
 				proc := render(arg, c.data(c.Vars))
-				ps, err := e.psOutput()
+				ps, err := e.PS()
 				if err != nil {
 					out = append(out, CheckResult{Detail: "Couldn't list processes: " + err.Error()})
 					continue

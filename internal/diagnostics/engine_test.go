@@ -41,7 +41,7 @@ func newRig(t *testing.T) *rig {
 	lock := filepath.Join(t.TempDir(), "locked")
 	t.Setenv("FAKE_LOCKED", lock)
 	e := New(root, st, rn, nil, bus, nil)
-	e.psOutput = func() (string, error) { return "  1 /sbin/launchd\n 42 /usr/bin/ssh-agent\n", nil }
+	e.PS = func() (string, error) { return "  1 /sbin/launchd\n 42 /usr/bin/ssh-agent\n", nil }
 	return &rig{e, rn, st, lock}
 }
 
@@ -152,7 +152,7 @@ func TestPrechecksBlockMutatingActions(t *testing.T) {
 	os.WriteFile(g.lock, nil, 0o644)
 	g.run(t, runner.SubmitRequest{Kind: runner.KindPlan, Root: "envs/dev", Env: "dev"}, store.StatusFailed)
 	open, _ := g.st.ListIssues(store.IssueOpen, time.Time{}, 10)
-	g.e.psOutput = func() (string, error) { return "  1 /sbin/launchd\n 977 /opt/homebrew/bin/terraform\n", nil }
+	g.e.PS = func() (string, error) { return "  1 /sbin/launchd\n 977 /opt/homebrew/bin/terraform\n", nil }
 	ck := g.e.Prechecks(open[0])
 	if ck[1].OK || ck[1].Detail == "" {
 		t.Fatalf("%+v", ck)
