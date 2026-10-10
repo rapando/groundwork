@@ -5,6 +5,7 @@ import { useChecks } from '../stores/checks'
 import { useGit } from '../stores/git'
 import { useRuns } from '../stores/runs'
 import { useIssues } from '../stores/issues'
+import BrandMark from './BrandMark.vue'
 import ThemeToggle from './ThemeToggle.vue'
 
 const ws = useWorkspace()
@@ -41,9 +42,7 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
   <div class="app">
     <aside class="side" aria-label="Sidebar">
       <a class="brand" href="/" title="All projects">
-        <div class="logo" aria-hidden="true">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 20h18" /><path d="M5 16h14" /><path d="M8 12h8" /><path d="M11 8h2" /></svg>
-        </div>
+        <BrandMark />
         <div class="col"><span class="mono name">groundwork</span><span class="mono ver">{{ ws.ws?.version }} · :{{ port }}</span></div>
       </a>
 
@@ -111,7 +110,6 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
 .between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .switch { font-size: 14px; text-decoration: none; }
 .switch:hover { text-decoration: underline; }
-.logo { flex: none; width: 28px; height: 28px; border-radius: 6px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; }
 .col { display: flex; flex-direction: column; }
 .name { font-weight: 700; font-size: 14px; }
 .ver { font-size: 12px; color: var(--text-label); word-break: break-all; }

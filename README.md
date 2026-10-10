@@ -1,4 +1,11 @@
-# groundwork
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-dark.svg">
+    <img src="docs/images/logo.svg" width="72" height="72" alt="groundwork">
+  </picture>
+</p>
+
+<h1 align="center">groundwork</h1>
 
 A local web console for Terraform and Ansible. It runs as a background service on your machine and hosts all your infrastructure repositories as projects. For each one it detects your infrastructure code, checks it as you edit, runs plans, applies and playbooks with live logs, and explains failures with a fix. One binary, no accounts, nothing leaves your machine except through the tools you already use.
 
@@ -40,6 +47,14 @@ macOS and Linux (amd64, arm64).
 curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | sh
 # or, from source (Go 1.27+)
 go install github.com/rapando/groundwork/cmd/groundwork@latest
+```
+
+> To update
+
+```sh
+groundwork service stop
+curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | sh
+groundwork service start
 ```
 
 The script verifies the download against the release checksums and installs to `~/.local/bin` without `sudo`. Then, optionally, start the service at login:

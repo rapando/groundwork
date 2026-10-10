@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { serviceApi } from '../api/client'
 import type { ProjectView, ServiceInfo } from '../api/types'
+import BrandMark from '../components/BrandMark.vue'
 import ThemeToggle from '../components/ThemeToggle.vue'
 
 const projects = ref<ProjectView[] | null>(null)
@@ -84,9 +85,7 @@ onUnmounted(() => {
 <template>
   <div class="shell">
     <header class="top">
-      <div class="logo" aria-hidden="true">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 20h18" /><path d="M5 16h14" /><path d="M8 12h8" /><path d="M11 8h2" /></svg>
-      </div>
+      <BrandMark />
       <span class="mono name">groundwork</span>
       <span class="mono meta">{{ info ? `${info.version} · ${info.home}` : '' }}</span>
       <ThemeToggle />
@@ -156,7 +155,6 @@ onUnmounted(() => {
 <style scoped>
 .shell { min-height: 100vh; }
 .top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px 32px; border-bottom: 1px solid var(--line); }
-.logo { flex: none; width: 28px; height: 28px; border-radius: 6px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; }
 .name { font-weight: 700; }
 .meta { margin-left: auto; font-size: 13px; color: var(--text-label); word-break: break-all; }
 .body { max-width: 960px; margin: 0 auto; padding: 40px 32px; display: flex; flex-direction: column; gap: 24px; }
