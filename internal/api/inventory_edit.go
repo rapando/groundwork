@@ -191,7 +191,7 @@ func (a *API) editInventory(w http.ResponseWriter, r *http.Request) {
 	sha := ""
 	switch c, err := files.Read(a.Root, file); {
 	case err == nil:
-		cur, sha, create = c.Text, c.SHA, false
+		cur, sha = c.Text, c.SHA
 	case errors.Is(err, files.ErrNotFound) && create:
 	default:
 		fileError(w, err)
