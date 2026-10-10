@@ -2,8 +2,9 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../components/AppShell.vue'
+import DiffView from '../components/DiffView.vue'
 import { api, ApiError } from '../api/client'
-import type { HostDetail, InvHost, InventoryResponse } from '../api/types'
+import type { HostDetail, InvEditPreview, InvHost, InventoryResponse, InvVarTarget, VarRow } from '../api/types'
 import { ago, useRuns } from '../stores/runs'
 import { onEvent } from '../composables/events'
 import { useNow } from '../composables/now'
@@ -114,6 +115,103 @@ async function runPlaybook() {
   } catch (e) { pb.error = e instanceof Error ? e.message : String(e) }
 }
 
+// ---- structured edits ----
+// Every change is previewed as a diff and written only on Apply.
+interface EditReq {
+  op: 'add_host' | 'remove_host' | 'add_group' | 'remove_group' | 'set_var' | 'unset_var'
+  host?: string; group?: string; parent?: string; address?: string
+  scope?: 'host' | 'group'; key?: string; value?: string; file?: string
+}
+const editable = computed(() => !!data.value?.editable)
+const groupNames = computed(() => (data.value?.groups ?? []).map((g) => g.name).filter((n) => n !== 'ungrouped'))
+const form = reactive({
+  kind: '' as '' | 'host' | 'group' | 'member' | 'unhost' | 'var', editing: false,
+  host: '', group: '', parent: 'all', address: '', scope: 'host' as 'host' | 'group', scopeGroup: '',
+  key: '', value: '', file: '', targets: [] as InvVarTarget[], error: '',
+})
+const pending = reactive({ req: null as EditReq | null, preview: null as InvEditPreview | null, error: '', busy: false })
+
+function openForm(kind: typeof form.kind, init: Partial<typeof form> = {}) {
+  const g = group.value !== 'all' && group.value !== 'ungrouped' ? group.value : groupNames.value.find((n) => n !== 'all') ?? 'all'
+  Object.assign(form, { kind, editing: false, host: '', group: g, parent: 'all', address: '', scope: 'host', scopeGroup: '', key: '', value: '', file: '', targets: [], error: '' }, init)
+  if (kind === 'var') loadTargets()
+}
+const varName = computed(() => (form.scope === 'host' ? selected.value : form.scopeGroup))
+async function loadTargets() {
+  const s = scope.value
+  if (!s || !varName.value) return
+  const keep = form.file
+  try {
+    const r = await api<{ targets: InvVarTarget[] }>(`/inventory/var-targets?project=${encodeURIComponent(s.project)}&env=${encodeURIComponent(s.env)}&scope=${form.scope}&name=${encodeURIComponent(varName.value)}`)
+    form.targets = r.targets
+    form.file = r.targets.some((t) => t.file === keep) ? keep : (r.targets[0]?.file ?? '')
+  } catch (e) { form.error = e instanceof Error ? e.message : String(e) }
+}
+watch(() => [form.scope, form.scopeGroup], () => { if (form.kind === 'var') loadTargets() })
+
+function submitForm() {
+  const h = selected.value
+  switch (form.kind) {
+    case 'host': return preview({ op: 'add_host', host: form.host.trim(), group: form.group, address: form.address.trim() || undefined })
+    case 'group': return preview({ op: 'add_group', group: form.group.trim(), parent: form.parent })
+    case 'member': return preview({ op: 'add_host', host: h, group: form.group })
+    case 'unhost': return preview({ op: 'remove_host', host: h, group: form.group || undefined })
+    case 'var': return preview({ op: 'set_var', scope: form.scope, host: h, group: form.scopeGroup, key: form.key.trim(), value: form.value, file: form.file })
+  }
+}
+
+async function preview(req: EditReq) {
+  const s = scope.value!
+  form.error = ''
+  try {
+    const p = await api<InvEditPreview>('/inventory/edit', { method: 'POST', body: { project: s.project, env: s.env, ...req } })
+    Object.assign(pending, { req, preview: p, error: '', busy: false })
+    form.kind = ''
+  } catch (e) {
+    const m = e instanceof Error ? e.message : String(e)
+    if (form.kind) form.error = m
+    else say(m)
+  }
+}
+async function applyEdit() {
+  const s = scope.value!
+  if (!pending.req || !pending.preview) return
+  pending.busy = true
+  try {
+    await api('/inventory/edit', { method: 'POST', body: { project: s.project, env: s.env, ...pending.req, apply: true, sha: pending.preview.sha } })
+    say(`Saved ${pending.preview.file}`)
+    const removed = pending.req.op === 'remove_host' && !pending.req.group ? pending.req.host : ''
+    pending.req = null; pending.preview = null
+    if (removed && selected.value === removed) { selected.value = ''; detail.value = null }
+    await load()
+  } catch (e) {
+    pending.error = e instanceof ApiError && e.status === 409 ? 'The file changed since the preview. Close this and make the change again.' : (e instanceof Error ? e.message : String(e))
+  } finally { pending.busy = false }
+}
+
+// where a host variable's winning value is written, if groundwork can edit it there
+function varSource(v: VarRow): { scope: 'host' | 'group'; group: string; file: string } | null {
+  const w = v.winner
+  if (!w || v.status === 'unknown' || w.value === '(vault encrypted)') return null
+  const l = w.level
+  if (l === 'inventory file, host' || l.endsWith(' host_vars')) return { scope: 'host', group: '', file: w.file }
+  const g = l.match(/^inventory file, group (\S+)$/) ?? l.match(/^(?:inventory|playbook) group_vars\/(\S+)$/)
+  return g ? { scope: 'group', group: g[1], file: w.file } : null
+}
+function editVar(v: VarRow) {
+  const src = varSource(v)
+  if (!src) return
+  openForm('var', { editing: true, scope: src.scope, scopeGroup: src.group, key: v.name, value: v.secret ? '' : v.value, file: src.file })
+}
+function unsetVar(v: VarRow) {
+  const src = varSource(v)
+  if (src) preview({ op: 'unset_var', scope: src.scope, host: selected.value, group: src.group, key: v.name, file: src.file })
+}
+const canEditVars = computed(() => !!scope.value && !data.value?.error)
+const memberOptions = computed(() => groupNames.value.filter((n) => n !== 'all' && !detail.value?.groups.includes(n)))
+const selectedGroup = computed(() => data.value?.groups?.find((g) => g.name === group.value))
+const canRemoveGroup = computed(() => editable.value && !!selectedGroup.value && !['all', 'ungrouped'].includes(group.value) && selectedGroup.value.total === 0 && !selectedGroup.value.children?.length)
+
 const reach = (h: InvHost) => {
   if (!h.reachable) return { cls: 'idle', text: 'unknown' }
   return h.reachable.reachable ? { cls: 'ok', text: `up · ${h.reachable.latency_ms}ms` } : { cls: 'fail', text: 'unreachable' }
@@ -153,6 +251,7 @@ const levelShort = (l: string) => l.replace('inventory ', 'inv ').replace('playb
       </div>
       <span v-if="data?.source" class="mono small muted">source: {{ data.source }}</span>
       <div class="actions">
+        <button v-if="editable" class="btn sm" type="button" @click="openForm('host')">Add host</button>
         <button class="btn sm" type="button" :disabled="!scope" @click="quick('ans.ping')">{{ checked.size ? `Ping ${checked.size}` : 'Ping all' }}</button>
         <button class="btn sm" type="button" :disabled="!scope" @click="quick('ans.facts')">Gather facts</button>
         <button class="btn sm" type="button" :disabled="!scope" @click="openAdhoc">Ad-hoc command…</button>
@@ -165,11 +264,16 @@ const levelShort = (l: string) => l.replace('inventory ', 'inv ').replace('playb
 
     <div v-else class="cols">
       <section class="groups" aria-label="Groups">
-        <span class="lbl pl">Groups</span>
+        <div class="lrow pl">
+          <span class="lbl">Groups</span>
+          <button v-if="editable" class="link small" type="button" @click="openForm('group', { group: '', parent: group !== 'ungrouped' ? group : 'all' })">+ Add</button>
+        </div>
         <button v-for="g in data.groups" :key="g.name" type="button" class="grp mono" :class="{ on: group === g.name }" :style="{ paddingLeft: 10 + Math.min(g.depth, 3) * 12 + 'px' }" @click="group = g.name">
           {{ g.name }}
           <span class="cnt" :class="{ warn: g.down }">{{ g.total }}<template v-if="g.down"> · {{ g.down }} down</template></span>
         </button>
+        <button v-if="canRemoveGroup" class="link small pl rmg" type="button" @click="preview({ op: 'remove_group', group })">Remove group {{ group }}</button>
+        <p v-if="!editable && data.edit_note" class="small muted pl note">Editing hosts and groups: {{ data.edit_note }}</p>
         <span class="lbl pl top">Files</span>
         <RouterLink v-for="f in data.files" :key="f" class="grp mono file" :to="codeHref(f)">{{ f }}</RouterLink>
       </section>
@@ -204,16 +308,29 @@ const levelShort = (l: string) => l.replace('inventory ', 'inv ').replace('playb
             </div>
             <p v-else class="small muted">No facts yet. <button class="link" type="button" @click="checked.clear(); checked.add(selected); quick('ans.facts')">Gather facts</button></p>
             <span v-if="detail?.groups?.length" class="small muted">groups: <span class="mono">{{ detail.groups.join(', ') }}</span></span>
+            <div v-if="editable && detail" class="hacts">
+              <button class="btn sm" type="button" :disabled="!memberOptions.length" @click="openForm('member', { group: memberOptions[0] })">Add to group…</button>
+              <button class="btn sm" type="button" @click="openForm('unhost', { group: '' })">Remove…</button>
+            </div>
           </div>
           <div class="vars">
-            <span class="lbl">Variables on this host · winner first</span>
+            <div class="lrow">
+              <span class="lbl">Variables on this host · winner first</span>
+              <button v-if="canEditVars && detail" class="link small" type="button" @click="openForm('var')">+ Add variable</button>
+            </div>
             <p v-if="detailError" class="err small">{{ detailError }}</p>
             <div class="scroll">
               <table v-if="detail" class="mono vt">
                 <thead><tr><th>variable</th><th>value</th><th>from</th></tr></thead>
                 <tbody v-for="v in detail.vars.rows" :key="v.name">
                   <tr class="first">
-                    <td>{{ v.name }}</td>
+                    <td>
+                      {{ v.name }}
+                      <span v-if="canEditVars && varSource(v)" class="vacts">
+                        <button class="link" type="button" :aria-label="`Edit ${v.name}`" @click="editVar(v)">Edit</button>
+                        <button class="link" type="button" :aria-label="`Remove ${v.name}`" @click="unsetVar(v)">Remove</button>
+                      </span>
+                    </td>
                     <td :class="{ secret: v.secret }">{{ v.value }}</td>
                     <td>
                       <RouterLink v-if="v.winner && v.status !== 'unknown'" :to="codeHref(v.winner.file)" class="src" :title="v.winner.level">{{ v.winner.file }}</RouterLink>
@@ -269,6 +386,77 @@ const levelShort = (l: string) => l.replace('inventory ', 'inv ').replace('playb
           <button class="btn primary" type="submit" :disabled="!pb.playbook">Start</button>
         </div>
       </form>
+    </div>
+
+    <div v-if="form.kind" class="modal" role="dialog" aria-modal="true" aria-labelledby="ed-title" @keydown.esc="form.kind = ''">
+      <form class="card dlg" @submit.prevent="submitForm">
+        <template v-if="form.kind === 'host'">
+          <h2 id="ed-title">Add host · {{ scope?.env }}</h2>
+          <label class="field">Host name<input v-model="form.host" class="inp" type="text" placeholder="web-3" autofocus required /></label>
+          <label class="field">Group
+            <select v-model="form.group" class="inp"><option v-for="g in groupNames" :key="g" :value="g">{{ g }}</option></select>
+          </label>
+          <label class="field">Address (optional)<input v-model="form.address" class="inp" type="text" placeholder="10.0.1.13 · written as ansible_host" /></label>
+        </template>
+        <template v-else-if="form.kind === 'group'">
+          <h2 id="ed-title">Add group · {{ scope?.env }}</h2>
+          <label class="field">Group name<input v-model="form.group" class="inp" type="text" placeholder="cache" autofocus required /></label>
+          <label class="field">Inside
+            <select v-model="form.parent" class="inp"><option v-for="g in groupNames" :key="g" :value="g">{{ g }}</option></select>
+          </label>
+        </template>
+        <template v-else-if="form.kind === 'member'">
+          <h2 id="ed-title">Add {{ selected }} to a group</h2>
+          <label class="field">Group
+            <select v-model="form.group" class="inp"><option v-for="g in memberOptions" :key="g" :value="g">{{ g }}</option></select>
+          </label>
+          <span class="small muted">The host stays in its other groups; remove it from one to move it.</span>
+        </template>
+        <template v-else-if="form.kind === 'unhost'">
+          <h2 id="ed-title">Remove {{ selected }}</h2>
+          <fieldset class="modes">
+            <label class="opt" :class="{ on: form.group === '' }"><input v-model="form.group" type="radio" value="" />From the inventory<span class="small muted">every group it's listed in</span></label>
+            <label v-for="g in detail?.groups ?? []" :key="g" class="opt" :class="{ on: form.group === g }"><input v-model="form.group" type="radio" :value="g" />Only from <span class="mono">{{ g }}</span></label>
+          </fieldset>
+        </template>
+        <template v-else-if="form.kind === 'var'">
+          <h2 id="ed-title">{{ form.editing ? 'Edit' : 'Add' }} variable</h2>
+          <label class="field">Applies to
+            <select v-model="form.scope" class="inp" :disabled="form.editing" @change="form.scopeGroup = form.scope === 'group' ? (detail?.groups[0] ?? 'all') : ''">
+              <option value="host">this host ({{ selected }})</option>
+              <option value="group">a group of this host</option>
+            </select>
+          </label>
+          <label v-if="form.scope === 'group'" class="field">Group
+            <select v-model="form.scopeGroup" class="inp" :disabled="form.editing"><option v-for="g in ['all', ...(detail?.groups ?? []).filter((x) => x !== 'all')]" :key="g" :value="g">{{ g }}</option></select>
+          </label>
+          <label class="field">Name<input v-model="form.key" class="inp" type="text" placeholder="app_port" :readonly="form.editing" required /></label>
+          <label class="field">Value (YAML)<input v-model="form.value" class="inp" type="text" placeholder='8080 · "text" · [a, b]' autofocus /></label>
+          <label class="field">Write to
+            <select v-model="form.file" class="inp">
+              <option v-for="t in form.targets" :key="t.file" :value="t.file">{{ t.file }}{{ t.exists ? '' : ' (new file)' }}</option>
+            </select>
+          </label>
+          <span class="small muted">Secrets don't belong here: keep them in ansible-vault.</span>
+        </template>
+        <p v-if="form.error" class="err small" role="alert">{{ form.error }}</p>
+        <div class="dact">
+          <button class="btn" type="button" @click="form.kind = ''">Cancel</button>
+          <button class="btn primary" type="submit">Preview</button>
+        </div>
+      </form>
+    </div>
+
+    <div v-if="pending.preview" class="modal" role="dialog" aria-modal="true" aria-labelledby="pv-title" @keydown.esc="pending.preview = null">
+      <div class="card dlg wide">
+        <h2 id="pv-title">{{ pending.preview.create ? 'Create' : 'Change' }} <span class="mono">{{ pending.preview.file }}</span></h2>
+        <div class="diffbox"><DiffView :diff="pending.preview.diff" /></div>
+        <p v-if="pending.error" class="err small" role="alert">{{ pending.error }}</p>
+        <div class="dact">
+          <button class="btn" type="button" @click="pending.preview = null; pending.req = null">Cancel</button>
+          <button class="btn primary" type="button" :disabled="pending.busy" @click="applyEdit">Apply</button>
+        </div>
+      </div>
     </div>
   </AppShell>
 </template>
@@ -333,5 +521,13 @@ h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .modes { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
 .modes .opt { flex-wrap: wrap; padding: 10px 14px; }
 .dact { display: flex; justify-content: flex-end; gap: 8px; }
+.dlg.wide { width: min(720px, 100%); }
+.dlg h2 { font-size: 16px; margin: 0; overflow-wrap: anywhere; }
+.diffbox { max-height: 50vh; overflow: auto; border: 1px solid var(--line); border-radius: 6px; }
+.lrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rmg { text-align: left; margin-top: 6px; }
+.note { margin: 10px 0 0; }
+.hacts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.vacts { display: flex; gap: 10px; margin-top: 2px; font-family: var(--font-ui); font-size: 12.5px; }
 @media (max-width: 900px) { .cols { flex-wrap: wrap; } .groups { max-width: 100%; } }
 </style>

@@ -22,6 +22,18 @@ Both `group_vars/web.yml` and `group_vars/web/*.yml` forms are read; YAML and IN
 
 Values of secret-looking variables (`*password*`, `*token*`, `*secret*`, `*key*`) are masked; `!vault` values show as encrypted; vault-encrypted files are listed, not opened: reveal them from the [Variables screen](variables.md#secrets).
 
+## Editing the inventory
+
+When an environment's inventory is a static YAML file in the repository, the Inventory screen edits it:
+
+- **Hosts**: *Add host* (into a group, optionally with an `ansible_host` address); on a host, *Add to group…* and *Remove…* (from one group or the whole inventory). Moving a host is adding it to the new group and removing it from the old.
+- **Groups**: *+ Add* next to Groups (inside `all` or any group); an empty group shows *Remove group*. Groups with hosts, child groups or variables can't be removed until they're empty. Empty groups are listed even though `ansible-inventory` leaves them out.
+- **Variables**: *+ Add variable* on a host, and *Edit*/*Remove* on any variable whose value comes from a file groundwork can edit. A variable applies to the host or to one of its groups, and is written to the inventory file itself or to a `host_vars`/`group_vars` file: an existing one (next to the inventory first, then the playbook directory), or a new `<inventory dir>/host_vars/<host>.yml` when there's none. Values are typed as YAML (`8080`, `"text"`, `[a, b]`).
+
+Every change is shown as a diff first and written only when you press *Apply*; if the file changed in between, nothing is written and you're asked to make the change again. Edits splice only the lines they touch, so comments, blank lines, quoting and key order stay as you wrote them. Saving runs the file's checks like any other save.
+
+Not edited here: INI inventories, inventory directories and dynamic inventories (edit their files in Code), vault-encrypted files (use `ansible-vault edit`), flow-style mappings like `{a: 1}` with entries, and secret-looking variables, which are refused so they don't land in plain text: keep them in ansible-vault ([Variables → Secrets](variables.md#secrets) can move a value there).
+
 ## Jobs
 
 | Kind | What runs | Approval |

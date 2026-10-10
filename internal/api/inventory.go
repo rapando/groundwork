@@ -264,6 +264,16 @@ func (a *API) getInventory(w http.ResponseWriter, r *http.Request) {
 		}
 		groups = append(groups, groupRow{g, down[g.Name]})
 	}
+	// empty groups: ansible-inventory leaves them out, but they're in the file
+	if f, _ := a.editableInventory(s); f != "" {
+		if b, err := os.ReadFile(filepath.Join(a.Root, filepath.FromSlash(f))); err == nil {
+			for _, g := range ansible.InventoryGroups(b) {
+				if _, ok := inv.Groups[g.Name]; !ok {
+					groups = append(groups, groupRow{&ansible.Group{Name: g.Name, Hosts: []string{}, Children: []string{}, Depth: g.Depth}, 0})
+				}
+			}
+		}
+	}
 	sort.Slice(groups, func(i, j int) bool {
 		if groups[i].Name == "all" || groups[j].Name == "all" {
 			return groups[i].Name == "all"
@@ -304,9 +314,11 @@ func (a *API) getInventory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	cfg, _ := a.config()
+	editFile, editNote := a.editableInventory(s)
 	writeJSON(w, 200, map[string]any{
 		"scopes": all, "scope": s, "hosts": hosts, "groups": groups, "files": fileList, "playbooks": playbooks,
 		"approval_required": config.IsProdLike(s.Env), "source": rel(invFile), "configured": cfg != nil,
+		"editable": editFile != "", "edit_note": editNote,
 	})
 }
 

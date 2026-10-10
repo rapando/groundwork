@@ -105,6 +105,8 @@ func (a *API) Routes(r chi.Router) {
 	r.Get("/drift", a.listDrift)
 	r.Post("/drift/{id}/action", a.driftAction)
 	r.Get("/inventory/host", a.getInventoryHost)
+	r.Get("/inventory/var-targets", a.getVarTargets)
+	r.Post("/inventory/edit", a.editInventory)
 	r.Get("/vars/terraform", a.terraformVars)
 	r.Put("/vars/terraform", a.setTerraformVar)
 	r.Get("/vars/ansible", a.ansibleVars)

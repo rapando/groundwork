@@ -122,6 +122,18 @@ func nodeValue(n *yaml.Node) any {
 
 // varsAt loads <dir>/<kind>/<name>{,.yml,.yaml,.json} or the directory form
 // <dir>/<kind>/<name>/*.
+// VarsFiles lists the group_vars/host_vars files for name under dir (kind is
+// "group_vars" or "host_vars"): readable YAML ones, then vault-encrypted ones.
+func VarsFiles(dir, kind, name string) (plain, encrypted []string) {
+	files, _, enc := varsAt(dir, kind, name)
+	for _, f := range files {
+		if ext := strings.ToLower(filepath.Ext(f)); ext != ".json" {
+			plain = append(plain, f)
+		}
+	}
+	return plain, enc
+}
+
 func varsAt(dir, kind, name string) (files []string, vars []map[string]any, encrypted []string) {
 	base := filepath.Join(dir, kind, name)
 	var candidates []string

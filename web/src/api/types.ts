@@ -150,7 +150,10 @@ export interface InvScope { project: string; env: string; inventory: string }
 export interface InventoryResponse {
   scopes: InvScope[]; scope?: InvScope; hosts?: InvHost[]; groups?: InvGroup[]; files?: string[]; playbooks?: string[]
   approval_required?: boolean; source?: string; error?: string
+  editable?: boolean; edit_note?: string // structured edits (static YAML inventories only)
 }
+export interface InvVarTarget { file: string; kind: 'inventory' | 'group_vars' | 'host_vars'; exists: boolean }
+export interface InvEditPreview { file: string; diff: string; sha: string; create: boolean }
 export interface VarSource { file: string; level: string; value: string }
 export interface VarRow { name: string; value: string; winner?: VarSource; overridden: VarSource[]; status: 'ok' | 'unknown' | 'role-default'; secret?: boolean }
 export interface HostDetail {

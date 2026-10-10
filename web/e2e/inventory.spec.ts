@@ -95,3 +95,85 @@ test('Overview: an Ansible environment opens the playbook dialog', async ({ page
   await expect(page).toHaveURL(/\/inventory\?project=\.&env=dev$/)
   await expect(page.getByRole('heading', { name: 'Run playbook · dev' })).toBeVisible()
 })
+
+test('structured edits: add, change and remove hosts, groups and variables, each previewed', async ({ page }) => {
+  const hosts = '---\n# dev inventory\np2p:\n  children:\n    dev:\n      hosts:\n        p2p-dev:\n          ansible_connection: local\n\nlocal:\n  hosts: {}\n'
+  gw = await start(undefined, { files: {
+    'groundwork.yaml': 'version: 1\nmode: standalone\nansible:\n  projects:\n    - path: .\n      inventories:\n        dev: environments/dev/hosts.yml\n',
+    'environments/dev/hosts.yml': hosts,
+    'site.yml': '- hosts: all\n  gather_facts: false\n  tasks:\n    - ansible.builtin.ping:\n',
+  } })
+  const file = (p: string) => readFileSync(path.join(gw.dir, p), 'utf8')
+  const apply = async (contains: string) => {
+    const dlg = page.getByRole('dialog')
+    await expect(dlg.locator('.diff')).toContainText(contains)
+    await dlg.getByRole('button', { name: 'Apply' }).click()
+    await expect(dlg).toHaveCount(0)
+  }
+  const hostsList = page.getByRole('region', { name: 'Hosts' })
+  const vars = page.getByRole('region', { name: 'Host detail' })
+  await page.goto(gw.url)
+  await page.getByRole('link', { name: 'Inventory', exact: true }).click()
+  await expect(hostsList.getByRole('button', { name: 'p2p-dev', exact: true })).toBeVisible()
+
+  // a host, into the empty group, with an address
+  await page.getByRole('button', { name: 'Add host' }).click()
+  await page.getByRole('dialog').getByLabel('Host name').fill('web-3')
+  await page.getByRole('dialog').getByRole('combobox', { name: /^Group/ }).selectOption('local')
+  await page.getByRole('dialog').getByLabel('Address (optional)').fill('10.0.1.13')
+  await page.getByRole('button', { name: 'Preview' }).click()
+  await apply('+    web-3:')
+  await expect(hostsList.getByRole('button', { name: 'web-3', exact: true })).toBeVisible()
+  expect(file('environments/dev/hosts.yml')).toContain('local:\n  hosts:\n    web-3:\n      ansible_host: 10.0.1.13\n')
+
+  // a variable in a new host_vars file, then changed, then removed
+  await hostsList.getByRole('button', { name: 'web-3', exact: true }).click()
+  await vars.getByRole('button', { name: '+ Add variable' }).click()
+  await page.getByRole('dialog').getByLabel('Name').fill('app_port')
+  await page.getByRole('dialog').getByLabel('Value (YAML)').fill('8080')
+  await page.getByRole('dialog').getByLabel('Write to').selectOption('environments/dev/host_vars/web-3.yml')
+  await page.getByRole('button', { name: 'Preview' }).click()
+  await apply('+app_port: 8080')
+  const row = vars.locator('tr.first', { hasText: 'app_port' })
+  await expect(row).toContainText('8080')
+  await expect(row).toContainText('environments/dev/host_vars/web-3.yml')
+  await row.getByRole('button', { name: 'Edit app_port' }).click()
+  await page.getByRole('dialog').getByLabel('Value (YAML)').fill('9090')
+  await page.getByRole('button', { name: 'Preview' }).click()
+  await apply('+app_port: 9090')
+  await expect(row).toContainText('9090')
+  await row.getByRole('button', { name: 'Remove app_port' }).click()
+  await apply('-app_port: 9090')
+  await expect(vars.locator('tr.first', { hasText: 'app_port' })).toHaveCount(0)
+
+  // secrets are refused
+  await vars.getByRole('button', { name: '+ Add variable' }).click()
+  await page.getByRole('dialog').getByLabel('Name').fill('db_password')
+  await page.getByRole('dialog').getByLabel('Value (YAML)').fill('hunter2')
+  await page.getByRole('button', { name: 'Preview' }).click()
+  await expect(page.getByRole('dialog').getByRole('alert')).toContainText('looks like a secret')
+  await page.getByRole('button', { name: 'Cancel' }).click()
+
+  // a group, then removed again (only empty groups can be)
+  await page.getByRole('region', { name: 'Groups' }).getByRole('button', { name: '+ Add' }).click()
+  await page.getByRole('dialog').getByLabel('Group name').fill('cache')
+  await page.getByRole('dialog').getByLabel('Inside').selectOption('p2p')
+  await page.getByRole('button', { name: 'Preview' }).click()
+  await apply('+    cache: {}')
+  const groups = page.getByRole('region', { name: 'Groups' })
+  await groups.getByRole('button', { name: /^cache/ }).click()
+  await groups.getByRole('button', { name: 'Remove group cache' }).click()
+  await apply('-    cache: {}')
+  await expect(groups.getByRole('button', { name: /^cache/ })).toHaveCount(0)
+
+  // the host, from the whole inventory
+  await groups.getByRole('button', { name: /^all/ }).click()
+  await hostsList.getByRole('button', { name: 'web-3', exact: true }).click()
+  await vars.getByRole('button', { name: 'Remove…' }).click()
+  await page.getByRole('button', { name: 'Preview' }).click()
+  await apply('-    web-3:')
+  await expect(hostsList.getByRole('button', { name: 'web-3', exact: true })).toHaveCount(0)
+
+  // every edit undone: the inventory is byte-for-byte what it was
+  expect(file('environments/dev/hosts.yml')).toBe(hosts)
+})
