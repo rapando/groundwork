@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -103,5 +105,66 @@ func TestServeAtATerminalPrintsTheSignedInURL(t *testing.T) {
 	si, _ := Running(home)
 	if !strings.Contains(out.String(), si.URL("/")) {
 		t.Fatalf("want %s in:\n%s", si.URL("/"), out.String())
+	}
+}
+
+// Two starts against one data directory: the second sees the first's lock,
+// hands over and exits 0 without serving. The lock is gone once the first
+// stops, so a restart works.
+func TestSecondServeHandsOverToTheFirst(t *testing.T) {
+	home := t.TempDir()
+	_, stop := startRun(t, home, Options{})
+	first, _ := Running(home)
+
+	var out bytes.Buffer
+	done := make(chan error, 1)
+	go func() { done <- Run(context.Background(), Options{Home: home, Port: 0, NoOpen: true, Log: quiet(), Out: &out}) }()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("second serve: %v\n%s", err, out.String())
+		}
+	case <-time.After(15 * time.Second):
+		t.Fatal("second serve did not exit")
+	}
+	if !strings.Contains(out.String(), "already running") || !strings.Contains(out.String(), first.Base()) {
+		t.Fatalf("second serve output:\n%s", out.String())
+	}
+	if si, ok := Running(home); !ok || si.PID != first.PID || si.Port != first.Port {
+		t.Fatalf("the first service should still be the one: %+v %v (first %+v)", si, ok, first)
+	}
+	stop()
+	if _, ok := Running(home); ok {
+		t.Fatal("still running after stop")
+	}
+	l, err := tryLock(lockPath(home))
+	if err != nil {
+		t.Fatalf("lock not released after the service stopped: %v", err)
+	}
+	l.release()
+	_, stop2 := startRun(t, home, Options{})
+	stop2()
+}
+
+// A busy port is an error that says who holds it; it is never silently
+// replaced, since bookmarks and scripts rely on it. --port 0 picks a free one.
+func TestBusyPortIsAnErrorNotAFallback(t *testing.T) {
+	// another groundwork (a different data directory) on the port
+	otherHome := t.TempDir()
+	_, stop := startRun(t, otherHome, Options{})
+	defer stop()
+	other, _ := Running(otherHome)
+	var out bytes.Buffer
+	err := Run(context.Background(), Options{Home: t.TempDir(), Port: other.Port, NoOpen: true, Log: quiet(), Out: &out})
+	if err == nil || !strings.Contains(err.Error(), strconv.Itoa(other.Port)) || !strings.Contains(err.Error(), "another groundwork") || !strings.Contains(err.Error(), strconv.Itoa(other.PID)) {
+		t.Fatalf("got %v", err)
+	}
+	// some other program on the port
+	ln, _ := net.Listen("tcp", "127.0.0.1:0")
+	defer ln.Close()
+	port := ln.Addr().(*net.TCPAddr).Port
+	err = Run(context.Background(), Options{Home: t.TempDir(), Port: port, NoOpen: true, Log: quiet(), Out: &out})
+	if err == nil || !strings.Contains(err.Error(), "another program") || !strings.Contains(err.Error(), "--port 0") {
+		t.Fatalf("got %v", err)
 	}
 }

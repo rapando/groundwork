@@ -31,6 +31,7 @@ import (
 type Service struct {
 	Home    string
 	Version string
+	Port    int // the port being served (0 until Run binds)
 	Log     *slog.Logger
 	Reg     *Registry
 
@@ -274,7 +275,7 @@ func (s *Service) views() []ProjectView {
 // project's own API (the same endpoints the single-repo server had).
 func (s *Service) Routes(r chi.Router) {
 	r.Get("/service", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, 200, map[string]any{"version": s.Version, "home": s.Home, "repos_dir": s.reposDir()})
+		writeJSON(w, 200, map[string]any{"version": s.Version, "home": s.Home, "repos_dir": s.reposDir(), "port": s.Port})
 	})
 	r.Get("/projects", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, s.views()) })
 	r.Post("/projects", s.addProject)

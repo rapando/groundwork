@@ -124,6 +124,7 @@ func newServiceCmd() *cobra.Command {
 				return err
 			}
 			fmt.Fprintf(out, "status:        running (pid %d), %d projects\n", si.PID, len(ps))
+			fmt.Fprintf(out, "port:          %d\n", si.Port)
 			fmt.Fprintf(out, "version:       %s (this command: %s)\n", si.Version, Version)
 			if m := versionMismatch(si, Version); m != "" {
 				fmt.Fprintln(out, "warning:      ", m)

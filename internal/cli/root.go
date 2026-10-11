@@ -80,7 +80,7 @@ func newRoot() *cobra.Command {
 			return openURL(cmd, si.URL(service.ProjectPath(p.ID)), f.noOpen)
 		},
 	}
-	root.Flags().IntVar(&f.port, "port", 7420, "port for the service if it has to be started (a free one is used if busy)")
+	root.Flags().IntVar(&f.port, "port", 7420, "port for the service if it has to be started (0 picks a free one)")
 	root.Flags().BoolVar(&f.noOpen, "no-open", false, "print the URL instead of opening the browser")
 	root.Flags().BoolVar(&f.foreground, "foreground", false, "run the service in this terminal instead of in the background")
 	root.Flags().StringVar(&f.host, "host", "127.0.0.1", "address to bind (with --foreground)")
@@ -93,7 +93,7 @@ func newRoot() *cobra.Command {
 		RunE:  func(_ *cobra.Command, args []string) error { return serve(args) },
 	}
 	serveCmd.Flags().StringVar(&f.host, "host", "127.0.0.1", "address to bind")
-	serveCmd.Flags().IntVar(&f.port, "port", 7420, "preferred port (a free one is used if busy)")
+	serveCmd.Flags().IntVar(&f.port, "port", 7420, "port to listen on (0 picks a free one; a busy port is an error)")
 	serveCmd.Flags().BoolVar(&f.noOpen, "no-open", false, "do not open the browser")
 	serveCmd.Flags().BoolVar(&f.allowRemote, "i-understand-remote-access", false, "allow binding a non-loopback address")
 

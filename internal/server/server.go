@@ -7,14 +7,17 @@ import (
 	"embed"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -90,7 +93,9 @@ func (s *Server) Handler() http.Handler {
 
 	// Unauthenticated, leaks nothing but identity; used for single-instance detection.
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, 200, map[string]string{"app": "groundwork"})
+		// unauthenticated and identity-only: enough for the CLI to recognise a
+		// service, and to name the process when a port is found busy
+		writeJSON(w, 200, map[string]any{"app": "groundwork", "pid": os.Getpid()})
 	})
 
 	r.Group(func(r chi.Router) {
@@ -344,8 +349,23 @@ func writeError(w http.ResponseWriter, status int, code, msg string) {
 // Listen binds addr, preferring the requested port but falling back to a free one.
 func Listen(host string, port int) (net.Listener, error) {
 	l, err := net.Listen("tcp", net.JoinHostPort(host, strconv.Itoa(port)))
-	if err == nil {
-		return l, nil
+	if err != nil && port != 0 && errors.Is(err, syscall.EADDRINUSE) {
+		return nil, &PortBusyError{Host: host, Port: port, Err: err}
 	}
-	return net.Listen("tcp", net.JoinHostPort(host, "0"))
+	return l, err
 }
+
+// PortBusyError is returned by Listen when the requested port (not 0, which
+// means "any free port") is already in use. Bookmarks and scripts rely on
+// the port, so a busy one is reported rather than silently replaced.
+type PortBusyError struct {
+	Host string
+	Port int
+	Err  error
+}
+
+func (e *PortBusyError) Error() string {
+	return fmt.Sprintf("port %d on %s is already in use", e.Port, e.Host)
+}
+
+func (e *PortBusyError) Unwrap() error { return e.Err }

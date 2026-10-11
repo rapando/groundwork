@@ -107,22 +107,23 @@ func Run(ctx context.Context, o Options) error {
 		return err
 	}
 
-	if si, ok := Running(home); ok {
-		path := "/"
-		for i, dir := range o.Add {
-			p, err := NewClient(si).AddPath(dir)
-			if err != nil {
-				return err
-			}
-			if i == 0 {
-				path = ProjectPath(p.ID)
-			}
+	// One service per data directory. The lock settles the race between two
+	// starts (two terminals, or the login unit plus a manual start): whoever
+	// holds it serves, the other hands its folders over and exits 0.
+	lock, err := tryLock(lockPath(home))
+	if errors.Is(err, errLocked) {
+		si, ok := waitRunning(home, 10*time.Second)
+		if !ok {
+			return fmt.Errorf("another groundwork holds %s but is not answering; see %s", home, LogPath(home))
 		}
-		fmt.Fprintln(o.Out, "groundwork is already running:", o.announce("127.0.0.1", si, path))
-		if !o.NoOpen {
-			_ = browser.OpenURL(si.URL(path))
-		}
-		return nil
+		return handOver(o, si)
+	}
+	if err != nil {
+		return err
+	}
+	defer lock.release()
+	if si, ok := Running(home); ok { // a service from a release that didn't take the lock
+		return handOver(o, si)
 	}
 
 	token, err := loadToken(home)
@@ -130,6 +131,13 @@ func Run(ctx context.Context, o Options) error {
 		return err
 	}
 	ln, err := server.Listen(o.Host, o.Port)
+	var busy *server.PortBusyError
+	if errors.As(err, &busy) {
+		if pid, ok := groundworkAt(busy.Port); ok {
+			return fmt.Errorf("%w: another groundwork service (pid %d, probably with a different data directory) is serving there; stop it, or pass --port <n> (--port 0 picks a free one)", err, pid)
+		}
+		return fmt.Errorf("%w by another program; pass --port <n>, or --port 0 to pick a free one", err)
+	}
 	if err != nil {
 		return err
 	}
@@ -140,6 +148,7 @@ func Run(ctx context.Context, o Options) error {
 		ln.Close()
 		return err
 	}
+	svc.Port = port
 	svc.OpenAll()
 	path := "/"
 	for i, dir := range o.Add {
@@ -204,6 +213,59 @@ func Run(ctx context.Context, o Options) error {
 	defer cancel()
 	svc.Shutdown(stopCtx)
 	return nil
+}
+
+// handOver is what a second start does when a service is already running:
+// imports the folders it was given there and prints or opens the URL.
+func handOver(o Options, si ServerInfo) error {
+	path := "/"
+	for i, dir := range o.Add {
+		p, err := NewClient(si).AddPath(dir)
+		if err != nil {
+			return err
+		}
+		if i == 0 {
+			path = ProjectPath(p.ID)
+		}
+	}
+	fmt.Fprintln(o.Out, "groundwork is already running:", o.announce("127.0.0.1", si, path))
+	if !o.NoOpen {
+		_ = browser.OpenURL(si.URL(path))
+	}
+	return nil
+}
+
+// waitRunning polls Running for up to d: a service that holds the lock may
+// still be starting.
+func waitRunning(home string, d time.Duration) (ServerInfo, bool) {
+	deadline := time.Now().Add(d)
+	for {
+		if si, ok := Running(home); ok {
+			return si, true
+		}
+		if time.Now().After(deadline) {
+			return ServerInfo{}, false
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+// groundworkAt reports whether a groundwork service answers on port, and its pid.
+func groundworkAt(port int) (int, bool) {
+	c := http.Client{Timeout: time.Second}
+	resp, err := c.Get("http://127.0.0.1:" + strconv.Itoa(port) + "/healthz")
+	if err != nil {
+		return 0, false
+	}
+	defer resp.Body.Close()
+	var body struct {
+		App string
+		PID int
+	}
+	if json.NewDecoder(resp.Body).Decode(&body) != nil || body.App != "groundwork" {
+		return 0, false
+	}
+	return body.PID, true
 }
 
 // loadToken keeps the session token across restarts so open tabs and
