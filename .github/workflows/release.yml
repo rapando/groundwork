@@ -1,15 +1,25 @@
 name: release
 # Releases are cut automatically from Conventional Commits:
-#   - every push to main whose ci run passes is checked by scripts/next-version.sh
-#     (feat: -> minor, fix:/perf:/revert: -> patch, `!` or BREAKING CHANGE -> major);
-#     if anything warrants a release, the commit is tagged vX.Y.Z and goreleaser publishes it
+#   - every push to main runs this as part of ci (see the `release-*` jobs in
+#     ci.yml): the version is worked out by scripts/next-version.sh while the
+#     tests run (feat: -> minor, fix:/perf:/revert: -> patch, `!` or
+#     BREAKING CHANGE -> major), and once every ci job has passed the commit is
+#     tagged vX.Y.Z and goreleaser publishes it
 #   - "Run workflow" on main forces a release, at least the chosen bump
 #   - pushing a vX.Y.Z tag by hand still releases that tag
 on:
-  workflow_run:
-    workflows: [ci]
-    types: [completed]
-    branches: [main]
+  workflow_call:
+    inputs:
+      stage:
+        description: "version: only work out the tag; publish: tag and publish the given tag"
+        type: string
+        required: true
+      tag:
+        type: string
+        default: ""
+    outputs:
+      tag:
+        value: ${{ jobs.version.outputs.tag }}
   workflow_dispatch:
     inputs:
       bump:
@@ -22,37 +32,25 @@ on:
 permissions:
   contents: write
   id-token: write # keyless cosign signing of checksums.txt
-concurrency:
-  group: release
-  cancel-in-progress: false
 
 jobs:
   version:
+    # from ci: runs alongside the tests; by hand or for a pushed tag: first step
+    if: inputs.stage != 'publish' && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
-    if: >-
-      (github.event_name == 'workflow_run' &&
-       github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.event == 'push' &&
-       github.event.workflow_run.head_repository.full_name == github.repository) ||
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-      github.event_name == 'push'
     outputs:
       tag: ${{ steps.next.outputs.tag }}
-      sha: ${{ steps.next.outputs.sha }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-          fetch-depth: 0
+        with: { fetch-depth: 0 }
       - id: next
         env:
           BUMP: ${{ inputs.bump }}
         run: |
           sha=$(git rev-parse HEAD)
-          if [ "$GITHUB_EVENT_NAME" = push ]; then
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
             tag="$GITHUB_REF_NAME"
           elif git tag --contains "$sha" --list 'v[0-9]*' | grep -q .; then
-            # an older ci run finishing after a newer commit was already released
             echo "::notice::$sha is already part of $(git tag --contains "$sha" --list 'v[0-9]*' | head -1); nothing to release"
             tag=""
           else
@@ -63,42 +61,47 @@ jobs:
             elif git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
               echo "::error::$tag already exists"; exit 1
             else
-              echo "::notice::Releasing $tag"
+              echo "::notice::Will release $tag once ci passes"
             fi
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
-  release:
+  publish:
     needs: version
-    if: needs.version.outputs.tag != ''
+    # needs: version is skipped when ci calls with stage=publish; always() lets this run then
+    if: >-
+      always() &&
+      ((inputs.stage == 'publish' && inputs.tag != '') ||
+       (inputs.stage != 'publish' && inputs.stage != 'version' && needs.version.result == 'success' && needs.version.outputs.tag != ''))
     runs-on: ubuntu-latest
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    env:
+      TAG: ${{ inputs.tag || needs.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.version.outputs.sha }}
-          fetch-depth: 0
+        with: { fetch-depth: 0 }
       - uses: actions/setup-go@v7
         with: { go-version-file: go.mod }
       - run: go test ./...
-        if: github.event_name != 'workflow_run' # ci already passed on this commit
+        if: inputs.stage != 'publish' # from ci, every test has already passed on this commit
       - name: Tag
-        if: github.event_name != 'push'
-        env:
-          TAG: ${{ needs.version.outputs.tag }}
+        if: github.ref_type != 'tag'
         run: |
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null || git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "::error::$TAG already exists"; exit 1
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$TAG" -m "groundwork $TAG"
-          # pushed with GITHUB_TOKEN, so this tag doesn't re-trigger this workflow
+          # pushed with GITHUB_TOKEN, so this tag doesn't trigger another release
           git push origin "refs/tags/$TAG"
-      - uses: sigstore/cosign-installer@v4
-      - uses: anchore/sbom-action/download-syft@v0
+      - uses: sigstore/cosign-installer@v4.1.2 # no floating major tag is published
+      - uses: anchore/sbom-action/download-syft@v0.24.3 # likewise
       - name: Hand-written release notes
         # docs/release-notes/<version>.md, when it exists, replaces the generated changelog
         id: notes
-        env:
-          TAG: ${{ needs.version.outputs.tag }}
         run: |
           f="docs/release-notes/${TAG#v}.md"
           if [ -f "$f" ]; then echo "args=--release-notes=$f" >> "$GITHUB_OUTPUT"; echo "::notice::Using $f as the release notes"; fi
