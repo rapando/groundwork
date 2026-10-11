@@ -11,4 +11,5 @@
 - [Troubleshooting, Doctor and scheduled drift](troubleshooting.md)
 - [Security model](security.md)
 - [Compatibility: what stays stable, upgrades and downgrades](compatibility.md)
+- [Architecture: service, projects, packages, data](architecture.md)
 - [Releasing and versioning](releasing.md)
