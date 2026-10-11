@@ -22,7 +22,7 @@ import (
 // Runs the real terraform binary (built-in terraform_data resource: no cloud,
 // no provider downloads). Skipped when terraform is not on PATH.
 func TestRealTerraformValidateInitAndFix(t *testing.T) {
-	if _, err := exec.LookPath("terraform"); err != nil {
+	if _, err := exec.LookPath(tfBin()); err != nil {
 		t.Skip("terraform not installed")
 	}
 	root := t.TempDir()
@@ -125,7 +125,7 @@ func TestRealProviderInitNeverWritesIntoRepo(t *testing.T) {
 	if os.Getenv("GW_TEST_NETWORK") != "1" {
 		t.Skip("set GW_TEST_NETWORK=1 to run (downloads a provider)")
 	}
-	if _, err := exec.LookPath("terraform"); err != nil {
+	if _, err := exec.LookPath(tfBin()); err != nil {
 		t.Skip("terraform not installed")
 	}
 	root := t.TempDir()
@@ -183,4 +183,13 @@ resource "null_resource" "x" {
 	start = time.Now()
 	svc.Run(context.Background(), "tf:terraform/envs/dev", true)
 	t.Logf("forced second run (provider cached, lock kept in shadow): %s", time.Since(start))
+}
+
+// tfBin is the Terraform-compatible binary under test: terraform, or tofu
+// when GW_TF_BINARY says so (the integration job runs both).
+func tfBin() string {
+	if b := os.Getenv("GW_TF_BINARY"); b != "" {
+		return b
+	}
+	return "terraform"
 }

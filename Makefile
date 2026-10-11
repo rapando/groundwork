@@ -2,7 +2,7 @@ VERSION ?= dev
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
 LDFLAGS := -X github.com/rapando/groundwork/internal/cli.Version=$(VERSION) -X github.com/rapando/groundwork/internal/cli.Commit=$(COMMIT)
 
-.PHONY: web build test lint e2e run golden integration perf fuzz release-snapshot demo
+.PHONY: web build test lint e2e run golden integration perf fuzz release-snapshot demo coverage
 # The SPA is built into internal/server/dist, which is committed and embedded.
 web:
 	cd web && npm ci && npm run build
@@ -20,6 +20,10 @@ e2e: build
 # Real terraform/tflint/yamllint/ansible-lint (whatever is installed). GW_TEST_NETWORK=1 adds provider downloads.
 integration:
 	go test -tags integration ./...
+# Coverage per package and in total, failing below the floors ci enforces (scripts/coverage-gate.sh).
+coverage:
+	go test -count=1 -coverprofile=cover.out -coverpkg=./internal/...,./cmd/... ./... > /dev/null
+	scripts/coverage-gate.sh cover.out
 # Accept new detection output after a deliberate change.
 golden:
 	go test ./internal/workspace -update

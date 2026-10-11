@@ -88,12 +88,57 @@ func (okExec) Run(_ context.Context, c checks.Cmd) (checks.Output, error) {
 	return checks.Output{Stdout: []byte(`{"valid":true,"diagnostics":[],"issues":[],"errors":[]}`)}, nil
 }
 
+// Two budgets: an absolute one per step, and, when GW_PERF_BASELINE names a
+// JSON file of earlier timings (milliseconds by step), 1.2× that baseline.
+// GW_PERF_WRITE_BASELINE writes this run's timings there when it passes, so
+// the nightly job can carry the baseline forward in its cache.
+var (
+	baseline  = loadBaseline()
+	measured  = map[string]int64{}
+	regressTo = 1.2
+)
+
+func loadBaseline() map[string]int64 {
+	p := os.Getenv("GW_PERF_BASELINE")
+	if p == "" {
+		return nil
+	}
+	b, err := os.ReadFile(p)
+	if err != nil {
+		return nil // first run: nothing to compare with yet
+	}
+	var m map[string]int64
+	if json.Unmarshal(b, &m) != nil {
+		return nil
+	}
+	return m
+}
+
+func writeBaseline(t *testing.T) {
+	p := os.Getenv("GW_PERF_WRITE_BASELINE")
+	if p == "" || t.Failed() {
+		return
+	}
+	b, _ := json.MarshalIndent(measured, "", "  ")
+	if err := os.WriteFile(p, append(b, '\n'), 0o644); err != nil {
+		t.Logf("could not write baseline: %v", err)
+	}
+}
+
 func timed(t *testing.T, name string, budget time.Duration, fn func()) {
 	t.Helper()
 	start := time.Now()
 	fn()
 	d := time.Since(start)
-	t.Logf("%-34s %8s (budget %s)", name, d.Round(time.Millisecond), budget)
+	measured[name] = d.Milliseconds()
+	note := ""
+	if prev, ok := baseline[name]; ok && prev > 0 {
+		note = fmt.Sprintf(", baseline %dms", prev)
+		if limit := time.Duration(float64(prev)*regressTo) * time.Millisecond; d > limit && d > 200*time.Millisecond {
+			t.Errorf("%s took %s, more than %.0f%% over its baseline of %dms", name, d, (regressTo-1)*100, prev)
+		}
+	}
+	t.Logf("%-34s %8s (budget %s%s)", name, d.Round(time.Millisecond), budget, note)
 	if d > budget {
 		t.Errorf("%s took %s, over its %s budget", name, d, budget)
 	}
@@ -103,6 +148,7 @@ func TestLargeRepo(t *testing.T) {
 	if os.Getenv("GW_PERF") == "" {
 		t.Skip("set GW_PERF=1 (make perf)")
 	}
+	t.Cleanup(func() { writeBaseline(t) })
 	root := generate(t)
 	st, err := store.Open(filepath.Join(t.TempDir(), "s.db"))
 	if err != nil {

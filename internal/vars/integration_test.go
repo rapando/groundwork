@@ -15,7 +15,7 @@ import (
 // Every non-sensitive value in the matrix must equal what `terraform console`
 // evaluates for the same variable, with the same environment.
 func TestMatrixMatchesTerraformConsole(t *testing.T) {
-	if _, err := exec.LookPath("terraform"); err != nil {
+	if _, err := exec.LookPath(tfBin()); err != nil {
 		t.Skip("terraform not installed")
 	}
 	src, _ := filepath.Abs("../../testdata/repos/vars-lab")
@@ -34,7 +34,7 @@ func TestMatrixMatchesTerraformConsole(t *testing.T) {
 	compared := 0
 	for ti, tgt := range targets {
 		dir := filepath.Join(repo, tgt.Root)
-		init := exec.Command("terraform", "init", "-input=false", "-no-color")
+		init := exec.Command(tfBin(), "init", "-input=false", "-no-color")
 		init.Dir = dir
 		if out, err := init.CombinedOutput(); err != nil {
 			t.Fatalf("init: %v %s", err, out)
@@ -44,7 +44,7 @@ func TestMatrixMatchesTerraformConsole(t *testing.T) {
 			if row.Sensitive || c.State == "missing" || c.State == "absent" {
 				continue
 			}
-			cmd := exec.Command("terraform", "console", "-no-color")
+			cmd := exec.Command(tfBin(), "console", "-no-color")
 			cmd.Dir = dir
 			cmd.Env = append(os.Environ(), environ...)
 			cmd.Stdin = strings.NewReader("jsonencode(var." + row.Name + ")\n")
@@ -72,4 +72,13 @@ func TestMatrixMatchesTerraformConsole(t *testing.T) {
 	if compared < 8 {
 		t.Fatalf("only %d comparisons ran", compared)
 	}
+}
+
+// tfBin is the Terraform-compatible binary under test: terraform, or tofu
+// when GW_TF_BINARY says so (the integration job runs both).
+func tfBin() string {
+	if b := os.Getenv("GW_TF_BINARY"); b != "" {
+		return b
+	}
+	return "terraform"
 }

@@ -20,14 +20,14 @@ import (
 // Real terraform, built-in terraform_data resource only: no cloud, no downloads.
 func realRig(t *testing.T, tf string) (*Runner, *store.Store, string) {
 	t.Helper()
-	if _, err := exec.LookPath("terraform"); err != nil {
+	if _, err := exec.LookPath(tfBin()); err != nil {
 		t.Skip("terraform not installed")
 	}
 	root := t.TempDir()
 	dir := filepath.Join(root, "terraform/envs/dev")
 	os.MkdirAll(dir, 0o755)
 	os.WriteFile(filepath.Join(dir, "main.tf"), []byte(tf), 0o644)
-	cfg := &config.Config{Version: 1, Mode: "standalone", Terraform: config.Terraform{Binary: "terraform",
+	cfg := &config.Config{Version: 1, Mode: "standalone", Terraform: config.Terraform{Binary: tfBin(),
 		Roots: []config.TFRoot{{Path: "terraform/envs/dev", Env: "dev"}}}}
 	st, err := store.Open(filepath.Join(t.TempDir(), "s.db"))
 	if err != nil {
@@ -237,7 +237,7 @@ resource "terraform_data" "b" {
 	}
 
 	// someone changes the real state behind groundwork's back (config untouched)
-	cmd := exec.Command("terraform", "apply", "-auto-approve", "-input=false", "-replace=terraform_data.b")
+	cmd := exec.Command(tfBin(), "apply", "-auto-approve", "-input=false", "-replace=terraform_data.b")
 	cmd.Dir = filepath.Join(root, "terraform/envs/dev")
 	cmd.Env = append(os.Environ(), "TF_DATA_DIR=")
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -251,4 +251,13 @@ resource "terraform_data" "b" {
 		t.Fatal("still waiting (re-plan to continue)")
 	}
 	t.Logf("refused: %v", err)
+}
+
+// tfBin is the Terraform-compatible binary under test: terraform, or tofu
+// when GW_TF_BINARY says so (the integration job runs both).
+func tfBin() string {
+	if b := os.Getenv("GW_TF_BINARY"); b != "" {
+		return b
+	}
+	return "terraform"
 }

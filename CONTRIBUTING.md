@@ -34,6 +34,9 @@ The `pr-title` check enforces the prefix; reviewers enforce the wording. The PR 
 - Web: `cd web && npm test` for unit tests, `npm run typecheck` for `vue-tsc`, `npm run lint` for ESLint and Prettier (`npm run format` fixes TypeScript formatting; Vue templates are kept compact by hand). Browser tests include an axe scan of every screen (`e2e/a11y.spec.ts`): new UI must introduce no serious violations.
 - Security: `internal/server/security_test.go` walks every route. A new route is covered automatically, but if it takes a path or a value that reaches a subprocess, add it to the injection cases there.
 - Fuzz targets live next to their parsers; add one when you add a parser or validator and register it in the `fuzz` target of the Makefile.
+- Coverage: `make coverage` prints per-package coverage and fails below the floors CI enforces (60% per package, 75% overall). A new package needs tests from its first PR.
+- Integration tests run against both `terraform` and `tofu` in CI (`GW_TF_BINARY=tofu go test -tags integration ./...` locally).
+- The nightly perf run compares each step with the previous passing run's timings (carried in the Actions cache) and fails on a regression of more than 20%, besides its absolute budgets.
 
 ## Review
 
