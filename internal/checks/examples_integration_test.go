@@ -33,6 +33,7 @@ func TestExamplesAreCleanUnderRealTools(t *testing.T) {
 			})
 			rep, _ := workspace.Detect(dir, nil)
 			cfg := config.FromReport(rep)
+			cfg.Terraform.Binary = tfBin() // the binary under test, not the detected default
 			yml, _ := cfg.Marshal() // checked too: groundwork's own file must lint clean
 			os.WriteFile(filepath.Join(dir, "groundwork.yaml"), yml, 0o644)
 

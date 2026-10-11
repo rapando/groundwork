@@ -51,6 +51,7 @@ resource "terraform_data" "a" {
 
 	rep, _ := workspace.Detect(root, nil)
 	cfg := config.FromReport(rep)
+	cfg.Terraform.Binary = tfBin() // the binary under test, not the detected default
 	cfg.Checks.Enabled = []string{"fmt", "validate"}
 	st, err := store.Open(filepath.Join(t.TempDir(), "s.db"))
 	if err != nil {
@@ -151,6 +152,7 @@ resource "null_resource" "x" {
 
 	rep, _ := workspace.Detect(root, nil)
 	cfg := config.FromReport(rep)
+	cfg.Terraform.Binary = tfBin() // the binary under test, not the detected default
 	cfg.Checks.Enabled = []string{"validate"}
 	st, _ := store.Open(filepath.Join(t.TempDir(), "s.db"))
 	defer st.Close()
