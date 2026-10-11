@@ -2,7 +2,9 @@ import { test, expect } from '@playwright/test'
 import { start, Instance } from './helpers'
 
 let gw: Instance
-test.afterEach(async () => { await gw?.stop() })
+test.afterEach(async () => {
+  await gw?.stop()
+})
 
 test('paper by default; dark is one click away, remembered, and recolours the editor', async ({ page }) => {
   gw = await start('iac-only', { init: true })
@@ -20,7 +22,11 @@ test('paper by default; dark is one click away, remembered, and recolours the ed
   await page.goto(gw.base + '/code/terraform/envs/dev/main.tf')
   await expect(html).toHaveAttribute('data-theme', 'dark')
   await expect(page.locator('.cm-editor').first()).toBeVisible()
-  const editorBg = () => page.locator('.cm-editor').first().evaluate((e) => getComputedStyle(e).backgroundColor)
+  const editorBg = () =>
+    page
+      .locator('.cm-editor')
+      .first()
+      .evaluate((e) => getComputedStyle(e).backgroundColor)
   const dark = await editorBg()
   await page.getByRole('radio', { name: 'Paper' }).click()
   await expect.poll(editorBg).not.toBe(dark)

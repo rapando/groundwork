@@ -5,15 +5,16 @@ import { fileURLToPath } from 'node:url'
 
 const SHOTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'screens')
 let gw: Instance
-test.afterEach(async () => { await gw?.stop() })
+test.afterEach(async () => {
+  await gw?.stop()
+})
 
 async function overview(page: Page, url: string) {
   await page.goto(url)
   await expect(page.getByRole('region', { name: 'Environments' })).toBeVisible()
 }
 // the run header's status pill (not the "Needs approval" filter button or list entries)
-const waitForApproval = (page: Page) =>
-  expect(page.locator('.dhead .pill', { hasText: 'needs approval' })).toBeVisible({ timeout: 30_000 })
+const waitForApproval = (page: Page) => expect(page.locator('.dhead .pill', { hasText: 'needs approval' })).toBeVisible({ timeout: 30_000 })
 const applyRunning = (page: Page) => expect(page.locator('li.stage.running', { hasText: 'apply' })).toBeVisible({ timeout: 10_000 })
 
 // approve through the plan review screen
@@ -25,8 +26,7 @@ async function approveVia(page: Page, confirm = '') {
   await expect(page).toHaveURL(/\/runs\/\d+$/)
 }
 
-const card = (page: Page, env: string) =>
-  page.locator('article').filter({ has: page.locator('.ename', { hasText: new RegExp(`^${env}$`) }) })
+const card = (page: Page, env: string) => page.locator('article').filter({ has: page.locator('.ename', { hasText: new RegExp(`^${env}$`) }) })
 
 test('plan from the overview, review, approve, watch the apply stream live', async ({ page }) => {
   gw = await start('iac-only', { init: true, env: { FAKE_APPLY_DELAY: '1' } })
@@ -49,7 +49,12 @@ test('plan from the overview, review, approve, watch the apply stream live', asy
 
   // resources go running → done while the log streams in
   await expect(changes.getByText('running').first()).toBeVisible({ timeout: 10_000 })
-  await expect(page.getByRole('log').getByText(/Creating\.\.\./).first()).toBeVisible()
+  await expect(
+    page
+      .getByRole('log')
+      .getByText(/Creating\.\.\./)
+      .first(),
+  ).toBeVisible()
   await page.screenshot({ path: path.join(SHOTS, 'run-applying.png'), fullPage: true })
   await expect(page.getByText('Applied: 3 added, 0 changed, 0 destroyed')).toBeVisible({ timeout: 20_000 })
   await expect(changes.getByText('done')).toHaveCount(3)
@@ -146,11 +151,14 @@ test('a plan waiting for approval survives a restart; a crashed apply is marked 
 
 test('a streaming log follows the newest line; scrolling up pauses, the bottom resumes', async ({ page }) => {
   const tasks = Array.from({ length: 60 }, (_, i) => `    - name: step ${i}\n      ansible.builtin.command: sleep 0.15\n      changed_when: false\n`).join('')
-  gw = await start(undefined, { init: true, files: {
-    'ansible.cfg': '[defaults]\ninventory = inventory/dev.yml\n',
-    'inventory/dev.yml': 'all:\n  children:\n    web:\n      hosts:\n        web-1:\n          ansible_connection: local\n',
-    'site.yml': `- hosts: web\n  gather_facts: false\n  tasks:\n${tasks}`,
-  } })
+  gw = await start(undefined, {
+    init: true,
+    files: {
+      'ansible.cfg': '[defaults]\ninventory = inventory/dev.yml\n',
+      'inventory/dev.yml': 'all:\n  children:\n    web:\n      hosts:\n        web-1:\n          ansible_connection: local\n',
+      'site.yml': `- hosts: web\n  gather_facts: false\n  tasks:\n${tasks}`,
+    },
+  })
   await page.goto(gw.url)
   await page.getByRole('link', { name: 'Inventory', exact: true }).click()
   await page.getByRole('button', { name: 'Run playbook' }).click()
@@ -172,6 +180,8 @@ test('a streaming log follows the newest line; scrolling up pauses, the bottom r
   await expect.poll(height).toBeGreaterThan(h + 100) // more lines arrive…
   expect(await gap()).toBeGreaterThan(100) // …without moving the reader
 
-  await log.evaluate((el) => { el.scrollTop = el.scrollHeight })
+  await log.evaluate((el) => {
+    el.scrollTop = el.scrollHeight
+  })
   await expect(follow).toBeChecked()
 })

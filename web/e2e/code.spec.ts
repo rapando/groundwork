@@ -6,7 +6,9 @@ import { start, Instance } from './helpers'
 
 const SHOTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'screens')
 let gw: Instance
-test.afterEach(async () => { await gw?.stop() })
+test.afterEach(async () => {
+  await gw?.stop()
+})
 
 const MAIN = `provider "aws" {
   region = "eu-west-1"

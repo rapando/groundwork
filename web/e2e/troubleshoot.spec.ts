@@ -7,10 +7,11 @@ import { start, Instance } from './helpers'
 
 const SHOTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'screens')
 let gw: Instance
-test.afterEach(async () => { await gw?.stop() })
+test.afterEach(async () => {
+  await gw?.stop()
+})
 
-const card = (page: Page, env: string) =>
-  page.locator('article').filter({ has: page.locator('.ename', { hasText: new RegExp(`^${env}$`) }) })
+const card = (page: Page, env: string) => page.locator('article').filter({ has: page.locator('.ename', { hasText: new RegExp(`^${env}$`) }) })
 
 test('a stale state lock: explained on the Overview, fixed from Troubleshoot', async ({ page }) => {
   const lock = path.join(mkdtempSync(path.join(tmpdir(), 'gw-lock-')), 'locked')
@@ -106,11 +107,13 @@ test('first run: the tour points at each area, the checklist follows real activi
   const ringAround = async (anchor: string) => {
     const ring = page.locator(`.tour-ring[data-anchor="${anchor}"]`)
     await expect(ring).toBeVisible()
-    await expect.poll(async () => {
-      const a = (await page.locator(`[data-tour="${anchor}"]`).first().boundingBox())!
-      const r = (await ring.boundingBox())!
-      return Math.abs(r.x + 6 - a.x) < 3 && Math.abs(r.y + 6 - a.y) < 3 && Math.abs(r.width - 12 - a.width) < 3
-    }).toBe(true)
+    await expect
+      .poll(async () => {
+        const a = (await page.locator(`[data-tour="${anchor}"]`).first().boundingBox())!
+        const r = (await ring.boundingBox())!
+        return Math.abs(r.x + 6 - a.x) < 3 && Math.abs(r.y + 6 - a.y) < 3 && Math.abs(r.width - 12 - a.width) < 3
+      })
+      .toBe(true)
   }
   await ringAround('nav')
   for (const anchor of ['envs', 'checks', 'issues', 'header']) {

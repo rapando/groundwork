@@ -9,10 +9,11 @@ const here = path.dirname(fileURLToPath(import.meta.url))
 const SHOTS = path.resolve(here, 'screens')
 const DANGER = path.resolve(here, '../../testdata/terraform/show_danger.json')
 let gw: Instance
-test.afterEach(async () => { await gw?.stop() })
+test.afterEach(async () => {
+  await gw?.stop()
+})
 
-const card = (page: Page, env: string) =>
-  page.locator('article').filter({ has: page.locator('.ename', { hasText: new RegExp(`^${env}$`) }) })
+const card = (page: Page, env: string) => page.locator('article').filter({ has: page.locator('.ename', { hasText: new RegExp(`^${env}$`) }) })
 
 async function planAndReview(page: Page, env: string) {
   await page.goto(gw.url)
@@ -41,7 +42,7 @@ test('a database replacement needs an acknowledgement and the typed environment 
   await expect(diff.getByText('must be replaced')).toBeVisible()
   await expect(diff.locator('.df.forces').first()).toContainText('triggers_replace')
   await expect(diff.locator('.df.forces').first()).toContainText('# forces replacement')
-  await expect(page.getByText('Why it\'s replaced')).toBeVisible()
+  await expect(page.getByText("Why it's replaced")).toBeVisible()
   await page.screenshot({ path: path.join(SHOTS, 'plan-danger.png'), fullPage: true })
 
   // filters

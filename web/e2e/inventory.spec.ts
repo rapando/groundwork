@@ -7,7 +7,9 @@ import { start, Instance } from './helpers'
 
 const SHOTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'screens')
 let gw: Instance
-test.afterEach(async () => { await gw?.stop() })
+test.afterEach(async () => {
+  await gw?.stop()
+})
 
 // real ansible against the lab: local-connection hosts plus one unreachable ssh host
 async function lab(page: Page) {
@@ -18,7 +20,8 @@ async function lab(page: Page) {
   await expect(page.getByRole('region', { name: 'Hosts' })).toBeVisible()
   return labDir
 }
-const hostRow = (page: Page, name: string) => page.getByRole('region', { name: 'Hosts' }).locator('.hr', { has: page.getByRole('button', { name, exact: true }) })
+const hostRow = (page: Page, name: string) =>
+  page.getByRole('region', { name: 'Hosts' }).locator('.hr', { has: page.getByRole('button', { name, exact: true }) })
 
 test('ping marks reachability; variables show their winning source', async ({ page }) => {
   await lab(page)
@@ -97,12 +100,15 @@ test('Overview: an Ansible environment opens the playbook dialog', async ({ page
 })
 
 test('structured edits: add, change and remove hosts, groups and variables, each previewed', async ({ page }) => {
-  const hosts = '---\n# dev inventory\np2p:\n  children:\n    dev:\n      hosts:\n        p2p-dev:\n          ansible_connection: local\n\nlocal:\n  hosts: {}\n'
-  gw = await start(undefined, { files: {
-    'groundwork.yaml': 'version: 1\nmode: standalone\nansible:\n  projects:\n    - path: .\n      inventories:\n        dev: environments/dev/hosts.yml\n',
-    'environments/dev/hosts.yml': hosts,
-    'site.yml': '- hosts: all\n  gather_facts: false\n  tasks:\n    - ansible.builtin.ping:\n',
-  } })
+  const hosts =
+    '---\n# dev inventory\np2p:\n  children:\n    dev:\n      hosts:\n        p2p-dev:\n          ansible_connection: local\n\nlocal:\n  hosts: {}\n'
+  gw = await start(undefined, {
+    files: {
+      'groundwork.yaml': 'version: 1\nmode: standalone\nansible:\n  projects:\n    - path: .\n      inventories:\n        dev: environments/dev/hosts.yml\n',
+      'environments/dev/hosts.yml': hosts,
+      'site.yml': '- hosts: all\n  gather_facts: false\n  tasks:\n    - ansible.builtin.ping:\n',
+    },
+  })
   const file = (p: string) => readFileSync(path.join(gw.dir, p), 'utf8')
   const apply = async (contains: string) => {
     const dlg = page.getByRole('dialog')
@@ -119,7 +125,10 @@ test('structured edits: add, change and remove hosts, groups and variables, each
   // a host, into the empty group, with an address
   await page.getByRole('button', { name: 'Add host' }).click()
   await page.getByRole('dialog').getByLabel('Host name').fill('web-3')
-  await page.getByRole('dialog').getByRole('combobox', { name: /^Group/ }).selectOption('local')
+  await page
+    .getByRole('dialog')
+    .getByRole('combobox', { name: /^Group/ })
+    .selectOption('local')
   await page.getByRole('dialog').getByLabel('Address (optional)').fill('10.0.1.13')
   await page.getByRole('button', { name: 'Preview' }).click()
   await apply('+    web-3:')
