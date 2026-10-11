@@ -13,6 +13,8 @@ Releases are automatic. Version numbers follow [Semantic Versioning](https://sem
 
 PRs are squash-merged, so the **PR title** is the commit that counts; the `pr-title` check rejects titles that aren't Conventional Commits. The highest bump since the last tag wins: a `fix:` and a `feat:` together make a minor release.
 
+What counts as breaking (and so needs the `!`) is defined in [compatibility](compatibility.md): a change to the meaning of `groundwork.yaml`, the CLI, a `--json` output, a migration path, a release artefact or a supported platform. The HTTP API is not a promised surface.
+
 ## What happens on a push to main
 
 1. `ci` runs.

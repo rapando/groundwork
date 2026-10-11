@@ -90,6 +90,7 @@ See [install](docs/install.md) for manual downloads, checksums, the install scri
 - Nothing changes infrastructure without a plan you reviewed and approved. Production-like environments need their name typed.
 - Each project's state (runs, plans, history) lives in its own `.groundwork/` (git-ignored). The only file groundwork adds to your repo is `groundwork.yaml`.
 - The service keeps its project list, session token, log and cloned repositories in `~/Library/Application Support/groundwork` (macOS) or `~/.config/groundwork` (Linux); set `GROUNDWORK_HOME` to move it.
+- What stays stable across releases (`groundwork.yaml`, the CLI, how data is migrated and backed up) is written down in [compatibility](docs/compatibility.md); the HTTP API is private to the bundled UI.
 
 ## Try it
 
