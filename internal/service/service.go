@@ -111,6 +111,8 @@ func (in *instance) start(ctx context.Context, version string, log *slog.Logger)
 	if err != nil {
 		log.Warn("file watching disabled", "err", err)
 		w = nil
+	} else {
+		w.OnPanic = a.InternalError
 	}
 	r := chi.NewRouter()
 	a.Routes(r)

@@ -71,4 +71,5 @@ The CLI commands that work on a single repository (`init`, `check`, `doctor`, `d
 - **The console doesn't load:** `groundwork service status`, then read the log it names.
 - **"terraform not found" only in the console:** the service's `PATH` is out of date. Re-run `groundwork service install` from a shell where `terraform` works.
 - **Port 7420 is taken:** the service picks a free port; `groundwork service status` shows which. To pin one, run `groundwork service start --port <n>` when no login service is installed.
-- **Stuck after an upgrade:** the running service is still the old binary. Run `groundwork service stop`, then `groundwork service start`.
+- **Stuck after an upgrade:** the running service is still the old binary. Run `groundwork service restart` (every command warns while the versions differ).
+- **"groundwork hit an internal error" in the Problems tray:** a background task of that project (a run, a check, the file watcher, a drift check) crashed. groundwork recovers from such crashes rather than exiting, so the other projects and the console are unaffected; the run involved is marked failed with the reason, the watcher or engine loop is restarted, and the stack trace is in the service log. Please report it with that trace.

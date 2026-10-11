@@ -35,6 +35,14 @@ func TestEveryRuleFiresOnItsFixture(t *testing.T) {
 		t.Run(r.ID, func(t *testing.T) {
 			var ids []string
 			var hit *Hit
+			if r.Raised == "internal" {
+				// raised by groundwork itself, never matched from output; render it instead
+				v := Render(r, Hit{Rule: r, Vars: map[string]string{"where": "run tf.plan", "error": "boom"}}, Context{Target: "run tf.plan"})
+				if !strings.Contains(v.Title, "run tf.plan") || !strings.Contains(v.Explain, "boom") || len(v.Steps) == 0 {
+					t.Fatalf("internal rule renders badly: %+v", v)
+				}
+				return
+			}
 			if len(r.diagRes) > 0 && len(r.logRes) == 0 {
 				for _, h := range MatchDiagnostics(rules, ds) {
 					if h.Rule.ID == r.ID {

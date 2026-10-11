@@ -21,6 +21,7 @@ import (
 	"github.com/rapando/groundwork/internal/doctor"
 	"github.com/rapando/groundwork/internal/events"
 	"github.com/rapando/groundwork/internal/redact"
+	"github.com/rapando/groundwork/internal/safego"
 	"github.com/rapando/groundwork/internal/store"
 	"github.com/rapando/groundwork/internal/workspace"
 )
@@ -59,9 +60,11 @@ type Service struct {
 
 	realRoot string
 	red      *redact.Redactor
-	sem      chan struct{}
-	initMu   sync.Mutex // terraform's plugin cache is not safe for concurrent writers
-	unitMu   sync.Map   // unit id → *sync.Mutex: one validate (and shadow tree rebuild) per unit at a time
+	// OnPanic is told when a background check run panics; the service keeps going.
+	OnPanic safego.Hook
+	sem     chan struct{}
+	initMu  sync.Mutex // terraform's plugin cache is not safe for concurrent writers
+	unitMu  sync.Map   // unit id → *sync.Mutex: one validate (and shadow tree rebuild) per unit at a time
 
 	mu       sync.Mutex
 	units    []Unit
@@ -238,7 +241,7 @@ func (s *Service) Start(unitID string, force bool, timeout time.Duration) {
 		return
 	}
 	s.bg.Add(1)
-	go func() {
+	safego.Go(s.Log, "checks "+unitID, s.OnPanic, func() {
 		defer s.bg.Done()
 		ctx := s.ctx
 		if timeout > 0 {
@@ -249,7 +252,7 @@ func (s *Service) Start(unitID string, force bool, timeout time.Duration) {
 		if err := s.Run(ctx, unitID, force); err != nil && !errors.Is(err, context.Canceled) {
 			s.Log.Warn("check run failed", "unit", unitID, "err", err)
 		}
-	}()
+	})
 }
 
 func (s *Service) schedule(unit string) {
@@ -261,7 +264,9 @@ func (s *Service) schedule(unit string) {
 	if t := s.timers[unit]; t != nil {
 		t.Stop()
 	}
-	s.timers[unit] = time.AfterFunc(s.debounce, func() { s.Start(unit, false, 0) })
+	s.timers[unit] = time.AfterFunc(s.debounce, func() {
+		safego.Run(s.Log, "checks timer "+unit, s.OnPanic, func() { s.Start(unit, false, 0) })
+	})
 }
 
 // Close cancels pending and in-flight background runs and waits for them, so
@@ -284,7 +289,7 @@ func (s *Service) Run(ctx context.Context, unitID string, force bool) error {
 		var wg sync.WaitGroup
 		for _, u := range s.Units() {
 			wg.Add(1)
-			go func() { defer wg.Done(); _ = s.runUnit(ctx, u, force) }()
+			safego.Go(s.Log, "checks "+u.ID, s.OnPanic, func() { defer wg.Done(); _ = s.runUnit(ctx, u, force) })
 		}
 		wg.Wait()
 		return nil
@@ -326,10 +331,10 @@ func (s *Service) runUnit(parent context.Context, u Unit, force bool) error {
 		prev := s.currentStatus(u.ID, tool)
 		s.setStatus(u.ID, ToolStatus{Tool: tool, Status: "running", Count: prev.Count})
 		wg.Add(1)
-		go func() {
+		safego.Go(s.Log, "check "+tool+" on "+u.ID, s.OnPanic, func() {
 			defer wg.Done()
 			s.runTool(ctx, u, tool, hash, herr == nil && !force, prev)
-		}()
+		})
 	}
 	wg.Wait()
 	s.Bus.Publish("checks.updated", map[string]any{"unit": u.ID})

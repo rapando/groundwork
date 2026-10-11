@@ -57,6 +57,7 @@ type Rule struct {
 	Supersedes []string                `yaml:"supersedes"`
 	Each       string                  `yaml:"each"` // one issue per match; named groups become variables (host → .Host)
 	Match      struct{ Any []Matcher } `yaml:"match"`
+	Raised     string                  `yaml:"raised"` // "internal": groundwork raises it itself, so it has no matchers
 	Extract    map[string]string       `yaml:"extract"`
 	Title      string                  `yaml:"title"`
 	Explain    string                  `yaml:"explain"`
@@ -73,7 +74,7 @@ type Rule struct {
 }
 
 func (r *Rule) compile() error {
-	if r.ID == "" || r.Title == "" || len(r.Match.Any) == 0 {
+	if r.ID == "" || r.Title == "" || (len(r.Match.Any) == 0 && r.Raised != "internal") {
 		return fmt.Errorf("rule %q: id, title and match.any are required", r.ID)
 	}
 	if r.Scope == "" {

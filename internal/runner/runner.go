@@ -26,6 +26,7 @@ import (
 	"github.com/rapando/groundwork/internal/config"
 	"github.com/rapando/groundwork/internal/events"
 	"github.com/rapando/groundwork/internal/redact"
+	"github.com/rapando/groundwork/internal/safego"
 	"github.com/rapando/groundwork/internal/store"
 	"github.com/rapando/groundwork/internal/terraform"
 )
@@ -193,6 +194,13 @@ type Runner struct {
 	Log       *slog.Logger
 	Cfg       func() *config.Config
 	KillGrace time.Duration // SIGINT → SIGKILL (default 15s)
+	// OnPanic is told when a job goroutine panics (the run is failed and the
+	// service keeps going); the API raises an issue from it.
+	OnPanic safego.Hook
+	// Hooks are test seams.
+	Hooks struct {
+		BeforeStart func(kind string) // called on the job goroutine before it starts
+	}
 
 	mu    sync.Mutex
 	jobs  map[int64]*job
@@ -310,8 +318,11 @@ func (r *Runner) Submit(req SubmitRequest) (*store.Run, error) {
 	}
 	j := r.newJob(run.ID, req.Kind, t)
 	r.wg.Add(1)
-	go func() {
+	safego.Go(r.Log, "run "+req.Kind, r.jobPanicked(j), func() {
 		defer r.wg.Done()
+		if r.Hooks.BeforeStart != nil {
+			r.Hooks.BeforeStart(req.Kind)
+		}
 		switch req.Kind {
 		case KindInit:
 			r.runInit(j)
@@ -328,7 +339,7 @@ func (r *Runner) Submit(req SubmitRequest) (*store.Run, error) {
 		default:
 			r.runAnsAdhoc(j)
 		}
-	}()
+	})
 	r.publishRun(run.ID)
 	return run, nil
 }
@@ -466,15 +477,32 @@ func (r *Runner) Approve(id int64, req ApproveRequest) error {
 	_ = r.Store.UpdateRun(id, store.RunUpdate{Status: store.StatusQueued})
 	r.publishRun(id)
 	r.wg.Add(1)
-	go func() {
+	safego.Go(r.Log, "run "+run.Kind, r.jobPanicked(j), func() {
 		defer r.wg.Done()
+		if r.Hooks.BeforeStart != nil {
+			r.Hooks.BeforeStart(run.Kind)
+		}
 		if t.isAnsible() {
 			r.runAnsRunPhase(j)
 		} else {
 			r.runApplyPhase(j)
 		}
-	}()
+	})
 	return nil
+}
+
+// jobPanicked makes a run that died of a panic end as failed, with the
+// reason in its summary, so it isn't left "running" forever. The job's
+// deferred cleanup (log, lock, registry) already ran while unwinding.
+func (r *Runner) jobPanicked(j *job) safego.Hook {
+	return func(name string, v any) {
+		r.end(j, store.StatusFailed, nil, fmt.Sprintf("groundwork internal error in %s: %v (details in the service log)", name, v))
+		r.dropJob(j)
+		r.publishRun(j.id)
+		if r.OnPanic != nil {
+			r.OnPanic(name, v)
+		}
+	}
 }
 
 // Freshness reports, cheaply, whether a waiting plan is still approvable (age

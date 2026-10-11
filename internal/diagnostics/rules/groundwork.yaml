@@ -1,0 +1,21 @@
+# Issues groundwork raises about itself. They are never matched from logs:
+# the service records one when a background goroutine panics and is recovered.
+- id: groundwork-internal-error
+  scope: any
+  category: groundwork
+  severity: error
+  raised: internal
+  resolve: manual
+  title: 'groundwork hit an internal error in {{ .where }}'
+  explain: >
+    A background task ({{ .where }}) failed with "{{ .error }}". groundwork recovered and kept serving,
+    but whatever that task was doing (a run, a check, a drift check, watching files) did not finish.
+    The stack trace is in the service log.
+  steps:
+    - title: Retry what you were doing
+      detail: A run that died this way is marked failed; start it again.
+    - title: Restart the service if it keeps happening
+      action: { kind: copy, label: Copy command, text: 'groundwork service restart' }
+    - title: Report it
+      detail: Attach the stack trace from the service log (`groundwork service logs`) and the output of `groundwork version`.
+      action: { kind: open, label: Open an issue, href: 'https://github.com/rapando/groundwork/issues/new' }

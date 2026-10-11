@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/rapando/groundwork/internal/safego"
 	"github.com/rapando/groundwork/internal/terraform"
 )
 
@@ -82,7 +83,9 @@ func (r *Runner) execute(j *job, o execOpts) (execResult, error) {
 
 	var killed atomic.Bool
 	done := make(chan struct{})
-	go func() {
+	// a panic in any of these helpers cancels the job rather than hanging the stage
+	onPanic := func(string, any) { j.cancel() }
+	safego.Go(r.Log, "job watchdog", onPanic, func() {
 		select {
 		case <-j.ctx.Done():
 			interrupt(cmd)
@@ -96,26 +99,26 @@ func (r *Runner) execute(j *job, o execOpts) (execResult, error) {
 			}
 		case <-done:
 		}
-	}()
+	})
 
 	var wg sync.WaitGroup
 	if evR != nil {
 		wg.Add(1)
-		go func() { defer wg.Done(); readLines(evR, func(l string) { o.events([]byte(l)) }) }()
+		safego.Go(r.Log, "event reader", onPanic, func() { defer wg.Done(); readLines(evR, func(l string) { o.events([]byte(l)) }) })
 	}
 	wg.Add(2)
-	go func() {
+	safego.Go(r.Log, "stdout reader", onPanic, func() {
 		defer wg.Done()
 		if o.capture != nil {
 			_, _ = io.Copy(o.capture, stdout)
 			return
 		}
 		readLines(stdout, func(l string) { r.handleLine(j, o.stage, l, o.jsonMode) })
-	}()
-	go func() {
+	})
+	safego.Go(r.Log, "stderr reader", onPanic, func() {
 		defer wg.Done()
 		readLines(stderr, func(l string) { r.handleLine(j, o.stage, l, false) })
-	}()
+	})
 	wg.Wait()
 	werr := cmd.Wait()
 	close(done)

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/rapando/groundwork/internal/safego"
 )
 
 type Tool struct {
@@ -41,7 +43,7 @@ func DetectTools(ctx context.Context) []Tool {
 	var wg sync.WaitGroup
 	for i, s := range specs {
 		wg.Add(1)
-		go func() {
+		safego.Go(nil, "detect "+s.name, nil, func() {
 			defer wg.Done()
 			t := Tool{Name: s.name, Hint: s.hint}
 			p, err := exec.LookPath(s.name)
@@ -57,7 +59,7 @@ func DetectTools(ctx context.Context) []Tool {
 				t.Version = strings.TrimSpace(m[1])
 			}
 			out[i] = t
-		}()
+		})
 	}
 	wg.Wait()
 	return out

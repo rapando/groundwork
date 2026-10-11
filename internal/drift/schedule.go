@@ -22,6 +22,7 @@ import (
 
 	"github.com/rapando/groundwork/internal/config"
 	"github.com/rapando/groundwork/internal/runner"
+	"github.com/rapando/groundwork/internal/safego"
 	"github.com/rapando/groundwork/internal/store"
 )
 
@@ -54,6 +55,8 @@ type Scheduler struct {
 	Log    *slog.Logger
 	Notify Notifier
 	URL    func() string // base URL of the UI, for links in notices
+	// OnPanic is told when a scheduled check panics; the schedule stays installed.
+	OnPanic safego.Hook
 
 	mu      sync.Mutex
 	cron    *cron.Cron
@@ -93,7 +96,9 @@ func (s *Scheduler) Apply() {
 	if spec == "" {
 		return
 	}
-	id, err := s.cron.AddFunc(spec, func() { s.RunAll(context.Background()) })
+	id, err := s.cron.AddFunc(spec, func() {
+		safego.Run(s.Log, "drift schedule", s.OnPanic, func() { s.RunAll(context.Background()) })
+	})
 	if err != nil {
 		s.err = "invalid schedule: " + err.Error()
 		return

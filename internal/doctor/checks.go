@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/rapando/groundwork/internal/config"
+	"github.com/rapando/groundwork/internal/safego"
 	"github.com/rapando/groundwork/internal/store"
 )
 
@@ -137,12 +138,12 @@ func Run(ctx context.Context, in Input) Report {
 	var wg sync.WaitGroup
 	for i, fn := range fns {
 		wg.Add(1)
-		go func() {
+		safego.Go(nil, "doctor check", nil, func() {
 			defer wg.Done()
 			cctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 			defer cancel()
 			results[i] = fn(cctx, in)
-		}()
+		})
 	}
 	wg.Wait()
 	rep := Report{RanAt: time.Now().UTC()}

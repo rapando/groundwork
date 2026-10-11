@@ -16,6 +16,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/rapando/groundwork/internal/runner"
+	"github.com/rapando/groundwork/internal/safego"
 	"github.com/rapando/groundwork/internal/store"
 	"github.com/rapando/groundwork/internal/terraform"
 )
@@ -440,14 +441,14 @@ func (a *API) listEnvs(w http.ResponseWriter, r *http.Request) {
 	var wg sync.WaitGroup
 	for i, sc := range scopes {
 		wg.Add(1)
-		go func() {
+		safego.Go(nil, "inventory load", a.InternalError, func() {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 			defer cancel()
 			if inv, err := a.loadInventory(ctx, sc); err == nil {
 				invs[i] = inv
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	for i, sc := range scopes {

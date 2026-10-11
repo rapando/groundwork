@@ -19,6 +19,7 @@ import (
 	"github.com/rapando/groundwork/internal/checks"
 	"github.com/rapando/groundwork/internal/events"
 	"github.com/rapando/groundwork/internal/runner"
+	"github.com/rapando/groundwork/internal/safego"
 	"github.com/rapando/groundwork/internal/store"
 )
 
@@ -138,6 +139,8 @@ type Engine struct {
 	Checks *checks.Service
 	Bus    *events.Bus
 	Log    *slog.Logger
+	// OnPanic is told when the engine loop panics; the loop is restarted.
+	OnPanic safego.Hook
 
 	mu       sync.Mutex
 	rules    []*Rule
@@ -191,8 +194,8 @@ func (e *Engine) rule(id string) *Rule {
 // Start processes runs and findings as they change, plus a periodic sweep
 // (the bus drops events for slow subscribers).
 func (e *Engine) Start(ctx context.Context) {
-	ch, cancel := e.Bus.Subscribe()
-	go func() {
+	safego.Loop(ctx, e.Log, "issue engine", e.OnPanic, func(ctx context.Context) {
+		ch, cancel := e.Bus.Subscribe()
 		defer cancel()
 		tick := time.NewTicker(30 * time.Second)
 		defer tick.Stop()
@@ -227,7 +230,7 @@ func (e *Engine) Start(ctx context.Context) {
 				e.Sweep()
 			}
 		}
-	}()
+	})
 }
 
 func terminal(status string) bool {

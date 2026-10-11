@@ -17,6 +17,7 @@ import (
 
 	"github.com/rapando/groundwork/internal/diagnostics"
 	"github.com/rapando/groundwork/internal/doctor"
+	"github.com/rapando/groundwork/internal/safego"
 	"github.com/rapando/groundwork/internal/store"
 	"github.com/rapando/groundwork/internal/workspace"
 )
@@ -24,14 +25,14 @@ import (
 // Start runs the background services: the issue engine and the drift schedule.
 func (a *API) Start(ctx context.Context) {
 	a.Issues.Start(ctx)
-	go func() { // warm the inventory cache: the Overview needs host counts first thing
+	safego.Go(nil, "inventory warm-up", a.InternalError, func() { // the Overview needs host counts first thing
 		cfg, _ := a.config()
 		for _, sc := range scopesFor(cfg, a.Root) {
 			c, cancel := context.WithTimeout(ctx, 10*time.Second)
 			_, _ = a.loadInventory(c, sc)
 			cancel()
 		}
-	}()
+	})
 	a.Drift.Apply()
 	go func() {
 		<-ctx.Done()
@@ -220,7 +221,7 @@ func (a *API) driftSchedule(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) runDriftAll(w http.ResponseWriter, r *http.Request) {
-	go a.Drift.RunAll(context.Background())
+	safego.Go(nil, "drift run", a.InternalError, func() { a.Drift.RunAll(context.Background()) })
 	writeJSON(w, 202, map[string]any{"started": true})
 }
 

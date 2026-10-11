@@ -62,7 +62,19 @@ func New(root, version string, bus *events.Bus, st *store.Store) *API {
 	a.Checks = checks.New(root, func() *config.Config { c, _ := a.config(); return c }, checks.OSExec{}, st, bus, nil)
 	a.Issues = diagnostics.New(root, st, a.Runner, a.Checks, bus, nil)
 	a.Drift = drift.New(a.Runner, st, func() *config.Config { c, _ := a.config(); return c }, nil)
+	a.Runner.OnPanic, a.Checks.OnPanic, a.Issues.OnPanic, a.Drift.OnPanic = a.InternalError, a.InternalError, a.InternalError, a.InternalError
 	return a
+}
+
+// InternalError records a recovered panic as an issue on this project, so it
+// is visible in the Problems tray and not only in the service log. It is
+// the safego hook for every background goroutine of the project.
+func (a *API) InternalError(where string, v any) {
+	ctx := diagnostics.Context{Target: where, Vars: map[string]string{"where": where, "error": fmt.Sprint(v)}}
+	if err := a.Store.RaiseIssue("groundwork-internal-error", where, ctx); err != nil {
+		return
+	}
+	a.Bus.Publish("issues.updated", map[string]any{})
 }
 
 // Ignore returns the configured ignore patterns (nil before setup).

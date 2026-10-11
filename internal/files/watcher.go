@@ -1,6 +1,7 @@
 package files
 
 import (
+	"context"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
+	"github.com/rapando/groundwork/internal/safego"
 	"github.com/rapando/groundwork/internal/workspace"
 )
 
@@ -33,10 +35,15 @@ type Watcher struct {
 	onChange func(paths []string)
 	log      *slog.Logger
 
+	// OnPanic is told when the watch loop panics; the loop is restarted.
+	OnPanic safego.Hook
+
 	mu      sync.Mutex
 	pending map[string]struct{}
 	timer   *time.Timer
 	done    chan struct{}
+	ctx     context.Context // done when Close is called
+	cancel  context.CancelFunc
 }
 
 var skipDir = map[string]bool{".git": true, ".terraform": true, "node_modules": true, ".venv": true, ".groundwork": true, "vendor": true}
@@ -49,13 +56,15 @@ func NewWatcher(root string, ignore []string, debounce time.Duration, onChange f
 	}
 	w := &Watcher{root: root, ignore: ignore, debounce: debounce, onChange: onChange, log: log, every: pollEvery,
 		pending: map[string]struct{}{}, done: make(chan struct{})}
+	w.ctx, w.cancel = context.WithCancel(context.Background())
 	tree, err := workspace.ListTree(root, ignore)
 	if err != nil {
 		return nil, err
 	}
 	if runtime.GOOS != "linux" && len(tree.Files) > PollAbove {
 		log.Info("large repository: watching for changes by polling", "files", len(tree.Files))
-		go w.poll(snapshot(root, tree))
+		snap := snapshot(root, tree)
+		safego.Loop(w.ctx, log, "file watcher (polling)", func(n string, v any) { w.panicked(n, v) }, func(context.Context) { w.poll(snap) })
 		return w, nil
 	}
 	fw, err := fsnotify.NewWatcher()
@@ -72,8 +81,14 @@ func NewWatcher(root string, ignore []string, debounce time.Duration, onChange f
 	if failed > 0 {
 		log.Warn("some directories could not be watched; changes there may be missed", "failed", failed)
 	}
-	go w.loop()
+	safego.Loop(w.ctx, log, "file watcher", func(n string, v any) { w.panicked(n, v) }, func(context.Context) { w.loop() })
 	return w, nil
+}
+
+func (w *Watcher) panicked(name string, v any) {
+	if w.OnPanic != nil {
+		w.OnPanic(name, v)
+	}
 }
 
 func (w *Watcher) Close() {
@@ -83,6 +98,7 @@ func (w *Watcher) Close() {
 	default:
 	}
 	close(w.done)
+	w.cancel()
 	if w.fw != nil {
 		w.fw.Close()
 	}
