@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -119,8 +120,11 @@ func TestDriftCommandReportsPerEnvironment(t *testing.T) {
 	}
 }
 
-// startService runs a service in this process for the CLI to talk to.
-func startService(t *testing.T) service.ServerInfo {
+// startService runs a service in this process for the CLI to talk to. The
+// returned stop must be deferred by the caller: t.Cleanup runs last-in
+// first-out, so temp dirs made after this call (the projects the service is
+// writing into) would otherwise be removed while it still runs.
+func startService(t *testing.T) (service.ServerInfo, func()) {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("GROUNDWORK_HOME", home)
@@ -133,8 +137,10 @@ func startService(t *testing.T) service.ServerInfo {
 	deadline := time.Now().Add(10 * time.Second)
 	for {
 		if si, ok := service.Running(home); ok {
-			t.Cleanup(func() { cancel(); <-done })
-			return si
+			var once sync.Once
+			stop := func() { once.Do(func() { cancel(); <-done }) }
+			t.Cleanup(stop)
+			return si, stop
 		}
 		if time.Now().After(deadline) {
 			t.Fatal("service did not start")
@@ -144,7 +150,8 @@ func startService(t *testing.T) service.ServerInfo {
 }
 
 func TestProjectCommandsAgainstARunningService(t *testing.T) {
-	si := startService(t)
+	si, stop := startService(t)
+	defer stop()
 	t.Setenv("HOME", t.TempDir())
 	out, err := runRoot(t, "", "projects")
 	if err != nil || !strings.Contains(out, "no projects yet") {
