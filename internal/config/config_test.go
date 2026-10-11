@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/rapando/groundwork/internal/workspace"
 )
@@ -89,12 +90,41 @@ checks:
 	}
 }
 
+// An unknown top-level key is what a newer release's config looks like to
+// this one: it opens, with a warning. Unknown keys inside a known block are
+// typos and stay errors.
 func TestUnknownFieldAndSyntax(t *testing.T) {
-	if _, err := Parse([]byte("version: 1\nmode: standalone\nbogus: 1\n"), FileName); err == nil || !strings.Contains(err.Error(), "bogus") {
-		t.Fatalf("unknown field: %v", err)
+	c, err := Parse([]byte("version: 1\nmode: standalone\nbogus: 1\n"), FileName)
+	if err != nil || c == nil || len(c.Warnings) != 1 || !strings.Contains(c.Warnings[0], `"bogus"`) || !strings.Contains(c.Warnings[0], "groundwork.yaml:3") {
+		t.Fatalf("unknown top-level field should warn, not fail: %v %v", err, c)
+	}
+	if c.Mode != "standalone" {
+		t.Fatal("the rest of the file must still be read")
+	}
+	if _, err := Parse([]byte("version: 1\nmode: standalone\nterraform:\n  bogus: 1\n"), FileName); err == nil || !strings.Contains(err.Error(), "bogus") {
+		t.Fatalf("unknown nested field: %v", err)
 	}
 	if _, err := Parse([]byte("version: [1\n"), FileName); err == nil {
 		t.Fatal("syntax error expected")
+	}
+}
+
+func TestRetentionAndRunTimeoutDefaults(t *testing.T) {
+	base := "version: 1\nmode: standalone\n"
+	c, err := Parse([]byte(base), FileName)
+	if err != nil || c.Retention.RunsOrDefault() != 500 || c.Retention.MaxAge() != 30*24*time.Hour ||
+		c.Terraform.RunTimeoutDuration() != 2*time.Hour || c.Ansible.RunTimeoutDuration() != 2*time.Hour {
+		t.Fatalf("defaults: %v %+v", err, c)
+	}
+	c, err = Parse([]byte(base+"retention: { runs: 50, days: 7 }\nterraform: { run_timeout: 45m }\nansible: { run_timeout: 3h }\n"), FileName)
+	if err != nil || c.Retention.RunsOrDefault() != 50 || c.Retention.MaxAge() != 7*24*time.Hour ||
+		c.Terraform.RunTimeoutDuration() != 45*time.Minute || c.Ansible.RunTimeoutDuration() != 3*time.Hour {
+		t.Fatalf("configured: %v %+v", err, c)
+	}
+	for _, bad := range []string{"retention: { runs: -1 }\n", "terraform: { run_timeout: soon }\n", "ansible: { run_timeout: -1h }\n"} {
+		if _, err := Parse([]byte(base+bad), FileName); err == nil {
+			t.Errorf("accepted %q", bad)
+		}
 	}
 }
 

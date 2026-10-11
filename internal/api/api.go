@@ -89,6 +89,13 @@ func (a *API) config() (*config.Config, error) {
 	return a.cfg, a.cfgErr
 }
 
+// Config is the project's parsed groundwork.yaml (nil before setup or while
+// it fails to parse).
+func (a *API) Config() *config.Config {
+	c, _ := a.config()
+	return c
+}
+
 // Routes mounts handlers under the /api router.
 func (a *API) Routes(r chi.Router) {
 	r.Get("/workspace", a.workspace)
@@ -163,6 +170,9 @@ func (a *API) workspace(w http.ResponseWriter, r *http.Request) {
 	}
 	if cfgErr != nil {
 		out["config_error"] = cfgErr.Error()
+	}
+	if cfg != nil && len(cfg.Warnings) > 0 {
+		out["config_warnings"] = cfg.Warnings
 	}
 	switch {
 	case cfg != nil:

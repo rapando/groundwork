@@ -38,7 +38,15 @@ Destroying or replacing a resource whose type matches one of these needs an expl
 terraform:
   plan_ttl: 30m
   danger: ["*_cache_cluster", "*_kms_key"]
+  run_timeout: 2h        # a run past this is stopped and fails (default 2h)
+ansible:
+  run_timeout: 2h
+retention:
+  runs: 500              # keep this many runs per project (default 500)…
+  days: 30               # …and none older than this (default 30)
 ```
+
+Retention prunes finished runs (and their logs and plans) when the project is opened; runs in progress or waiting for approval are always kept.
 
 ### Secrets in plans
 

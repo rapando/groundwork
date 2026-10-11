@@ -11,6 +11,7 @@ export interface Workspace {
   mode?: 'standalone' | 'embedded'
   config?: Record<string, any>
   config_error?: string
+  config_warnings?: string[]
 }
 
 export interface Evidence { file: string; line?: number; note: string }

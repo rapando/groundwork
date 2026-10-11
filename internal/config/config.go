@@ -26,7 +26,39 @@ type Config struct {
 	Ansible   Ansible   `yaml:"ansible,omitempty"`
 	Checks    Checks    `yaml:"checks,omitempty"`
 	Drift     Drift     `yaml:"drift,omitempty"`
+	Retention Retention `yaml:"retention,omitempty"`
 	Ignore    []string  `yaml:"ignore,omitempty"`
+
+	// Warnings are non-fatal findings from parsing: unknown top-level keys,
+	// which a newer release may have written. They are shown, not saved.
+	Warnings []string `yaml:"-" json:"-"`
+}
+
+// Retention bounds the run history kept per project. Zero means the default
+// (500 runs, 30 days); runs still in progress or awaiting approval are kept.
+type Retention struct {
+	Runs int `yaml:"runs,omitempty"`
+	Days int `yaml:"days,omitempty"`
+}
+
+const (
+	DefaultRetentionRuns = 500
+	DefaultRetentionDays = 30
+	DefaultRunTimeout    = 2 * time.Hour
+)
+
+func (r Retention) RunsOrDefault() int {
+	if r.Runs > 0 {
+		return r.Runs
+	}
+	return DefaultRetentionRuns
+}
+
+func (r Retention) MaxAge() time.Duration {
+	if r.Days > 0 {
+		return time.Duration(r.Days) * 24 * time.Hour
+	}
+	return DefaultRetentionDays * 24 * time.Hour
 }
 
 type Terraform struct {
@@ -38,6 +70,19 @@ type Terraform struct {
 	Danger []string `yaml:"danger,omitempty"`
 	// PlanTTL is how long a saved plan stays approvable (default 1h).
 	PlanTTL string `yaml:"plan_ttl,omitempty"`
+	// RunTimeout bounds one run (plan or apply); a hung provider is killed
+	// and the run fails instead of holding the root's lock forever (default 2h).
+	RunTimeout string `yaml:"run_timeout,omitempty"`
+}
+
+// RunTimeoutDuration returns the configured run timeout (default two hours).
+func (t Terraform) RunTimeoutDuration() time.Duration { return runTimeout(t.RunTimeout) }
+
+func runTimeout(s string) time.Duration {
+	if d, err := time.ParseDuration(s); err == nil && d > 0 {
+		return d
+	}
+	return DefaultRunTimeout
 }
 
 // PlanTTLDuration returns the configured plan lifetime (default one hour).
@@ -68,7 +113,12 @@ type Ansible struct {
 	// part of the repository, so a repository cloned through the UI could
 	// otherwise run a script of its own choosing.
 	AllowVaultScript bool `yaml:"allow_vault_script,omitempty"`
+	// RunTimeout bounds one playbook or ad-hoc run (default 2h).
+	RunTimeout string `yaml:"run_timeout,omitempty"`
 }
+
+// RunTimeoutDuration returns the configured run timeout (default two hours).
+func (a Ansible) RunTimeoutDuration() time.Duration { return runTimeout(a.RunTimeout) }
 
 type AnsibleProject struct {
 	Path              string            `yaml:"path"`
@@ -187,7 +237,10 @@ func (e *ValidationError) Error() string {
 	return b.String()
 }
 
-var yamlLineRe = regexp.MustCompile(`line (\d+): (.*)`)
+var (
+	yamlLineRe        = regexp.MustCompile(`line (\d+): (.*)`)
+	unknownTopLevelRe = regexp.MustCompile(`line (\d+): field (\S+) not found in type config\.Config$`)
+)
 
 // Parse decodes and validates groundwork.yaml content. name is used in errors.
 func Parse(data []byte, name string) (*Config, error) {
@@ -204,8 +257,16 @@ func Parse(data []byte, name string) (*Config, error) {
 	if err := dec.Decode(&c); err != nil {
 		var te *yaml.TypeError
 		if errors.As(err, &te) {
+			// yaml.v3 keeps decoding past a TypeError, so c is complete.
+			// An unknown *top-level* key is tolerated with a warning: a
+			// newer release may add one, and this file should still open
+			// here. Unknown keys inside a known block are errors as before.
 			ve := &ValidationError{File: name}
 			for _, m := range te.Errors {
+				if sm := unknownTopLevelRe.FindStringSubmatch(m); sm != nil {
+					c.Warnings = append(c.Warnings, fmt.Sprintf("%s:%s: unknown setting %q is ignored (it may need a newer groundwork)", name, sm[1], sm[2]))
+					continue
+				}
 				p := Problem{Msg: m}
 				if sm := yamlLineRe.FindStringSubmatch(m); sm != nil {
 					p.Line, _ = strconv.Atoi(sm[1])
@@ -214,9 +275,12 @@ func Parse(data []byte, name string) (*Config, error) {
 				}
 				ve.Problems = append(ve.Problems, p)
 			}
-			return nil, ve
+			if len(ve.Problems) > 0 {
+				return nil, ve
+			}
+		} else {
+			return nil, syntaxProblem(name, err)
 		}
-		return nil, syntaxProblem(name, err)
 	}
 	c.applyDefaults()
 	if probs := c.validate(); len(probs) > 0 {
@@ -328,6 +392,22 @@ func (c *Config) validate() []problem {
 		if d, err := time.ParseDuration(c.Terraform.PlanTTL); err != nil || d <= 0 {
 			add("must be a positive duration such as 30m or 2h", "terraform", "plan_ttl")
 		}
+	}
+	if c.Terraform.RunTimeout != "" {
+		if d, err := time.ParseDuration(c.Terraform.RunTimeout); err != nil || d <= 0 {
+			add("must be a positive duration such as 30m or 2h", "terraform", "run_timeout")
+		}
+	}
+	if c.Ansible.RunTimeout != "" {
+		if d, err := time.ParseDuration(c.Ansible.RunTimeout); err != nil || d <= 0 {
+			add("must be a positive duration such as 30m or 2h", "ansible", "run_timeout")
+		}
+	}
+	if c.Retention.Runs < 0 {
+		add("must be a positive number of runs", "retention", "runs")
+	}
+	if c.Retention.Days < 0 {
+		add("must be a positive number of days", "retention", "days")
 	}
 	for i, p := range c.Terraform.Danger {
 		if _, err := path.Match(p, "x"); err != nil || p == "" {

@@ -18,6 +18,7 @@ import (
 
 	"github.com/rapando/groundwork/internal/api"
 	"github.com/rapando/groundwork/internal/app"
+	"github.com/rapando/groundwork/internal/config"
 	"github.com/rapando/groundwork/internal/events"
 	"github.com/rapando/groundwork/internal/files"
 	"github.com/rapando/groundwork/internal/server"
@@ -97,7 +98,11 @@ func (in *instance) start(ctx context.Context, version string, log *slog.Logger)
 	}
 	bus := events.NewBus()
 	a := api.New(in.p.Path, version, bus, st)
-	if err := a.Runner.Recover(500, 30*24*time.Hour); err != nil {
+	var ret config.Retention
+	if c := a.Config(); c != nil {
+		ret = c.Retention
+	}
+	if err := a.Runner.Recover(ret.RunsOrDefault(), ret.MaxAge()); err != nil {
 		log.Warn("recovering interrupted runs failed", "err", err)
 	}
 	bg, stop := context.WithCancel(ctx)

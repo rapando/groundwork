@@ -83,6 +83,9 @@ func runCheck(ctx context.Context, out io.Writer, ex checks.Exec, f *checkFlags)
 	if err != nil {
 		return &ExitError{2, err.Error()}
 	}
+	for _, w := range cfg.Warnings {
+		fmt.Fprintln(os.Stderr, "warning:", w)
+	}
 	stateDir, err := app.Bootstrap(root)
 	if err != nil {
 		return err

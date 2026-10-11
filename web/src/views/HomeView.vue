@@ -130,6 +130,7 @@ const hasTerraform = computed(() => (ws.ws?.config?.terraform?.roots ?? []).leng
         </ol>
       </section>
       <p v-if="ws.ws?.config_error" class="err" role="alert">{{ ws.ws.config_error }}</p>
+      <p v-for="w in ws.ws?.config_warnings ?? []" :key="w" class="warn" role="status">{{ w }}</p>
       <p v-if="error" class="err" role="alert">{{ error }}</p>
 
       <section v-if="runs.envs.length" class="envs" aria-label="Environments" data-tour="envs">
