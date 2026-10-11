@@ -86,6 +86,31 @@ func TestRefusals(t *testing.T) {
 	if _, err := Write(root, "../escape", []byte("x"), "", true); err == nil {
 		t.Fatal("path escape")
 	}
+	// the rules follow the file, not the spelling: a symlink into .git stays
+	// inside the repo (SafePath is happy) but must still be refused
+	os.MkdirAll(filepath.Join(root, ".git"), 0o755)
+	os.WriteFile(filepath.Join(root, ".git", "config"), []byte("[core]\n"), 0o644)
+	os.Symlink(filepath.Join(root, ".git"), filepath.Join(root, "link"))
+	if _, err := Read(root, "link/config"); !errors.Is(err, ErrForbidden) {
+		t.Errorf("read through symlink into .git: %v", err)
+	}
+	if _, err := Write(root, "link/hooks/pre-commit", []byte("#!/bin/sh\n"), "", true); !errors.Is(err, ErrForbidden) {
+		t.Errorf("write through symlink into .git: %v", err)
+	}
+	os.Symlink(filepath.Join(root, ".git", "config"), filepath.Join(root, "cfg"))
+	if _, err := Write(root, "cfg", []byte("x"), "", false); !errors.Is(err, ErrForbidden) {
+		t.Errorf("write to a symlinked .git file: %v", err)
+	}
+	// on a case-insensitive filesystem .GIT is .git; the rule is spelled
+	// case-insensitively everywhere so it holds on both kinds
+	for _, p := range []string{".GIT/config", ".Groundwork/state.db", "x/.TERRAFORM/y.tf", "Terraform.TFSTATE"} {
+		if _, err := Write(root, p, []byte("x"), "", true); !errors.Is(err, ErrForbidden) {
+			t.Errorf("write %s: %v", p, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(root, ".git", "hooks")); err == nil {
+		t.Fatal("a refused write created a directory inside .git")
+	}
 	if _, err := Write(root, "big2.txt", []byte(strings.Repeat("a", MaxEditSize+1)), "", true); !errors.Is(err, ErrTooLarge) {
 		t.Fatalf("oversized write: %v", err)
 	}

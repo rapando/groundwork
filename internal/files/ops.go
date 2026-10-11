@@ -42,30 +42,47 @@ func SHA(b []byte) string {
 
 // editable rejects paths groundwork must never write through the editor:
 // VCS internals, its own state, terraform's working data and state files.
+// Segments are compared case-insensitively: macOS's default filesystem is,
+// so `.GIT/config` is `.git/config` there.
 func editable(rel string) error {
 	rel = filepath.ToSlash(filepath.Clean(rel))
 	for _, seg := range strings.Split(rel, "/") {
-		switch seg {
+		switch strings.ToLower(seg) {
 		case ".git", ".groundwork", ".terraform":
 			return fmt.Errorf("%w: %s", ErrForbidden, rel)
 		}
 	}
+	lower := strings.ToLower(rel)
 	for _, suf := range []string{".tfstate", ".tfstate.backup"} {
-		if strings.HasSuffix(rel, suf) {
+		if strings.HasSuffix(lower, suf) {
 			return fmt.Errorf("%w: state files are managed by terraform: %s", ErrForbidden, rel)
 		}
 	}
 	return nil
 }
 
+// editablePath is SafePath plus the editable rules, applied both to the name
+// given and to where it really lands (an in-repo symlink `foo -> .git` passes
+// SafePath because it stays inside the root).
+func editablePath(root, rel string) (string, error) {
+	full, resolved, err := Resolve(root, rel)
+	if err != nil {
+		return "", err
+	}
+	if err := editable(rel); err != nil {
+		return "", err
+	}
+	if err := editable(resolved); err != nil {
+		return "", err
+	}
+	return full, nil
+}
+
 // Read returns a text file's content with its sha. Binary and oversized files
 // are refused rather than mangled.
 func Read(root, rel string) (*Content, error) {
-	full, err := SafePath(root, rel)
+	full, err := editablePath(root, rel)
 	if err != nil {
-		return nil, err
-	}
-	if err := editable(rel); err != nil {
 		return nil, err
 	}
 	st, err := os.Stat(full)
@@ -100,11 +117,8 @@ var writeMu sync.Mutex // serialises check-then-rename; edits are human-paced
 // Write replaces a file atomically. ifMatch is the sha the caller last read; a
 // mismatch returns *ConflictError. With create, the file must not exist.
 func Write(root, rel string, data []byte, ifMatch string, create bool) (string, error) {
-	full, err := SafePath(root, rel)
+	full, err := editablePath(root, rel)
 	if err != nil {
-		return "", err
-	}
-	if err := editable(rel); err != nil {
 		return "", err
 	}
 	if len(data) > MaxEditSize {

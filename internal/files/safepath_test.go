@@ -32,6 +32,26 @@ func TestSafePath(t *testing.T) {
 	}
 }
 
+// Resolve reports where a path lands after following in-repo symlinks, for
+// rules that must apply to the target and not just the name.
+func TestResolveFollowsInRepoSymlinks(t *testing.T) {
+	root := t.TempDir()
+	os.MkdirAll(filepath.Join(root, ".git", "hooks"), 0o755)
+	os.Symlink(filepath.Join(root, ".git"), filepath.Join(root, "link"))
+	for in, want := range map[string]string{
+		"link/config":         filepath.FromSlash(".git/config"),         // through a symlinked dir, target missing
+		"link/hooks":          filepath.FromSlash(".git/hooks"),          // existing target
+		"link/hooks/a/b/c.sh": filepath.FromSlash(".git/hooks/a/b/c.sh"), // several missing levels
+		"a/b.tf":              filepath.FromSlash("a/b.tf"),              // nothing exists yet
+		"./x":                 "x",
+	} {
+		_, got, err := Resolve(root, in)
+		if err != nil || got != want {
+			t.Errorf("Resolve(%q) = %q, %v; want %q", in, got, err, want)
+		}
+	}
+}
+
 func FuzzSafePath(f *testing.F) {
 	root := f.TempDir()
 	os.MkdirAll(filepath.Join(root, "a", "b"), 0o755)
