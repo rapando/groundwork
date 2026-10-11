@@ -75,6 +75,12 @@ func (c *Client) AddURL(u string) (Project, error) {
 	return p, c.do("POST", "/projects", addRequest{URL: u}, &p)
 }
 
+// Status is what the service says about itself (GET /api/service).
+func (c *Client) Status() (Status, error) {
+	var out Status
+	return out, c.do("GET", "/service", nil, &out)
+}
+
 func (c *Client) List() ([]ProjectView, error) {
 	var out []ProjectView
 	return out, c.do("GET", "/projects", nil, &out)

@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/rapando/groundwork/internal/server"
 )
@@ -301,5 +302,32 @@ func TestClientResolvesRelativePathsFromTheCaller(t *testing.T) {
 		if p.Path != real {
 			t.Fatalf("%q: path = %s, want %s", rel, p.Path, real)
 		}
+	}
+}
+
+// GET /api/service describes the running service for `service status`.
+func TestServiceStatusEndpoint(t *testing.T) {
+	e := newEnv(t)
+	e.svc.Commit, e.svc.Started, e.svc.Port = "abc1234", time.Now().Add(-90*time.Second), 7420
+	dir := repo(t)
+	if resp, p := e.call(t, "POST", "/api/projects", map[string]string{"path": dir}, true); resp.StatusCode != 201 {
+		t.Fatalf("add: %d %v", resp.StatusCode, p)
+	}
+	resp, st := e.call(t, "GET", "/api/service", nil, true)
+	if resp.StatusCode != 200 {
+		t.Fatalf("%d %v", resp.StatusCode, st)
+	}
+	if st["version"] != "test" || st["commit"] != "abc1234" || st["port"].(float64) != 7420 || st["pid"].(float64) <= 0 ||
+		!strings.HasPrefix(st["go_version"].(string), "go") || st["uptime_seconds"].(float64) < 90 {
+		t.Fatalf("status: %v", st)
+	}
+	if pr := st["projects"].(map[string]any); pr["available"].(float64) != 1 || pr["unavailable"].(float64) != 0 {
+		t.Fatalf("projects: %v", pr)
+	}
+	if st["running_jobs"].(float64) != 0 {
+		t.Fatalf("running jobs: %v", st["running_jobs"])
+	}
+	if resp, _ := e.call(t, "GET", "/api/service", nil, false); resp.StatusCode != 401 {
+		t.Fatalf("status without credentials: %d", resp.StatusCode)
 	}
 }

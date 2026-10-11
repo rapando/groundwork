@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -31,7 +32,10 @@ import (
 type Service struct {
 	Home    string
 	Version string
-	Port    int // the port being served (0 until Run binds)
+	Commit  string
+	Port    int       // the port being served (0 until Run binds)
+	Started time.Time // when Run bound the port
+	LogFile string    // the service log, for `groundwork service logs`
 	Log     *slog.Logger
 	Reg     *Registry
 
@@ -241,6 +245,45 @@ func expandHome(p string) (string, error) {
 
 // ---- HTTP ----
 
+// Status is GET /api/service: what the running service is and is doing.
+type Status struct {
+	Version   string    `json:"version"`
+	Commit    string    `json:"commit,omitempty"`
+	GoVersion string    `json:"go_version"`
+	Home      string    `json:"home"`
+	ReposDir  string    `json:"repos_dir"`
+	LogFile   string    `json:"log_file,omitempty"`
+	Port      int       `json:"port"`
+	PID       int       `json:"pid"`
+	StartedAt time.Time `json:"started_at"`
+	UptimeSec int64     `json:"uptime_seconds"`
+	Projects  struct {
+		Available   int `json:"available"`
+		Unavailable int `json:"unavailable"`
+	} `json:"projects"`
+	RunningJobs int `json:"running_jobs"`
+}
+
+func (s *Service) Status() Status {
+	st := Status{Version: s.Version, Commit: s.Commit, GoVersion: runtime.Version(), Home: s.Home, ReposDir: s.reposDir(),
+		LogFile: s.LogFile, Port: s.Port, PID: os.Getpid(), StartedAt: s.Started}
+	if !s.Started.IsZero() {
+		st.UptimeSec = int64(time.Since(s.Started).Seconds())
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, p := range s.Reg.List() {
+		in := s.live[p.ID]
+		if in == nil || in.err != nil {
+			st.Projects.Unavailable++
+			continue
+		}
+		st.Projects.Available++
+		st.RunningJobs += in.api.Runner.Active()
+	}
+	return st
+}
+
 // ProjectView is one entry of GET /api/projects.
 type ProjectView struct {
 	Project
@@ -274,9 +317,7 @@ func (s *Service) views() []ProjectView {
 // Routes mounts the service API: the project list and, under /p/{id}, each
 // project's own API (the same endpoints the single-repo server had).
 func (s *Service) Routes(r chi.Router) {
-	r.Get("/service", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, 200, map[string]any{"version": s.Version, "home": s.Home, "repos_dir": s.reposDir(), "port": s.Port})
-	})
+	r.Get("/service", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, s.Status()) })
 	r.Get("/projects", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, s.views()) })
 	r.Post("/projects", s.addProject)
 	r.Post("/projects/{id}/reopen", func(w http.ResponseWriter, r *http.Request) {

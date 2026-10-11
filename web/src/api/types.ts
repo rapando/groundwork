@@ -220,7 +220,11 @@ export interface OnboardingItem { id: string; label: string; done: boolean; href
 export interface Onboarding { tour_completed: boolean; checklist_hidden: boolean; tips: boolean; items: OnboardingItem[] }
 export interface DriftSchedule { schedule?: string; notify?: string; next?: string; last_run?: string; error?: string }
 
-export interface ServiceInfo { version: string; home: string; repos_dir: string }
+export interface ServiceInfo {
+  version: string; commit?: string; go_version?: string; home: string; repos_dir: string; log_file?: string
+  port?: number; pid?: number; started_at?: string; uptime_seconds?: number
+  projects?: { available: number; unavailable: number }; running_jobs?: number
+}
 export interface ProjectView {
   id: string; name: string; path: string; remote?: string; added: string
   status: 'ok' | 'unavailable'; error?: string

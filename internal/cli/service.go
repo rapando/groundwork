@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
 	"strings"
 	"time"
 
@@ -100,7 +102,7 @@ func newServiceCmd() *cobra.Command {
 		},
 	}
 	status := &cobra.Command{
-		Use: "status", Short: "Show whether the service is running", Args: cobra.NoArgs,
+		Use: "status", Short: "Show whether the service is running, and what it is doing", Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			home, err := service.Home()
 			if err != nil {
@@ -119,20 +121,38 @@ func newServiceCmd() *cobra.Command {
 				fmt.Fprintln(out, "status:        stopped")
 				return nil
 			}
-			ps, err := service.NewClient(si).List()
+			st, err := service.NewClient(si).Status()
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(out, "status:        running (pid %d), %d projects\n", si.PID, len(ps))
-			fmt.Fprintf(out, "port:          %d\n", si.Port)
-			fmt.Fprintf(out, "version:       %s (this command: %s)\n", si.Version, Version)
+			fmt.Fprintf(out, "status:        running (pid %d), up %s\n", st.PID, (time.Duration(st.UptimeSec) * time.Second).String())
+			fmt.Fprintf(out, "version:       %s (commit %s, %s; this command: %s)\n", st.Version, st.Commit, st.GoVersion, Version)
 			if m := versionMismatch(si, Version); m != "" {
 				fmt.Fprintln(out, "warning:      ", m)
 			}
+			fmt.Fprintf(out, "port:          %d\n", st.Port)
+			fmt.Fprintf(out, "projects:      %d available, %d unavailable\n", st.Projects.Available, st.Projects.Unavailable)
+			fmt.Fprintf(out, "running jobs:  %d\n", st.RunningJobs)
 			fmt.Fprintln(out, "url:          ", si.URL("/"))
 			return nil
 		},
 	}
-	svc.AddCommand(install, uninstall, start, restart, stop, status)
+	var follow bool
+	var lines int
+	logs := &cobra.Command{
+		Use: "logs", Short: "Print the service log (rotated at 10 MiB, three old files kept)", Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			home, err := service.Home()
+			if err != nil {
+				return err
+			}
+			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt)
+			defer stop()
+			return service.TailLog(ctx, cmd.OutOrStdout(), home, lines, follow)
+		},
+	}
+	logs.Flags().BoolVarP(&follow, "follow", "f", false, "keep printing new lines until interrupted")
+	logs.Flags().IntVarP(&lines, "lines", "n", 100, "how many lines from the end to print")
+	svc.AddCommand(install, uninstall, start, restart, stop, status, logs)
 	return svc
 }

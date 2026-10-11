@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -86,7 +87,7 @@ func (s *Server) AllowHost(h string) {
 
 func (s *Server) Handler() http.Handler {
 	r := chi.NewRouter()
-	r.Use(middleware.Recoverer)
+	r.Use(s.recoverer)
 	r.Use(s.requestLog)
 	r.Use(securityHeaders)
 	r.Use(s.hostCheck)
@@ -120,6 +121,23 @@ func (s *Server) Handler() http.Handler {
 }
 
 // --- middleware ---
+
+// recoverer turns a handler panic into a 500 and a structured log line with
+// the stack (chi's Recoverer prints to stderr, bypassing the service log).
+func (s *Server) recoverer(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if v := recover(); v != nil {
+				if v == http.ErrAbortHandler { //nolint:errorlint // the sentinel is compared by identity, as net/http does
+					panic(v)
+				}
+				s.log.Error("internal error (recovered)", "where", "http "+r.Method+" "+r.URL.Path, "panic", fmt.Sprint(v), "stack", string(debug.Stack()))
+				writeError(w, http.StatusInternalServerError, "internal_error", "groundwork hit an internal error; see the service log")
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
 
 func (s *Server) requestLog(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -118,7 +119,9 @@ func TestSecondServeHandsOverToTheFirst(t *testing.T) {
 
 	var out bytes.Buffer
 	done := make(chan error, 1)
-	go func() { done <- Run(context.Background(), Options{Home: home, Port: 0, NoOpen: true, Log: quiet(), Out: &out}) }()
+	go func() {
+		done <- Run(context.Background(), Options{Home: home, Port: 0, NoOpen: true, Log: quiet(), Out: &out})
+	}()
 	select {
 	case err := <-done:
 		if err != nil {
@@ -166,5 +169,42 @@ func TestBusyPortIsAnErrorNotAFallback(t *testing.T) {
 	err = Run(context.Background(), Options{Home: t.TempDir(), Port: port, NoOpen: true, Log: quiet(), Out: &out})
 	if err == nil || !strings.Contains(err.Error(), "another program") || !strings.Contains(err.Error(), "--port 0") {
 		t.Fatalf("got %v", err)
+	}
+}
+
+// The service owns its log: it is written to <home>/groundwork.log (rotated,
+// mode 0600), says what started, and never carries the token.
+func TestServeWritesItsOwnLog(t *testing.T) {
+	home := t.TempDir()
+	var out bytes.Buffer
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	// no Log override: Run builds the rotating file logger
+	go func() {
+		done <- Run(ctx, Options{Home: home, Port: 0, NoOpen: true, Out: &out, Version: "9.9.9", Commit: "abc1234", LogLevel: "debug"})
+	}()
+	si, ok := waitRunning(home, 10*time.Second)
+	if !ok {
+		t.Fatalf("did not start:\n%s", out.String())
+	}
+	// a request at debug level is logged
+	http.Get(si.Base() + "/healthz")
+	cancel()
+	<-done
+	b, err := os.ReadFile(LogPath(home))
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := string(b)
+	for _, want := range []string{"groundwork service starting", "version=9.9.9", "commit=abc1234", "path=/healthz"} {
+		if !strings.Contains(l, want) {
+			t.Errorf("log lacks %q:\n%s", want, l)
+		}
+	}
+	if strings.Contains(l, "?t=") || strings.Contains(l, si.Token) {
+		t.Fatalf("log carries the token:\n%s", l)
+	}
+	if st, _ := os.Stat(LogPath(home)); st.Mode().Perm() != 0o600 {
+		t.Fatalf("log mode %v", st.Mode())
 	}
 }

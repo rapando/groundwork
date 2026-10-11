@@ -25,9 +25,11 @@ This registers a launchd agent on macOS (`~/Library/LaunchAgents/io.github.rapan
 
 | Command | |
 |---|---|
-| `groundwork service status` | running or stopped, project count, data directory, log file, console URL |
+| `groundwork service status` | running or stopped; version, uptime, port, projects available/unavailable, running jobs, data directory, log file, console URL |
 | `groundwork service start` | start it (through the login service if installed, else in the background) |
 | `groundwork service stop` | stop it; runs in progress are stopped gracefully (terraform gets time to release its state lock) |
+| `groundwork service restart` | stop and start again, e.g. after installing a new version |
+| `groundwork service logs [-f] [-n N]` | print the last N lines of the service log, and follow it with `-f` |
 | `groundwork service install` / `uninstall` | add or remove the login service |
 | `groundwork serve [folder…]` | run it in the foreground instead, e.g. in a container or to watch its log; folders given are imported |
 
@@ -59,6 +61,8 @@ Each project lives at `/p/<id>/` in the console, so links to a run or a file can
 | What | Where |
 |---|---|
 | Project list, session token, `server.json`, `groundwork.log` | the data directory: `~/Library/Application Support/groundwork` (macOS), `~/.config/groundwork` (Linux), or `$GROUNDWORK_HOME` |
+
+The service writes its own log, `groundwork.log` in the data directory, rotated at 10 MiB with three old files kept (`groundwork.log.1` to `.3`), so it stays bounded however long the machine runs. It never contains the session token. `GROUNDWORK_LOG=debug` (or `--log-level debug` on `serve`) adds a line per HTTP request; `GROUNDWORK_LOG_FORMAT=json` (`--log-format json`) makes each line a JSON object for log shippers. When `serve` runs in a terminal the same lines also go to stderr.
 | Cloned repositories | `repos/` in the data directory |
 | A project's runs, plans, check caches, custom rules | `.groundwork/` in that repository (git-ignored), as before |
 

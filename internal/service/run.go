@@ -29,7 +29,14 @@ type Options struct {
 	NoOpen      bool
 	AllowRemote bool
 	Version     string
+	Commit      string
+	// Log overrides the service logger (tests). When nil, Run logs to
+	// <home>/groundwork.log through a size-capped, rotating writer, at
+	// LogLevel in LogFormat, and also to stderr when LogToStderr is set.
 	Log         *slog.Logger
+	LogLevel    string // debug | info | warn | error (default info)
+	LogFormat   string // text | json (default text)
+	LogToStderr bool
 	Add         []string  // folders to import at startup; the browser opens the first
 	Out         io.Writer // startup messages; default os.Stdout
 	// ShowToken includes the session token in the printed URL. The CLI sets
@@ -83,9 +90,6 @@ func ProjectPath(id string) string { return "/p/" + id + "/" }
 // Run starts the service and blocks until interrupted. If a service is
 // already running for this home, the folders in o.Add are imported into it.
 func Run(ctx context.Context, o Options) error {
-	if o.Log == nil {
-		o.Log = slog.Default()
-	}
 	if o.Host == "" {
 		o.Host = "127.0.0.1"
 	}
@@ -105,6 +109,18 @@ func Run(ctx context.Context, o Options) error {
 	}
 	if err := os.MkdirAll(home, 0o700); err != nil {
 		return err
+	}
+	if o.Log == nil {
+		lw, err := openRotatingLog(LogPath(home), logMaxBytes, logKeep)
+		if err != nil {
+			return err
+		}
+		defer lw.Close()
+		var w io.Writer = lw
+		if o.LogToStderr {
+			w = io.MultiWriter(lw, os.Stderr)
+		}
+		o.Log = NewLogger(w, o.LogLevel, o.LogFormat)
 	}
 
 	// One service per data directory. The lock settles the race between two
@@ -148,7 +164,8 @@ func Run(ctx context.Context, o Options) error {
 		ln.Close()
 		return err
 	}
-	svc.Port = port
+	svc.Port, svc.Commit, svc.Started, svc.LogFile = port, o.Commit, time.Now(), LogPath(home)
+	o.Log.Info("groundwork service starting", "version", o.Version, "commit", o.Commit, "port", port, "home", home, "projects", len(svc.Reg.List()))
 	svc.OpenAll()
 	path := "/"
 	for i, dir := range o.Add {
@@ -213,6 +230,27 @@ func Run(ctx context.Context, o Options) error {
 	defer cancel()
 	svc.Shutdown(stopCtx)
 	return nil
+}
+
+// NewLogger builds the service logger. level is debug|info|warn|error
+// (default info; GROUNDWORK_LOG is read by the CLI), format text|json.
+func NewLogger(w io.Writer, level, format string) *slog.Logger {
+	var lv slog.Level
+	switch strings.ToLower(level) {
+	case "debug":
+		lv = slog.LevelDebug
+	case "warn", "warning":
+		lv = slog.LevelWarn
+	case "error":
+		lv = slog.LevelError
+	default:
+		lv = slog.LevelInfo
+	}
+	opts := &slog.HandlerOptions{Level: lv}
+	if strings.EqualFold(format, "json") {
+		return slog.New(slog.NewJSONHandler(w, opts))
+	}
+	return slog.New(slog.NewTextHandler(w, opts))
 }
 
 // handOver is what a second start does when a service is already running:

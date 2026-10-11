@@ -4,7 +4,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"runtime/debug"
 	"strings"
@@ -39,22 +38,35 @@ type serveFlags struct {
 	noOpen      bool
 	allowRemote bool
 	foreground  bool
+	logLevel    string
+	logFormat   string
+}
+
+// envOr is a flag default taken from the environment.
+func envOr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
 }
 
 func Execute() error { return newRoot().Execute() }
 
 func newRoot() *cobra.Command {
 	var f serveFlags
-	logger := func() *slog.Logger {
-		return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	}
 	serve := func(add []string) error {
 		return service.Run(context.Background(), service.Options{
 			Host: f.host, Port: f.port, NoOpen: f.noOpen, AllowRemote: f.allowRemote,
-			Version: Version, Log: logger(), Add: add,
+			Version: Version, Commit: Commit, Add: add,
+			// the service writes its own rotated log; a terminal also sees it
+			LogLevel: f.logLevel, LogFormat: f.logFormat, LogToStderr: term.IsTerminal(int(os.Stderr.Fd())),
 			// the token goes to a person at a terminal, never to a log file
 			ShowToken: term.IsTerminal(int(os.Stdout.Fd())),
 		})
+	}
+	logFlags := func(c *cobra.Command) {
+		c.Flags().StringVar(&f.logLevel, "log-level", envOr("GROUNDWORK_LOG", "info"), "service log level: debug, info, warn or error (env GROUNDWORK_LOG)")
+		c.Flags().StringVar(&f.logFormat, "log-format", envOr("GROUNDWORK_LOG_FORMAT", "text"), "service log format: text or json (env GROUNDWORK_LOG_FORMAT)")
 	}
 	root := &cobra.Command{
 		Use:   "groundwork",
@@ -85,6 +97,7 @@ func newRoot() *cobra.Command {
 	root.Flags().BoolVar(&f.foreground, "foreground", false, "run the service in this terminal instead of in the background")
 	root.Flags().StringVar(&f.host, "host", "127.0.0.1", "address to bind (with --foreground)")
 	root.Flags().BoolVar(&f.allowRemote, "i-understand-remote-access", false, "allow binding a non-loopback address (with --foreground)")
+	logFlags(root)
 
 	serveCmd := &cobra.Command{
 		Use:   "serve [folder...]",
@@ -96,6 +109,7 @@ func newRoot() *cobra.Command {
 	serveCmd.Flags().IntVar(&f.port, "port", 7420, "port to listen on (0 picks a free one; a busy port is an error)")
 	serveCmd.Flags().BoolVar(&f.noOpen, "no-open", false, "do not open the browser")
 	serveCmd.Flags().BoolVar(&f.allowRemote, "i-understand-remote-access", false, "allow binding a non-loopback address")
+	logFlags(serveCmd)
 
 	version := &cobra.Command{
 		Use: "version", Short: "Print version information",
