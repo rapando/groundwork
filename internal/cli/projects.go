@@ -22,10 +22,12 @@ func ensureService(cmd *cobra.Command, port int) (*service.Client, service.Serve
 		return nil, service.ServerInfo{}, err
 	}
 	if si, ok := service.Running(home); ok {
+		warnVersionMismatch(cmd, si)
 		return service.NewClient(si), si, nil
 	}
 	if ok, err := service.StartInstalled(); ok && err == nil {
 		if si, err := waitRunning(home); err == nil {
+			warnVersionMismatch(cmd, si)
 			return service.NewClient(si), si, nil
 		}
 	}
@@ -35,6 +37,21 @@ func ensureService(cmd *cobra.Command, port int) (*service.Client, service.Serve
 		return nil, si, err
 	}
 	return service.NewClient(si), si, nil
+}
+
+// versionMismatch says whether a running service and this binary differ, and
+// how to put that right; "" when they match or either side is a dev build.
+func versionMismatch(si service.ServerInfo, cli string) string {
+	if si.Version == "" || si.Version == cli || si.Version == "dev" || cli == "dev" {
+		return ""
+	}
+	return fmt.Sprintf("the groundwork service is running %s but this command is %s; run `groundwork service restart` to switch it over", si.Version, cli)
+}
+
+func warnVersionMismatch(cmd *cobra.Command, si service.ServerInfo) {
+	if m := versionMismatch(si, Version); m != "" {
+		fmt.Fprintln(cmd.ErrOrStderr(), "warning:", m)
+	}
 }
 
 func waitRunning(home string) (service.ServerInfo, error) {

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -65,6 +66,25 @@ func newServiceCmd() *cobra.Command {
 		},
 	}
 	start.Flags().IntVar(&port, "port", 7420, "port when started in the background")
+	restart := &cobra.Command{
+		Use: "restart", Short: "Stop the service and start it again (after installing a new version)", Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			home, err := service.Home()
+			if err != nil {
+				return err
+			}
+			if err := service.Stop(home); err != nil && !strings.Contains(err.Error(), "not running") {
+				return err
+			}
+			_, si, err := ensureService(cmd, port)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "running %s: %s\n", si.Version, si.URL("/"))
+			return nil
+		},
+	}
+	restart.Flags().IntVar(&port, "port", 7420, "port when started in the background")
 	stop := &cobra.Command{
 		Use: "stop", Short: "Stop the service (runs in progress are stopped gracefully)", Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -104,10 +124,14 @@ func newServiceCmd() *cobra.Command {
 				return err
 			}
 			fmt.Fprintf(out, "status:        running (pid %d), %d projects\n", si.PID, len(ps))
+			fmt.Fprintf(out, "version:       %s (this command: %s)\n", si.Version, Version)
+			if m := versionMismatch(si, Version); m != "" {
+				fmt.Fprintln(out, "warning:      ", m)
+			}
 			fmt.Fprintln(out, "url:          ", si.URL("/"))
 			return nil
 		},
 	}
-	svc.AddCommand(install, uninstall, start, stop, status)
+	svc.AddCommand(install, uninstall, start, restart, stop, status)
 	return svc
 }

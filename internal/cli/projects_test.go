@@ -3,6 +3,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/rapando/groundwork/internal/service"
@@ -25,5 +26,20 @@ func TestFindProjectNeverFallsBackToTheEnclosingRepo(t *testing.T) {
 		if p, err := findProject(list, ref); err != nil || p.ID != want {
 			t.Errorf("findProject(%q) = %v, %v; want %s", ref, p.ID, err, want)
 		}
+	}
+}
+
+func TestVersionMismatchMessage(t *testing.T) {
+	cases := map[string]bool{"": false, "dev": false, "1.2.3": false, "1.2.4": true}
+	for svc, want := range cases {
+		if got := versionMismatch(service.ServerInfo{Version: svc}, "1.2.3"); (got != "") != want {
+			t.Errorf("service %q vs cli 1.2.3: %q", svc, got)
+		}
+	}
+	if versionMismatch(service.ServerInfo{Version: "1.2.4"}, "dev") != "" {
+		t.Fatal("a dev build should not nag")
+	}
+	if m := versionMismatch(service.ServerInfo{Version: "1.2.4"}, "1.2.3"); !strings.Contains(m, "groundwork service restart") {
+		t.Fatalf("should say how to fix it: %s", m)
 	}
 }

@@ -42,9 +42,10 @@ type Options struct {
 // CLI, a second `serve`) can find the running service. The token is not part
 // of the file: Running reads it from <home>/token.
 type ServerInfo struct {
-	PID   int    `json:"pid"`
-	Port  int    `json:"port"`
-	Token string `json:"-"`
+	PID     int    `json:"pid"`
+	Port    int    `json:"port"`
+	Version string `json:"version,omitempty"` // the binary serving; the CLI warns when it differs from its own
+	Token   string `json:"-"`
 }
 
 func (si ServerInfo) Base() string { return "http://127.0.0.1:" + strconv.Itoa(si.Port) }
@@ -161,12 +162,15 @@ func Run(ctx context.Context, o Options) error {
 		fmt.Fprintln(os.Stderr, "WARNING: groundwork is reachable beyond localhost. Anyone with the URL token can run commands on this machine.")
 	}
 
-	si := ServerInfo{PID: os.Getpid(), Port: port, Token: token}
+	si := ServerInfo{PID: os.Getpid(), Port: port, Version: o.Version, Token: token}
 	infoPath := filepath.Join(home, "server.json")
 	if err := writeJSONFile(infoPath, si); err != nil {
 		return err
 	}
 	defer os.Remove(infoPath)
+	// which release last ran against this data directory, for bug reports and
+	// for a future release that has to migrate it
+	_ = os.WriteFile(filepath.Join(home, "version"), []byte(o.Version+"\n"), 0o600)
 
 	// ReadHeaderTimeout bounds slow clients; no ReadTimeout/WriteTimeout, since
 	// SSE streams and long file uploads are legitimate. IdleTimeout reaps

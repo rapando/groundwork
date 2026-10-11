@@ -88,6 +88,9 @@ func (in *instance) start(ctx context.Context, version string, log *slog.Logger)
 	if err != nil {
 		return fmt.Errorf("bootstrap %s: %w", app.StateDir, err)
 	}
+	// the release that last opened this project (its state.db carries the
+	// schema version separately; see store.Open)
+	_ = os.WriteFile(filepath.Join(stateDir, "VERSION"), []byte(version+"\n"), 0o600)
 	st, err := store.Open(filepath.Join(stateDir, "state.db"))
 	if err != nil {
 		return fmt.Errorf("open store: %w", err)

@@ -52,9 +52,8 @@ go install github.com/rapando/groundwork/cmd/groundwork@latest
 > To update
 
 ```sh
-groundwork service stop
 curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | sh
-groundwork service start
+groundwork service restart
 ```
 
 The script verifies the download against the release checksums and installs to `~/.local/bin` without `sudo`. Then, optionally, start the service at login:
@@ -66,7 +65,7 @@ groundwork service status
 
 Run `install` from a shell where `terraform` and `ansible` work: the login service keeps that shell's `PATH`. groundwork uses the `terraform` (or `tofu`) and `ansible` it finds there, plus any linters you have; `groundwork doctor` shows what it found.
 
-**Upgrading:** install again, then `groundwork service stop && groundwork service start`. Coming from 0.1, where groundwork ran one server per repository in your terminal, see [upgrading to 0.2](docs/install.md#from-01-to-02).
+**Upgrading:** install again, then `groundwork service restart` (the CLI warns while the service still runs the old version; project data is migrated on first open and backed up first). Coming from 0.1, where groundwork ran one server per repository in your terminal, see [upgrading to 0.2](docs/install.md#from-01-to-02).
 
 See [install](docs/install.md) for manual downloads, checksums, the install script's options and removal.
 

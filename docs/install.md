@@ -83,10 +83,12 @@ Install again, then restart the service so it runs the new binary:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | sh
-groundwork service stop && groundwork service start
+groundwork service restart
 ```
 
-The install script reminds you if it sees a service still running. If you moved the binary, run `groundwork service install` again so the login service points at the new location.
+The install script reminds you if it sees a service still running, and every CLI command warns while the service runs a different version than the command (`groundwork service status` shows both). If you moved the binary, run `groundwork service install` again so the login service points at the new location.
+
+What an upgrade touches, and how it is protected, is in [compatibility](compatibility.md): each project's `state.db` is migrated when the project is next opened (a copy is kept as `state.db.bak-<schema>` first), the service data directory and `.groundwork/` record the version that last wrote them, and a newer release's data is refused by an older binary with a clear message rather than misread.
 
 ### From 0.1 to 0.2
 

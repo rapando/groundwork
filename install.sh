@@ -119,5 +119,5 @@ on_path "$dir" || say "Add $dir to your PATH:  export PATH=\"$dir:\$PATH\""
 say "Next: cd into a repository and run  groundwork"
 say "      (it starts the groundwork service; 'groundwork service install' starts it at login)"
 if command -v pgrep >/dev/null 2>&1 && pgrep -x groundwork >/dev/null 2>&1; then
-  say "A groundwork service is running the previous version: restart it with  groundwork service stop && groundwork service start"
+  say "A groundwork service is running the previous version: switch it over with  groundwork service restart"
 fi

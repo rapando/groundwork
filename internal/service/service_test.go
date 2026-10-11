@@ -55,6 +55,28 @@ func TestRepoNameAndRemotes(t *testing.T) {
 	}
 }
 
+// projects.json carries a format number; a file from a newer release with a
+// higher one is refused with a message rather than read wrongly.
+func TestRegistryRefusesANewerFormat(t *testing.T) {
+	home := t.TempDir()
+	os.WriteFile(filepath.Join(home, "projects.json"), []byte(`{"format": 99, "projects": []}`), 0o600)
+	if _, err := OpenRegistry(home); err == nil || !strings.Contains(err.Error(), "newer groundwork") {
+		t.Fatalf("got %v", err)
+	}
+	// a pre-0.5 file has no format at all and still loads
+	os.WriteFile(filepath.Join(home, "projects.json"), []byte(`{"projects": []}`), 0o600)
+	r, err := OpenRegistry(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := r.Add(t.TempDir(), ""); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(home, "projects.json")); !strings.Contains(string(b), `"format": 1`) {
+		t.Fatalf("saved without a format: %s", b)
+	}
+}
+
 func TestRegistryPersists(t *testing.T) {
 	home := t.TempDir()
 	r, err := OpenRegistry(home)

@@ -40,6 +40,11 @@ type Project struct {
 	Added  time.Time `json:"added"`
 }
 
+// RegistryFormat is the layout version of projects.json. A file written by a
+// newer groundwork with a higher format is refused rather than misread; this
+// build will still read every format up to this one.
+const RegistryFormat = 1
+
 // Registry is the persisted project list (<home>/projects.json).
 type Registry struct {
 	path string
@@ -58,10 +63,14 @@ func OpenRegistry(home string) (*Registry, error) {
 		return nil, err
 	}
 	var doc struct {
+		Format   int       `json:"format"` // absent in files written before 0.5
 		Projects []Project `json:"projects"`
 	}
 	if err := json.Unmarshal(b, &doc); err != nil {
 		return nil, fmt.Errorf("%s: %w", r.path, err)
+	}
+	if doc.Format > RegistryFormat {
+		return nil, fmt.Errorf("%s was written by a newer groundwork (format %d; this build reads up to %d): upgrade groundwork", r.path, doc.Format, RegistryFormat)
 	}
 	r.projects = doc.Projects
 	return r, nil
@@ -131,7 +140,7 @@ func (r *Registry) Remove(id string) (Project, bool, error) {
 }
 
 func (r *Registry) saveLocked() error {
-	b, _ := json.MarshalIndent(map[string]any{"projects": r.projects}, "", "  ")
+	b, _ := json.MarshalIndent(map[string]any{"format": RegistryFormat, "projects": r.projects}, "", "  ")
 	tmp := r.path + ".tmp"
 	if err := os.WriteFile(tmp, append(b, '\n'), 0o600); err != nil {
 		return err

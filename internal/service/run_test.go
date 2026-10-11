@@ -80,6 +80,21 @@ func TestServeOutputAndServerInfoCarryNoToken(t *testing.T) {
 	}
 }
 
+// The data directory records which release wrote it, and the CLI learns the
+// service's version from server.json so it can warn about a mismatch.
+func TestServeRecordsItsVersion(t *testing.T) {
+	home := t.TempDir()
+	_, stop := startRun(t, home, Options{Version: "1.2.3"})
+	defer stop()
+	si, _ := Running(home)
+	if si.Version != "1.2.3" {
+		t.Fatalf("server.json version = %q", si.Version)
+	}
+	if b, _ := os.ReadFile(filepath.Join(home, "version")); strings.TrimSpace(string(b)) != "1.2.3" {
+		t.Fatalf("<home>/version = %q", b)
+	}
+}
+
 // At a terminal the signed-in URL is what the user wants.
 func TestServeAtATerminalPrintsTheSignedInURL(t *testing.T) {
 	home := t.TempDir()
