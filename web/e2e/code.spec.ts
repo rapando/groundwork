@@ -157,6 +157,10 @@ test('editing aids: brackets close, indent guides, completions from sibling file
   const list = page.locator('.cm-tooltip-autocomplete')
   await expect(list.getByText('instance_type')).toBeVisible()
   await page.screenshot({ path: path.join(SHOTS, 'code-complete.png'), fullPage: true })
+  await expect(list.locator('li[aria-selected="true"]')).toContainText('instance_type')
+  // CodeMirror ignores Enter for interactionDelay (75ms) after the list opens or
+  // updates, so a fast keystroke isn't taken as accepting; a slow runner can land in it
+  await page.waitForTimeout(150)
   await page.keyboard.press('Enter')
   await expect(page.locator('.cm-content')).toContainText('size = var.instance_type')
 })
