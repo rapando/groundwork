@@ -94,10 +94,18 @@ jobs:
           git push origin "refs/tags/$TAG"
       - uses: sigstore/cosign-installer@v4
       - uses: anchore/sbom-action/download-syft@v0
+      - name: Hand-written release notes
+        # docs/release-notes/<version>.md, when it exists, replaces the generated changelog
+        id: notes
+        env:
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          f="docs/release-notes/${TAG#v}.md"
+          if [ -f "$f" ]; then echo "args=--release-notes=$f" >> "$GITHUB_OUTPUT"; echo "::notice::Using $f as the release notes"; fi
       - uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release --clean
+          args: release --clean ${{ steps.notes.outputs.args }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

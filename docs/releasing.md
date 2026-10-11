@@ -27,6 +27,10 @@ The first release is `v0.1.0`. To preview what the next one would be:
 scripts/next-version.sh
 ```
 
+## Hand-written release notes
+
+The generated changelog is a list of commit titles. For a release that deserves prose, add `docs/release-notes/<version>.md` (for example `docs/release-notes/1.0.0.md`) before the tag is cut: the release workflow uses it in place of the generated notes when the file exists. Say what the release is for, what changed for the user, how to upgrade, and what is known not to work.
+
 ## By hand
 
 - **Force a release or a bigger bump:** Actions → release → *Run workflow* on `main`, choosing `patch`, `minor` or `major`. Going to `v1.0.0` is done this way (`major`), since breaking changes only bump minor before 1.0.
