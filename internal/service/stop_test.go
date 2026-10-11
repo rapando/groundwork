@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -42,7 +43,10 @@ func fakeService(t *testing.T, home string) *exec.Cmd {
 	t.Cleanup(srv.Close)
 	u, _ := url.Parse(srv.URL)
 	port, _ := strconv.Atoi(u.Port())
-	if err := writeJSONFile(filepath.Join(home, "server.json"), ServerInfo{PID: cmd.Process.Pid, Port: port, Token: tok}); err != nil {
+	if err := writeJSONFile(filepath.Join(home, "server.json"), ServerInfo{PID: cmd.Process.Pid, Port: port}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, "token"), []byte(tok+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return cmd

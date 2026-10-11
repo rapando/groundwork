@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/rapando/groundwork/internal/checks"
 	"github.com/rapando/groundwork/internal/doctor"
@@ -51,6 +52,8 @@ func newRoot() *cobra.Command {
 		return service.Run(context.Background(), service.Options{
 			Host: f.host, Port: f.port, NoOpen: f.noOpen, AllowRemote: f.allowRemote,
 			Version: Version, Log: logger(), Add: add,
+			// the token goes to a person at a terminal, never to a log file
+			ShowToken: term.IsTerminal(int(os.Stdout.Fd())),
 		})
 	}
 	root := &cobra.Command{

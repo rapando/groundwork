@@ -52,10 +52,12 @@ port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); pr
 export GROUNDWORK_HOME="$work/home"
 GROUNDWORK_TIPS=off "$gw" serve --no-open --port "$port" . >"$work/server.log" 2>&1 &
 server=$!
-for _ in $(seq 100); do grep -q '?t=' "$work/server.log" 2>/dev/null && break; sleep 0.1; done
-url=$(grep -o 'http://[^ ]*/p/[a-z0-9-]*/?t=[0-9a-f]*' "$work/server.log") || fail "service didn't start: $(cat "$work/server.log")"
-token="${url##*t=}"
+for _ in $(seq 100); do grep -q 'http://127.0.0.1:[0-9]*/p/' "$work/server.log" 2>/dev/null && break; sleep 0.1; done
+# the log never carries the token (stdout isn't a terminal); the CLI and this script read it from the data dir
+url=$(grep -o 'http://127.0.0.1:[0-9]*/p/[a-z0-9-]*/' "$work/server.log") || fail "service didn't start: $(cat "$work/server.log")"
+token=$(tr -d '\n' <"$GROUNDWORK_HOME/token")
 project=$(printf '%s' "$url" | sed -E 's|.*/p/([a-z0-9-]+)/.*|\1|')
+url="$url?t=$token"
 origin="http://127.0.0.1:$port"
 curl -fsS -c "$work/jar" -o /dev/null "$url"
 api() { # method path [json]: the demo project's API

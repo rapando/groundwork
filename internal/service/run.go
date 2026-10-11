@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -29,15 +30,21 @@ type Options struct {
 	AllowRemote bool
 	Version     string
 	Log         *slog.Logger
-	Add         []string // folders to import at startup; the browser opens the first
+	Add         []string  // folders to import at startup; the browser opens the first
+	Out         io.Writer // startup messages; default os.Stdout
+	// ShowToken includes the session token in the printed URL. The CLI sets
+	// it only when stdout is a terminal: a login service's stdout is a log
+	// file, and the token must never land in one.
+	ShowToken bool
 }
 
 // ServerInfo is persisted to <home>/server.json so other invocations (the
-// CLI, a second `serve`) can find the running service.
+// CLI, a second `serve`) can find the running service. The token is not part
+// of the file: Running reads it from <home>/token.
 type ServerInfo struct {
 	PID   int    `json:"pid"`
 	Port  int    `json:"port"`
-	Token string `json:"token"`
+	Token string `json:"-"`
 }
 
 func (si ServerInfo) Base() string { return "http://127.0.0.1:" + strconv.Itoa(si.Port) }
@@ -52,6 +59,23 @@ func URLFor(host string, si ServerInfo, path string) string {
 	return fmt.Sprintf("http://%s%s?t=%s", net.JoinHostPort(host, strconv.Itoa(si.Port)), path, si.Token)
 }
 
+// PlainURL is the address without the token, for output that may be logged.
+func PlainURL(host string, si ServerInfo, path string) string {
+	if path == "" {
+		path = "/"
+	}
+	return fmt.Sprintf("http://%s%s", net.JoinHostPort(host, strconv.Itoa(si.Port)), path)
+}
+
+// announce is the URL line printed at startup: signed in when the output is a
+// terminal, otherwise the plain address plus how to get a signed-in one.
+func (o Options) announce(host string, si ServerInfo, path string) string {
+	if o.ShowToken {
+		return URLFor(host, si, path)
+	}
+	return PlainURL(host, si, path) + "  (run `groundwork open` for a signed-in URL)"
+}
+
 // ProjectPath is where a project's UI lives.
 func ProjectPath(id string) string { return "/p/" + id + "/" }
 
@@ -63,6 +87,9 @@ func Run(ctx context.Context, o Options) error {
 	}
 	if o.Host == "" {
 		o.Host = "127.0.0.1"
+	}
+	if o.Out == nil {
+		o.Out = os.Stdout
 	}
 	if !isLoopback(o.Host) && !o.AllowRemote {
 		return fmt.Errorf("refusing to bind %s: pass --i-understand-remote-access to expose groundwork beyond this machine", o.Host)
@@ -90,10 +117,9 @@ func Run(ctx context.Context, o Options) error {
 				path = ProjectPath(p.ID)
 			}
 		}
-		u := si.URL(path)
-		fmt.Println("groundwork is already running:", u)
+		fmt.Fprintln(o.Out, "groundwork is already running:", o.announce("127.0.0.1", si, path))
 		if !o.NoOpen {
-			_ = browser.OpenURL(u)
+			_ = browser.OpenURL(si.URL(path))
 		}
 		return nil
 	}
@@ -146,11 +172,10 @@ func Run(ctx context.Context, o Options) error {
 	errc := make(chan error, 1)
 	go func() { errc <- httpSrv.Serve(ln) }()
 
-	u := URLFor(o.Host, si, path)
-	fmt.Printf("groundwork service (%d projects, data in %s)\n", len(svc.Reg.List()), home)
-	fmt.Println(u)
+	fmt.Fprintf(o.Out, "groundwork service (%d projects, data in %s)\n", len(svc.Reg.List()), home)
+	fmt.Fprintln(o.Out, o.announce(o.Host, si, path))
 	if !o.NoOpen {
-		_ = browser.OpenURL(u)
+		_ = browser.OpenURL(URLFor(o.Host, si, path))
 	}
 
 	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
@@ -163,7 +188,7 @@ func Run(ctx context.Context, o Options) error {
 	case <-sigCtx.Done():
 	}
 	if n := svc.Active(); n > 0 {
-		fmt.Printf("%d run(s) in progress; stopping them gracefully…\n", n)
+		fmt.Fprintf(o.Out, "%d run(s) in progress; stopping them gracefully…\n", n)
 	}
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	_ = httpSrv.Shutdown(shutdownCtx)
@@ -177,17 +202,26 @@ func Run(ctx context.Context, o Options) error {
 // loadToken keeps the session token across restarts so open tabs and
 // bookmarks survive the service restarting at login.
 func loadToken(home string) (string, error) {
-	p := filepath.Join(home, "token")
-	if b, err := os.ReadFile(p); err == nil {
-		if t := strings.TrimSpace(string(b)); len(t) == 64 {
-			return t, nil
-		}
+	if t := readToken(home); t != "" {
+		return t, nil
 	}
 	t, err := server.NewToken()
 	if err != nil {
 		return "", err
 	}
-	return t, os.WriteFile(p, []byte(t+"\n"), 0o600)
+	return t, os.WriteFile(filepath.Join(home, "token"), []byte(t+"\n"), 0o600)
+}
+
+// readToken returns the saved session token, or "" if there is none yet.
+func readToken(home string) string {
+	b, err := os.ReadFile(filepath.Join(home, "token"))
+	if err != nil {
+		return ""
+	}
+	if t := strings.TrimSpace(string(b)); len(t) == 64 {
+		return t
+	}
+	return ""
 }
 
 func isLoopback(host string) bool {
@@ -210,6 +244,7 @@ func Running(home string) (ServerInfo, bool) {
 	if err != nil || json.Unmarshal(b, &si) != nil || si.Port == 0 {
 		return si, false
 	}
+	si.Token = readToken(home)
 	c := http.Client{Timeout: time.Second}
 	resp, err := c.Get(si.Base() + "/healthz")
 	if err != nil {

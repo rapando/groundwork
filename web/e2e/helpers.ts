@@ -1,5 +1,5 @@
 import { spawn, ChildProcess, execFileSync } from 'node:child_process'
-import { cpSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import net from 'node:net'
@@ -56,8 +56,9 @@ export async function start(fixture?: string, opts: StartOpts = {}): Promise<Ins
     child.stdout!.on('data', (d) => {
       all += d
       buf += d
-      const m = buf.match(/http:\/\/127\.0\.0\.1:\d+\/p\/[a-z0-9-]+\/\?t=[0-9a-f]+/)
-      if (m) resolve(m[0])
+      // stdout isn't a terminal, so the service prints the address without the token; it's in <home>/token
+      const m = buf.match(/http:\/\/127\.0\.0\.1:\d+\/p\/[a-z0-9-]+\//)
+      if (m) resolve(m[0] + '?t=' + readFileSync(path.join(home, 'token'), 'utf8').trim())
     })
     child.on('exit', (c) => reject(new Error('groundwork exited ' + c + ' ' + buf)))
     setTimeout(() => reject(new Error('timeout waiting for URL: ' + buf)), 10_000)
