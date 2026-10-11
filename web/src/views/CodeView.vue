@@ -188,6 +188,20 @@ onMounted(() => window.addEventListener('beforeunload', beforeUnload))
 onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
 
 watch(path, (p) => load(p), { immediate: true })
+
+// The other .tf files of the module, so completions know its variables,
+// locals, modules and resources. Loaded once per file opened.
+const siblings = ref<string[]>([])
+// Re-read when the file list changes, since it may not have arrived yet.
+watch([path, () => files.files], async ([p]) => {
+  siblings.value = []
+  if (!/\.tf$/.test(p)) return
+  const dir = p.slice(0, p.lastIndexOf('/') + 1)
+  const others = files.files.filter((f) => f !== p && f.startsWith(dir) && /\.tf$/.test(f) && !f.slice(dir.length).includes('/'))
+  const texts = await Promise.all(others.slice(0, 50).map((f) =>
+    api<FileContent>('/files/content?path=' + encodeURIComponent(f)).then((c) => c.content, () => '')))
+  if (p === path.value) siblings.value = texts
+}, { immediate: true })
 onMounted(async () => {
   await Promise.all([files.refresh(), checks.refresh(), git.refresh()])
 })
@@ -281,7 +295,7 @@ function gotoFrom(file: string, line: number) {
           <template v-else-if="loaded">
             <div v-show="showEditor" class="edpane">
               <CodeEditor
-                ref="editor" :path="path" :doc="loaded.content" :version="version" :diagnostics="fileDiags"
+                ref="editor" :path="path" :doc="loaded.content" :version="version" :diagnostics="fileDiags" :siblings="siblings"
                 @change="buffer = $event" @save="save()" @cursor="cursor = $event" @fix="applyFix"
               />
             </div>

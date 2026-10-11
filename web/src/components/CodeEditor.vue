@@ -6,6 +6,9 @@ import {
 } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import {
+  autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap, type CompletionSource,
+} from '@codemirror/autocomplete'
+import {
   HighlightStyle, StreamLanguage, bracketMatching, foldGutter, indentOnInput, syntaxHighlighting,
 } from '@codemirror/language'
 import { lintGutter, setDiagnostics, type Diagnostic as CMDiagnostic } from '@codemirror/lint'
@@ -17,6 +20,8 @@ import { tags as t } from '@lezer/highlight'
 import { hcl } from 'codemirror-lang-hcl'
 import type { Diagnostic, Edit } from '../api/types'
 import { theme } from '../composables/theme'
+import { indentGuides } from '../editor/indentGuides'
+import { ansibleCompletions, isAnsibleYAML, terraformCompletions } from '../editor/completions'
 
 const props = defineProps<{
   path: string
@@ -24,6 +29,8 @@ const props = defineProps<{
   /** bump to replace the buffer with `doc` (load / reload); typing never changes it */
   version: number
   diagnostics: Diagnostic[]
+  /** other HCL files of the same module, so completions see their declarations */
+  siblings?: string[]
 }>()
 const emit = defineEmits<{
   (e: 'change', text: string): void
@@ -44,6 +51,14 @@ function language(path: string): Extension[] {
   return []
 }
 
+function completions(path: string): Extension[] {
+  let source: CompletionSource | undefined
+  if (/\.(tf|tfvars|hcl)$/.test(path)) source = terraformCompletions(() => props.siblings ?? [])
+  else if (isAnsibleYAML(path)) source = ansibleCompletions()
+  if (!source) return []
+  return [EditorState.languageData.of(() => [{ autocomplete: source }]), autocompletion({ icons: false })]
+}
+
 // Colours come from the theme tokens (--syn-*): keywords blue, strings green,
 // references amber, comments grey, in a light and a dark palette.
 const highlight = HighlightStyle.define([
@@ -57,7 +72,7 @@ const highlight = HighlightStyle.define([
 ])
 
 const styles = {
-  '&': { height: '100%', backgroundColor: 'var(--bg-card)', color: 'var(--text)', fontSize: '14px' },
+  '&': { '--gw-guide-color': 'var(--line)', height: '100%', backgroundColor: 'var(--bg-card)', color: 'var(--text)', fontSize: '14px' },
   '.cm-scroller': { fontFamily: "var(--font-mono)", lineHeight: '23px', fontVariantLigatures: 'none' },
   '.cm-content': { caretColor: 'var(--text)', padding: '14px 0' },
   '.cm-gutters': { backgroundColor: 'var(--bg-card)', color: 'var(--syn-gutter)', border: 'none' },
@@ -70,6 +85,11 @@ const styles = {
   '.cm-selectionMatch': { backgroundColor: 'var(--syn-selection)' },
   '.cm-matchingBracket, &.cm-focused .cm-matchingBracket': { backgroundColor: 'var(--syn-selection)', outline: 'none' },
   '.cm-tooltip': { backgroundColor: 'var(--bg-panel)', border: '1px solid var(--line-strong)', color: 'var(--text)', borderRadius: '6px', boxShadow: 'var(--shadow)' },
+  '.cm-tooltip.cm-tooltip-autocomplete > ul': { fontFamily: 'var(--font-mono)', fontSize: '13px', maxHeight: '16em' },
+  '.cm-tooltip.cm-tooltip-autocomplete > ul > li': { padding: '2px 10px' },
+  '.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected]': { backgroundColor: 'var(--syn-selection)', color: 'var(--text)' },
+  '.cm-completionDetail': { color: 'var(--text-faint)', fontStyle: 'normal', marginLeft: '12px' },
+  '.cm-completionMatchedText': { textDecoration: 'none', color: 'var(--accent)' },
   '.cm-tooltip-lint .cm-diagnostic': { padding: '8px 10px', borderLeft: '3px solid var(--fail)', whiteSpace: 'pre-wrap' },
   '.cm-diagnostic-warning': { borderLeftColor: 'var(--warn) !important' },
   '.cm-diagnostic-info': { borderLeftColor: 'var(--running) !important' },
@@ -93,10 +113,12 @@ function makeState(doc: string, path: string): EditorState {
     extensions: [
       EditorView.contentAttributes.of({ 'aria-label': 'Editor for ' + path }),
       lineNumbers(), foldGutter(), lintGutter(), highlightActiveLine(), highlightActiveLineGutter(),
-      drawSelection(), history(), indentOnInput(), bracketMatching(), highlightSelectionMatches(),
-      syntaxHighlighting(highlight), themeSlot.of(themes[theme.value]), language(path),
+      drawSelection(), history(), indentOnInput(), bracketMatching(), closeBrackets(), indentGuides(),
+      highlightSelectionMatches(), syntaxHighlighting(highlight), themeSlot.of(themes[theme.value]),
+      language(path), completions(path),
       keymap.of([
         { key: 'Mod-s', preventDefault: true, run: () => { emit('save'); return true } },
+        ...closeBracketsKeymap, ...completionKeymap,
         indentWithTab, ...searchKeymap, ...historyKeymap, ...defaultKeymap,
       ]),
       EditorView.updateListener.of((u) => {

@@ -130,3 +130,33 @@ test('file tree: IaC-only hides unmanaged files, All files shows them; filter na
   await page.goto(gw.base + '/code/.git/config')
   await expect(page.getByText('path is not editable')).toBeVisible()
 })
+
+test('editing aids: brackets close, indent guides, completions from sibling files', async ({ page }) => {
+  gw = await start('iac-only', {
+    init: true,
+    commit: true,
+    files: {
+      'terraform/envs/dev/main.tf': MAIN,
+      'terraform/envs/dev/variables.tf': 'variable "instance_type" {\n  type = string\n}\n',
+    },
+  })
+  await open(page, gw.url, 'terraform/envs/dev/main.tf')
+
+  // nested lines get faint guides
+  await expect(page.locator('.cm-line.cm-indent-guides').first()).toBeVisible()
+
+  // an opening bracket brings its partner
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('ControlOrMeta+End')
+  await page.keyboard.type('\nlocals {')
+  await expect(page.locator('.cm-content')).toContainText('locals {}')
+  await page.keyboard.press('Enter')
+
+  // a variable declared in another file of the module is offered
+  await page.keyboard.type('size = var.inst')
+  const list = page.locator('.cm-tooltip-autocomplete')
+  await expect(list.getByText('instance_type')).toBeVisible()
+  await page.screenshot({ path: path.join(SHOTS, 'code-complete.png'), fullPage: true })
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.cm-content')).toContainText('size = var.instance_type')
+})
