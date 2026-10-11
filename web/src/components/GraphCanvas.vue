@@ -194,7 +194,7 @@ const summary = computed(() => `${props.nodes.length} nodes, ${props.edges.lengt
   <div ref="host" class="canvas gridbg" @wheel="onWheel" @pointerdown="down" @pointermove="move" @pointerup="up">
     <p v-if="layoutError" class="err pad">{{ layoutError }}</p>
     <p v-else-if="!nodes.length" class="muted pad">Nothing to draw.</p>
-    <svg ref="svg" class="svg" role="img" :aria-label="`${ariaLabel}: ${summary}`" font-family="JetBrains Mono, ui-monospace, monospace">
+    <svg ref="svg" class="svg" role="group" :aria-label="`${ariaLabel}: ${summary}`" font-family="JetBrains Mono, ui-monospace, monospace">
       <defs>
         <marker id="gw-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M0,0 L8,4 L0,8 z" :fill="pal.edge" />

@@ -6,7 +6,9 @@ import { start, Instance } from './helpers'
 
 const SHOTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'screens')
 let gw: Instance
-test.afterEach(async () => { await gw?.stop() })
+test.afterEach(async () => {
+  await gw?.stop()
+})
 
 async function open(page: Page) {
   await page.goto(gw.url)
@@ -27,7 +29,7 @@ test('terraform matrix: precedence, edit a value, reveal a sensitive one', async
   await expect(row('unused_flag')).toContainText('unused')
 
   // set region for dev in its terraform.tfvars
-  await row('region').getByRole('button', { name: 'region' }).click()
+  await row('region').getByRole('button', { name: 'region', exact: true }).click()
   const detail = page.getByRole('complementary', { name: 'Variable detail' })
   await expect(detail.getByText('required')).toBeVisible()
   await detail.getByLabel('Value for dev').fill('"eu-central-1"')
@@ -45,7 +47,7 @@ test('terraform matrix: precedence, edit a value, reveal a sensitive one', async
   await expect(detail.getByRole('alert')).toContainText('strings need quotes')
 
   // sensitive: can't be edited here; reveal shows it once
-  await row('db_password').getByRole('button', { name: 'db_password' }).click()
+  await row('db_password').getByRole('button', { name: 'db_password', exact: true }).click()
   await expect(detail.getByText(/won't write it to a tfvars file/)).toBeVisible()
   await detail.getByRole('button', { name: 'Reveal' }).click()
   await expect(detail.getByText('"s3cret-dev-pw"')).toBeVisible()

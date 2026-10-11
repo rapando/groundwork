@@ -2,12 +2,21 @@ import { defineStore } from 'pinia'
 import { api } from '../api/client'
 import type { FilesResponse } from '../api/types'
 import { onEvent } from '../composables/events'
+import { swallow } from '../api/swallow'
 
 function load(key: string, fallback: string): string {
-  try { return localStorage.getItem(key) ?? fallback } catch { return fallback }
+  try {
+    return localStorage.getItem(key) ?? fallback
+  } catch {
+    return fallback
+  }
 }
 function save(key: string, v: string) {
-  try { localStorage.setItem(key, v) } catch { /* private mode */ }
+  try {
+    localStorage.setItem(key, v)
+  } catch {
+    /* private mode */
+  }
 }
 
 let timer: number | undefined
@@ -37,10 +46,10 @@ export const useFiles = defineStore('files', {
       // file list only changes when files are created/removed; coalesce bursts
       onEvent('file.changed', () => {
         window.clearTimeout(timer)
-        timer = window.setTimeout(() => this.refresh().catch(() => {}), 600)
+        timer = window.setTimeout(() => this.refresh().catch(swallow('file list refresh after change')), 600)
       })
-      onEvent('workspace.updated', () => this.refresh().catch(() => {}))
-      onEvent('reconnected', () => this.refresh().catch(() => {}))
+      onEvent('workspace.updated', () => this.refresh().catch(swallow('file list refresh after workspace update')))
+      onEvent('reconnected', () => this.refresh().catch(swallow('file list refresh after reconnect')))
     },
   },
 })

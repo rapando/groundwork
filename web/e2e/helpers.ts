@@ -1,5 +1,5 @@
 import { spawn, ChildProcess, execFileSync } from 'node:child_process'
-import { cpSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import net from 'node:net'
@@ -11,7 +11,16 @@ export const BIN = process.env.GW_BIN ?? path.resolve(here, '../../bin/groundwor
 export const FIXTURES = path.resolve(here, '../../testdata/repos')
 
 /** url logs in and opens the project; base is the project's UI root (origin + /p/<id>). */
-export interface Instance { url: string; base: string; dir: string; home: string; output: () => string; stop: () => Promise<void>; kill: () => void; restart: (env?: Record<string, string>) => Promise<Instance> }
+export interface Instance {
+  url: string
+  base: string
+  dir: string
+  home: string
+  output: () => string
+  stop: () => Promise<void>
+  kill: () => void
+  restart: (env?: Record<string, string>) => Promise<Instance>
+}
 
 function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -25,7 +34,16 @@ function freePort(): Promise<number> {
 }
 
 /** Starts groundwork in a fresh temp repo (optionally seeded from a fixture). */
-export interface StartOpts { tips?: boolean; git?: boolean; init?: boolean; commit?: boolean; files?: Record<string, string>; env?: Record<string, string>; dir?: string; home?: string }
+export interface StartOpts {
+  tips?: boolean
+  git?: boolean
+  init?: boolean
+  commit?: boolean
+  files?: Record<string, string>
+  env?: Record<string, string>
+  dir?: string
+  home?: string
+}
 
 export async function start(fixture?: string, opts: StartOpts = {}): Promise<Instance> {
   const reuse = !!opts.dir
@@ -40,34 +58,61 @@ export async function start(fixture?: string, opts: StartOpts = {}): Promise<Ins
   }
   // each instance is its own service with its own project registry
   const home = opts.home ?? mkdtempSync(path.join(tmpdir(), 'gw-e2e-home-'))
-  const env = { ...process.env, GROUNDWORK_HOME: home, ...(opts.tips ? {} : { GROUNDWORK_TIPS: 'off' }), ...(opts.env ?? {}), PATH: `${path.join(here, 'fakebin')}${path.delimiter}${process.env.PATH}` }
+  const env = {
+    ...process.env,
+    GROUNDWORK_HOME: home,
+    ...(opts.tips ? {} : { GROUNDWORK_TIPS: 'off' }),
+    ...(opts.env ?? {}),
+    PATH: `${path.join(here, 'fakebin')}${path.delimiter}${process.env.PATH}`,
+  }
   if (!reuse && opts.git !== false) execFileSync('git', ['init', '-q'], { cwd: dir })
   if (!reuse && opts.init) execFileSync(BIN, ['init', '--detect', '--yes'], { cwd: dir, env })
   if (!reuse && opts.commit) {
     const g = (...a: string[]) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@e.com', ...a], { cwd: dir })
-    g('add', '-A'); g('commit', '-qm', 'initial')
+    g('add', '-A')
+    g('commit', '-qm', 'initial')
   }
   const port = await freePort()
-  const child: ChildProcess = spawn(BIN, ['serve', '--no-open', '--port', String(port), '.'], { cwd: dir, env })
+  // a restart after the repo folder went missing (to test "unavailable"): serve without importing it
+  const haveDir = existsSync(dir)
+  const args = ['serve', '--no-open', '--port', String(port), ...(haveDir ? ['.'] : [])]
+  const child: ChildProcess = spawn(BIN, args, { cwd: haveDir ? dir : home, env })
   let all = '' // everything the server printed, for leak checks
-  child.stderr!.on('data', (d) => { all += d })
+  child.stderr!.on('data', (d) => {
+    all += d
+  })
   const url = await new Promise<string>((resolve, reject) => {
     let buf = ''
     child.stdout!.on('data', (d) => {
       all += d
       buf += d
       // stdout isn't a terminal, so the service prints the address without the token; it's in <home>/token
-      const m = buf.match(/http:\/\/127\.0\.0\.1:\d+\/p\/[a-z0-9-]+\//)
+      const m = buf.match(haveDir ? /http:\/\/127\.0\.0\.1:\d+\/p\/[a-z0-9-]+\// : /http:\/\/127\.0\.0\.1:\d+\//)
       if (m) resolve(m[0] + '?t=' + readFileSync(path.join(home, 'token'), 'utf8').trim())
     })
     child.on('exit', (c) => reject(new Error('groundwork exited ' + c + ' ' + buf)))
     setTimeout(() => reject(new Error('timeout waiting for URL: ' + buf)), 10_000)
   })
   // a child killed by a signal has exitCode null but a signalCode, so check both
-  const stop = () => new Promise<void>((r) => { if (child.exitCode !== null || child.signalCode !== null) return r(); child.once('exit', () => r()); child.kill('SIGINT') })
+  const stop = () =>
+    new Promise<void>((r) => {
+      if (child.exitCode !== null || child.signalCode !== null) return r()
+      child.once('exit', () => r())
+      child.kill('SIGINT')
+    })
   return {
-    url, base: new URL(url).origin + new URL(url).pathname.replace(/\/$/, ''), dir, home, stop, output: () => all,
-    kill: () => { child.kill('SIGKILL') }, // simulates a crash: no graceful shutdown
-    restart: async (e) => { await stop().catch(() => {}); return start(undefined, { ...opts, dir, home, env: { ...(opts.env ?? {}), ...(e ?? {}) } }) },
+    url,
+    base: new URL(url).origin + new URL(url).pathname.replace(/\/$/, ''),
+    dir,
+    home,
+    stop,
+    output: () => all,
+    kill: () => {
+      child.kill('SIGKILL')
+    }, // simulates a crash: no graceful shutdown
+    restart: async (e) => {
+      await stop().catch(() => {})
+      return start(undefined, { ...opts, dir, home, env: { ...(opts.env ?? {}), ...(e ?? {}) } })
+    },
   }
 }

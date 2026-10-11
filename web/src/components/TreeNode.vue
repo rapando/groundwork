@@ -15,7 +15,10 @@ const emit = defineEmits<{ (e: 'toggle', path: string): void; (e: 'open', path: 
 
 const gitMark: Record<string, string> = { modified: 'M', added: 'A', untracked: 'U', deleted: 'D', renamed: 'R', conflict: '!' }
 const isOpen = () => props.expanded.has(props.node.path)
-function click() { props.node.dir ? emit('toggle', props.node.path) : emit('open', props.node.path) }
+function click() {
+  if (props.node.dir) emit('toggle', props.node.path)
+  else emit('open', props.node.path)
+}
 </script>
 
 <template>
@@ -26,6 +29,7 @@ function click() { props.node.dir ? emit('toggle', props.node.path) : emit('open
       :class="{ on: !node.dir && selected === node.path }"
       :style="{ paddingLeft: 10 + depth * 16 + 'px' }"
       :role="'treeitem'"
+      :data-path="node.path"
       :aria-expanded="node.dir ? isOpen() : undefined"
       :aria-selected="!node.dir && selected === node.path"
       @click="click"

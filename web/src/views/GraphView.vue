@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../components/AppShell.vue'
 import GraphCanvas, { type GEdge, type GNode } from '../components/GraphCanvas.vue'
@@ -10,6 +10,7 @@ import { ago, useRuns } from '../stores/runs'
 import { useWorkspace } from '../stores/workspace'
 import { onEvent } from '../composables/events'
 import { useNow } from '../composables/now'
+import Modal from '../components/Modal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -53,8 +54,11 @@ async function load() {
 }
 onMounted(load)
 watch(stackKey, () => { selected.value = ''; load() })
-onEvent('drift.updated', load)
-onEvent('run.updated', (d: { kind: string; status: string }) => { if (d.kind === 'tf.plan' && d.status === 'waiting_approval') load() })
+const offs = [
+  onEvent('drift.updated', load),
+  onEvent('run.updated', (d: { kind: string; status: string }) => { if (d.kind === 'tf.plan' && d.status === 'waiting_approval') load() }),
+]
+onBeforeUnmount(() => offs.forEach((off) => off()))
 
 // ---- canvas data ----
 const short = (id: string) => id.replace(/^module\.[^.]+\./, '')
@@ -208,7 +212,7 @@ async function applyPreview() {
       <p v-else class="muted small pad0">Select a resource to inspect it.</p>
     </div>
 
-    <div v-if="preview" class="modal" role="dialog" aria-modal="true" aria-labelledby="pv-title" @keydown.esc="preview = null">
+    <Modal v-if="preview" labelledby="pv-title" wide @close="preview = null">
       <div class="card dlg">
         <h2 id="pv-title">{{ preview.action === 'copy' ? 'Copy the real value into code' : 'Ignore this attribute' }}</h2>
         <p v-if="preview.error" class="err small" role="alert">{{ preview.error }}</p>
@@ -221,7 +225,7 @@ async function applyPreview() {
           <button v-if="!preview.error" class="btn primary" type="button" @click="applyPreview">Apply change</button>
         </div>
       </div>
-    </div>
+    </Modal>
   </AppShell>
 </template>
 
@@ -261,7 +265,6 @@ h1 { margin: 0; font-size: 18px; font-weight: 600; } h2 { margin: 0; font-size: 
 .pill { font: 500 12px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; align-self: flex-start; }
 .st-warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); } .st-run { color: var(--running); background: color-mix(in srgb, var(--running) 12%, transparent); }
 .link { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font: inherit; }
-.modal { position: fixed; inset: 0; background: var(--scrim); display: grid; place-items: center; z-index: 50; padding: 16px; }
 .dlg { width: min(720px, 100%); }
 .diffbox { max-height: 360px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
 .dact { display: flex; justify-content: flex-end; gap: 8px; }

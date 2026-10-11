@@ -10,6 +10,7 @@ import { useWorkspace } from './stores/workspace'
 import { useIssues } from './stores/issues'
 import CommandPalette from './components/CommandPalette.vue'
 import { projectId } from './project'
+import { swallow } from './api/swallow'
 
 const ws = useWorkspace()
 const checks = useChecks()
@@ -25,9 +26,9 @@ onMounted(() => {
   files.init()
   git.init()
   runs.init()
-  runs.refresh().catch(() => {})
+  runs.refresh().catch(swallow('initial runs refresh'))
   issues.listen()
-  issues.refresh().catch(() => {})
+  issues.refresh().catch(swallow('initial issues refresh'))
   onEvent('workspace.updated', () => ws.refresh())
   onEvent('reconnected', () => ws.refresh())
   startEvents()

@@ -10,6 +10,7 @@ import { useIssues } from '../stores/issues'
 import { kindLabel, useRuns } from '../stores/runs'
 import { theme, toggleTheme } from '../composables/theme'
 import { useWorkspace } from '../stores/workspace'
+import { swallow } from '../api/swallow'
 
 interface Item { id: string; group: string; label: string; hint?: string; run: () => void | Promise<unknown> }
 
@@ -119,7 +120,7 @@ async function show() {
   open.value = true
   q.value = ''
   sel.value = 0
-  if (!files.loaded) files.refresh().catch(() => {})
+  if (!files.loaded) files.refresh().catch(swallow('file list for the palette'))
   loadHosts()
   await nextTick()
   input.value?.focus()
@@ -146,7 +147,8 @@ let pendingG = 0
 function onKey(e: KeyboardEvent) {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault()
-    open.value ? close() : show()
+    if (open.value) close()
+    else show()
     return
   }
   if (open.value || typing(e) || e.metaKey || e.ctrlKey || e.altKey) return

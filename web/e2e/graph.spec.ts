@@ -6,7 +6,9 @@ import { start, Instance } from './helpers'
 
 const SHOTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'screens')
 let gw: Instance
-test.afterEach(async () => { await gw?.stop() })
+test.afterEach(async () => {
+  await gw?.stop()
+})
 
 const origin = () => gw.base
 
@@ -24,7 +26,7 @@ test('the architecture view follows unsaved edits, with cursor sync both ways', 
 
   const arch = page.getByRole('region', { name: 'Infrastructure view' })
   await expect(arch.getByText('module.network', { exact: true })).toBeVisible()
-  await expect(arch.getByRole('img', { name: /2 nodes, 1 edges/ })).toBeVisible({ timeout: 10_000 })
+  await expect(arch.getByRole('group', { name: /2 nodes, 1 edges/ })).toBeVisible({ timeout: 10_000 })
   await expect(arch.locator('text', { hasText: 'aws_vpc.main' })).toBeVisible() // the VPC is drawn as a container
   await expect(arch.getByText('Not placed')).toHaveCount(0)
   await page.screenshot({ path: path.join(SHOTS, 'code-split.png'), fullPage: true })
@@ -39,7 +41,7 @@ test('the architecture view follows unsaved edits, with cursor sync both ways', 
   await page.keyboard.press('Shift+End')
   await page.keyboard.press('Backspace')
   await expect(page.getByText('● modified')).toBeVisible()
-  await expect(arch.getByRole('img', { name: /2 nodes, 0 edges/ })).toBeVisible({ timeout: 10_000 })
+  await expect(arch.getByRole('group', { name: /2 nodes, 0 edges/ })).toBeVisible({ timeout: 10_000 })
   expect(readFileSync(path.join(gw.dir, 'terraform/modules/network/main.tf'), 'utf8')).toContain('vpc_id     = aws_vpc.main.id')
 
   // clicking a box moves the editor to its definition
@@ -52,7 +54,10 @@ test('the architecture view follows unsaved edits, with cursor sync both ways', 
 test('drift: detect, see it in Graph and on the Overview, copy the real value into code', async ({ page }) => {
   gw = await start('iac-only', {
     init: true,
-    files: { 'terraform/envs/dev/files.tf': 'resource "local_file" "motd" {\n  filename        = "motd.txt"\n  content         = "hello"\n  file_permission = "0644"\n}\n' },
+    files: {
+      'terraform/envs/dev/files.tf':
+        'resource "local_file" "motd" {\n  filename        = "motd.txt"\n  content         = "hello"\n  file_permission = "0644"\n}\n',
+    },
   })
   await login(page)
   await page.getByRole('link', { name: 'Graph', exact: true }).click()

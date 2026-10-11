@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../components/AppShell.vue'
 import { api, apiFetch } from '../api/client'
@@ -27,7 +27,9 @@ async function loadDetail() {
   } catch (e) { loadErr.value = e instanceof Error ? e.message : String(e) }
 }
 watch(selectedId, () => { Object.assign(act, { step: -1, confirm: '', error: '', notice: '' }); loadDetail() })
-onEvent('issues.updated', () => window.setTimeout(loadDetail, 250))
+let issuesTimer: number | undefined
+const offIssues = onEvent('issues.updated', () => { window.clearTimeout(issuesTimer); issuesTimer = window.setTimeout(loadDetail, 250) })
+onBeforeUnmount(() => { offIssues(); window.clearTimeout(issuesTimer) })
 onMounted(async () => {
   await issues.refresh()
   loadDetail()

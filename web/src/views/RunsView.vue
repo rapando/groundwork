@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../components/AppShell.vue'
 import StatusPill from '../components/StatusPill.vue'
@@ -47,11 +47,19 @@ async function loadDetail() {
   }
 }
 watch(id, () => { resMap.clear(); results.value = []; openHost.value = ''; follow.value = true; loadResources(); loadResults(); loadDetail() }, { immediate: false })
-onEvent('run.updated', (d: { id: number }) => { if (d.id === id.value) loadDetail() })
-onEvent('reconnected', () => loadDetail())
+const offs = [
+  onEvent('run.updated', (d: { id: number }) => { if (d.id === id.value) loadDetail() }),
+  onEvent('reconnected', () => loadDetail()),
+]
+onBeforeUnmount(() => offs.forEach((off) => off()))
 
 onMounted(async () => {
-  await runs.refresh()
+  try {
+    await runs.refresh()
+  } catch (e) {
+    loadError.value = e instanceof Error ? e.message : String(e)
+    return
+  }
   if (id.value == null && runs.list.length) router.replace('/runs/' + runs.list[0].id)
   loadDetail()
   loadResources()
@@ -79,11 +87,11 @@ async function loadResults() {
     if (r.results.some((x) => x.phase === 'run')) phase.value = 'run'
   } catch { results.value = [] }
 }
-onEvent('ans.result', (d: { run: number; result: HostResult }) => {
+offs.push(onEvent('ans.result', (d: { run: number; result: HostResult }) => {
   if (d.run !== id.value) return
   results.value = results.value.concat(d.result)
   if (d.result.phase === 'run') phase.value = 'run'
-})
+}))
 const RANK: Record<string, number> = { skipped: 0, ok: 1, changed: 2, failed: 3, unreachable: 4 }
 const hostRows = computed(() => {
   const by = new Map<string, { host: string; worst: string; ok: number; changed: number; failed: number; skipped: number; unreachable: number; tasks: HostResult[] }>()

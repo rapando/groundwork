@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { LogLine } from '../api/types'
 
 const props = defineProps<{ lines: LogLine[]; follow: boolean; wrap: boolean }>()
@@ -52,12 +52,15 @@ function toBottom() {
 
 watch(() => rows.value.length, async () => { if (props.follow) { await nextTick(); toBottom() } })
 watch(() => props.follow, async (f) => { if (f) { await nextTick(); toBottom() } })
+let ro: ResizeObserver | undefined
 onMounted(() => {
   const el = box.value!
   height.value = el.clientHeight
-  new ResizeObserver(() => (height.value = el.clientHeight)).observe(el)
+  ro = new ResizeObserver(() => (height.value = el.clientHeight))
+  ro.observe(el)
   if (props.follow) toBottom()
 })
+onBeforeUnmount(() => ro?.disconnect())
 </script>
 
 <template>

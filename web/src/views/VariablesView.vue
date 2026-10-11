@@ -5,6 +5,7 @@ import AppShell from '../components/AppShell.vue'
 import DiffView from '../components/DiffView.vue'
 import { api, ApiError } from '../api/client'
 import type { AnsibleVarsResponse, MatrixRow, SecretFinding, SecretItem, SecretsResponse, TerraformVarsResponse, VarCell, VarRow } from '../api/types'
+import Modal from '../components/Modal.vue'
 
 type Tab = 'terraform' | 'ansible' | 'secrets'
 const route = useRoute()
@@ -199,8 +200,10 @@ const ansRowLabel = (r: MatrixRow) => (r.group === 'all' ? r.name : `${r.group} 
               <tbody>
                 <tr v-for="r in tfRows" :key="r.name" :class="{ sel: r.name === selected }">
                   <th scope="row"><button type="button" class="vname" @click="select(r)">{{ r.name }}</button><small>{{ r.decl?.type || 'any' }}<template v-if="r.decl && !r.decl.has_default"> · required</template><template v-if="r.unused"> · unused</template></small></th>
-                  <td v-for="c in r.cells" :key="c.env" :class="{ cur: r.name === selected && c.env === selEnv }" @click="select(r, c.env)">
-                    <span :class="CELL_CLASS[c.state]">{{ cellText(c) }}</span><small>{{ c.state === 'missing' ? 'required' : c.source }}</small>
+                  <td v-for="c in r.cells" :key="c.env" :class="{ cur: r.name === selected && c.env === selEnv }">
+                    <button type="button" class="cell" :aria-label="`${r.name} in ${c.env}: ${cellText(c)}`" @click="select(r, c.env)">
+                      <span :class="CELL_CLASS[c.state]">{{ cellText(c) }}</span><small>{{ c.state === 'missing' ? 'required' : c.source }}</small>
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -323,7 +326,7 @@ const ansRowLabel = (r: MatrixRow) => (r.group === 'all' ? r.name : `${r.group} 
       </aside>
     </div>
 
-    <div v-if="move.f" class="modal" role="dialog" aria-modal="true" aria-labelledby="mv-title" @keydown.esc="move.f = null">
+    <Modal v-if="move.f" labelledby="mv-title" wide @close="move.f = null">
       <div class="card dlg">
         <h2 id="mv-title">Move to ansible-vault</h2>
         <p class="small muted">Encrypts <span class="mono">{{ move.f.key }}</span> in place with the project's vault password. The old value stays in git history: rotate it afterwards.</p>
@@ -334,7 +337,7 @@ const ansRowLabel = (r: MatrixRow) => (r.group === 'all' ? r.name : `${r.group} 
           <button class="btn primary" type="button" :disabled="!move.diff || move.busy" @click="applyMove">{{ move.busy ? 'Encrypting…' : 'Encrypt' }}</button>
         </div>
       </div>
-    </div>
+    </Modal>
   </AppShell>
 </template>
 
@@ -402,8 +405,9 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .editor a { color: var(--text-muted); }
 .field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted); }
 .diffbox { max-height: 220px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; }
-.modal { position: fixed; inset: 0; background: var(--scrim); display: grid; place-items: center; z-index: 50; padding: 16px; }
 .dlg { width: min(560px, 100%); display: flex; flex-direction: column; gap: 12px; }
 .dact { display: flex; justify-content: flex-end; gap: 8px; }
 @media (max-width: 900px) { .cols { flex-wrap: wrap; } .detail { border-left: 0; border-top: 1px solid var(--line); } }
+.cell { all: unset; display: flex; flex-direction: column; width: 100%; box-sizing: border-box; cursor: pointer; text-align: left; }
+.cell:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 </style>

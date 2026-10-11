@@ -23,7 +23,7 @@ In either mode the Detect flow writes only `groundwork.yaml` (plus lint configs 
 
 ## Scaffolding
 
-Presets: `aws-envs`, `onprem`. Layouts: a directory per environment, or one root with workspaces.
+Presets: `aws-envs` (S3 state with locking) and `onprem` (no cloud provider; add your own provider block, which is also the route for Google Cloud, Azure, Hetzner or DigitalOcean today). Layouts: a directory per environment, or one root with workspaces.
 The preview is rendered in memory; **Create files** never overwrites an existing file unless you tick it, and `.gitignore` is merged, not replaced.
 `Download as zip` produces the same files without touching the repo. Missing tools are only listed with install commands; groundwork never runs a package manager.
 

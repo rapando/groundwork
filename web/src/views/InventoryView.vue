@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../components/AppShell.vue'
 import DiffView from '../components/DiffView.vue'
@@ -8,6 +8,7 @@ import type { HostDetail, InvEditPreview, InvHost, InventoryResponse, InvVarTarg
 import { ago, useRuns } from '../stores/runs'
 import { onEvent } from '../composables/events'
 import { useNow } from '../composables/now'
+import Modal from '../components/Modal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -22,6 +23,7 @@ const checked = reactive(new Set<string>())
 const selected = ref('')
 const detail = ref<HostDetail | null>(null)
 const detailError = ref('')
+const loadError = ref('')
 
 const scope = computed(() => data.value?.scope)
 async function load() {
@@ -31,6 +33,7 @@ async function load() {
   if (route.query.env) q.set('env', String(route.query.env))
   try {
     data.value = await api<InventoryResponse>('/inventory?' + q.toString())
+    loadError.value = ''
     const want = String(route.query.host ?? '')
     if (want && data.value.hosts?.some((h) => h.name === want)) selectHost(want)
     else if (!selected.value && data.value.hosts?.length) selectHost(data.value.hosts[0].name)
@@ -40,6 +43,8 @@ async function load() {
       if (data.value.playbooks?.length) openPlaybook()
       else if (!data.value.error) say('No playbooks were found in this Ansible project.')
     }
+  } catch (e) {
+    loadError.value = e instanceof Error ? e.message : String(e)
   } finally { loading.value = false }
 }
 onMounted(load)
@@ -47,11 +52,12 @@ watch(() => [route.query.project, route.query.env], () => { selected.value = '';
 
 // refresh when an ansible job in this scope finishes (ping, facts, playbooks)
 let t: number | undefined
-onEvent('run.updated', (d: { kind: string; status: string }) => {
+const offRuns = onEvent('run.updated', (d: { kind: string; status: string }) => {
   if (!d.kind?.startsWith('ans.') || d.status === 'running' || d.status === 'queued') return
   window.clearTimeout(t)
   t = window.setTimeout(load, 300)
 })
+onBeforeUnmount(() => { offRuns(); window.clearTimeout(t) })
 
 function setScope(project: string, env: string) {
   router.push({ path: '/inventory', query: { project, env } })
@@ -260,6 +266,7 @@ const levelShort = (l: string) => l.replace('inventory ', 'inv ').replace('playb
     </header>
     <p v-if="notice" class="notice small" role="status">{{ notice }}</p>
     <p v-if="data?.error" class="pad err" role="alert">{{ data.error }}</p>
+    <p v-else-if="!data && loadError" class="pad err" role="alert">{{ loadError }} <button class="btn sm" type="button" @click="load">Retry</button></p>
     <p v-else-if="!data" class="pad muted">Loading…</p>
 
     <div v-else class="cols">
@@ -351,7 +358,7 @@ const levelShort = (l: string) => l.replace('inventory ', 'inv ').replace('playb
       </div>
     </div>
 
-    <div v-if="adhoc.open" class="modal" role="dialog" aria-modal="true" aria-labelledby="adhoc-title" @keydown.esc="adhoc.open = false">
+    <Modal v-if="adhoc.open" labelledby="adhoc-title" @close="adhoc.open = false">
       <form class="card dlg" @submit.prevent="runAdhoc">
         <h2 id="adhoc-title">Ad-hoc command · {{ scope?.env }}</h2>
         <label class="field">Hosts (pattern)<input v-model="adhoc.pattern" class="inp" type="text" /></label>
@@ -366,9 +373,9 @@ const levelShort = (l: string) => l.replace('inventory ', 'inv ').replace('playb
           <button class="btn primary" type="submit" :disabled="adhocMutating && adhoc.confirm !== scope?.env">Run</button>
         </div>
       </form>
-    </div>
+    </Modal>
 
-    <div v-if="pb.open" class="modal" role="dialog" aria-modal="true" aria-labelledby="pb-title" @keydown.esc="pb.open = false">
+    <Modal v-if="pb.open" labelledby="pb-title" @close="pb.open = false">
       <form class="card dlg" @submit.prevent="runPlaybook">
         <h2 id="pb-title">Run playbook · {{ scope?.env }}</h2>
         <label class="field">Playbook
@@ -386,9 +393,9 @@ const levelShort = (l: string) => l.replace('inventory ', 'inv ').replace('playb
           <button class="btn primary" type="submit" :disabled="!pb.playbook">Start</button>
         </div>
       </form>
-    </div>
+    </Modal>
 
-    <div v-if="form.kind" class="modal" role="dialog" aria-modal="true" aria-labelledby="ed-title" @keydown.esc="form.kind = ''">
+    <Modal v-if="form.kind" labelledby="ed-title" @close="form.kind = ''">
       <form class="card dlg" @submit.prevent="submitForm">
         <template v-if="form.kind === 'host'">
           <h2 id="ed-title">Add host · {{ scope?.env }}</h2>
@@ -445,9 +452,9 @@ const levelShort = (l: string) => l.replace('inventory ', 'inv ').replace('playb
           <button class="btn primary" type="submit">Preview</button>
         </div>
       </form>
-    </div>
+    </Modal>
 
-    <div v-if="pending.preview" class="modal" role="dialog" aria-modal="true" aria-labelledby="pv-title" @keydown.esc="pending.preview = null">
+    <Modal v-if="pending.preview" labelledby="pv-title" wide @close="pending.preview = null">
       <div class="card dlg wide">
         <h2 id="pv-title">{{ pending.preview.create ? 'Create' : 'Change' }} <span class="mono">{{ pending.preview.file }}</span></h2>
         <div class="diffbox"><DiffView :diff="pending.preview.diff" /></div>
@@ -457,7 +464,7 @@ const levelShort = (l: string) => l.replace('inventory ', 'inv ').replace('playb
           <button class="btn primary" type="button" :disabled="pending.busy" @click="applyEdit">Apply</button>
         </div>
       </div>
-    </div>
+    </Modal>
   </AppShell>
 </template>
 
@@ -515,7 +522,6 @@ h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .badge { font-size: 12px; padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--text-muted) 10%, transparent); color: var(--text-muted); }
 .badge.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); }
 .link { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font: inherit; }
-.modal { position: fixed; inset: 0; background: var(--scrim); display: grid; place-items: center; z-index: 50; padding: 16px; }
 .dlg { width: min(480px, 100%); }
 .warnbox { padding: 10px; border: 1px solid var(--warn-line); border-radius: 8px; background: var(--warn-bg); }
 .modes { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }

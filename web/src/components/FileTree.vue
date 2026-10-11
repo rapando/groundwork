@@ -103,6 +103,40 @@ function toggle(p: string) {
   expanded.value = new Set(expanded.value)
   persist()
 }
+
+// Arrow keys as in a native tree: up/down move between visible items,
+// right expands a folder (or enters it), left collapses (or goes to the
+// parent), Home/End jump. Enter and Space are the button's own.
+const root = ref<HTMLElement | null>(null)
+function treeKeys(e: KeyboardEvent) {
+  const items = [...(root.value?.querySelectorAll<HTMLElement>('[role=treeitem]') ?? [])]
+  const cur = e.target as HTMLElement
+  const i = items.indexOf(cur)
+  if (i < 0) return
+  const path = cur.dataset.path ?? ''
+  const isDir = cur.getAttribute('aria-expanded') !== null
+  const open = cur.getAttribute('aria-expanded') === 'true'
+  let next = -1
+  switch (e.key) {
+    case 'ArrowDown': next = Math.min(i + 1, items.length - 1); break
+    case 'ArrowUp': next = Math.max(i - 1, 0); break
+    case 'Home': next = 0; break
+    case 'End': next = items.length - 1; break
+    case 'ArrowRight':
+      if (isDir && !open) { toggle(path); e.preventDefault(); return }
+      if (isDir && open) next = Math.min(i + 1, items.length - 1)
+      break
+    case 'ArrowLeft': {
+      if (isDir && open && !openAll.value) { toggle(path); e.preventDefault(); return }
+      const parent = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''
+      next = items.findIndex((el) => el.dataset.path === parent)
+      break
+    }
+    default: return
+  }
+  e.preventDefault()
+  if (next >= 0) items[next]?.focus()
+}
 </script>
 
 <template>
@@ -115,7 +149,7 @@ function toggle(p: string) {
       <button class="seg" :class="{ on: iacOnly }" type="button" :aria-pressed="iacOnly" @click="emit('iac', true)">IaC only</button>
       <button class="seg" :class="{ on: !iacOnly }" type="button" :aria-pressed="!iacOnly" @click="emit('iac', false)">All files</button>
     </div>
-    <div role="tree" class="tree-root">
+    <div ref="root" role="tree" class="tree-root" @keydown="treeKeys">
       <template v-for="g in groups" :key="g.title">
         <span class="lbl sec">{{ g.title }}</span>
         <TreeNode

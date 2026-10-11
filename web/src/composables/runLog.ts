@@ -24,8 +24,7 @@ export function useRunLog(runId: Ref<number | null>, level: Ref<string>, query: 
   let maxSeen = -1
   let gen = 0
 
-  const matches = (l: LogLine) =>
-    (RANK[l.level] ?? 1) >= (RANK[level.value] ?? 0) && (!query.value || l.text.toLowerCase().includes(query.value.toLowerCase()))
+  const matches = (l: LogLine) => (RANK[l.level] ?? 1) >= (RANK[level.value] ?? 0) && (!query.value || l.text.toLowerCase().includes(query.value.toLowerCase()))
 
   function accept(batch: LogLine[]) {
     const fresh: LogLine[] = []
@@ -83,8 +82,11 @@ export function useRunLog(runId: Ref<number | null>, level: Ref<string>, query: 
 
   let t: number | undefined
   watch(runId, () => load(), { immediate: true })
-  watch([level, query], () => { window.clearTimeout(t); t = window.setTimeout(() => load(), 250) })
-  onEvent('reconnected', () => load())
+  watch([level, query], () => {
+    window.clearTimeout(t)
+    t = window.setTimeout(() => load(), 250)
+  })
+  onBeforeUnmount(onEvent('reconnected', () => load()))
 
   return { lines, total, loading, skipped, reload: load }
 }

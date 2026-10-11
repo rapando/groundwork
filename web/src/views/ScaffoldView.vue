@@ -13,7 +13,6 @@ const providers = [
   { id: 'aws-envs', label: 'AWS' },
   { id: 'onprem', label: 'None / on-prem' },
 ] as const
-const comingSoon = ['Google Cloud', 'Azure', 'Hetzner', 'DigitalOcean']
 
 const form = reactive<ScaffoldForm>({
   preset: 'aws-envs', project: '', backend: 's3', bucket: '', region: '',
@@ -168,7 +167,7 @@ const tally = computed(() => {
           </p>
         </div>
 
-        <pre class="term" aria-label="Environment"><span class="muted">$ </span>groundwork
+        <pre class="term" tabindex="0" aria-label="Environment"><span class="muted">$ </span>groundwork
 <template v-for="t in toolLine" :key="t.name"><span :class="t.found ? 'ok' : 'warn'">{{ t.found ? '✓' : '!' }}</span> {{ t.name }}{{ t.found ? ' ' + (t.version ?? '') : ' not found' }}  </template>
 No groundwork.yaml in {{ store.ws?.root }} — starting setup</pre>
 
@@ -179,9 +178,6 @@ No groundwork.yaml in {{ store.ws?.root }} — starting setup</pre>
             <div class="grid g150">
               <label v-for="p in providers" :key="p.id" class="opt" :class="{ on: form.preset === p.id }">
                 <input v-model="form.preset" type="radio" name="prov" :value="p.id" />{{ p.label }}
-              </label>
-              <label v-for="p in comingSoon" :key="p" class="opt disabled" title="Planned; the aws-envs and onprem presets ship first">
-                <input type="radio" name="prov" disabled />{{ p }}<span class="soon">soon</span>
               </label>
             </div>
           </fieldset>
@@ -283,7 +279,7 @@ No groundwork.yaml in {{ store.ws?.root }} — starting setup</pre>
           </div>
           <div v-if="selectedFile" class="viewer">
             <span class="lbl mono">{{ selectedFile.path }}</span>
-            <pre class="mono">{{ selectedFile.content }}</pre>
+            <pre class="mono" tabindex="0" :aria-label="`Preview of ${selectedFile.path}`">{{ selectedFile.content }}</pre>
           </div>
         </div>
 
@@ -334,7 +330,6 @@ legend { padding: 0; margin-bottom: 10px; }
 .opt.tall { padding: 12px 14px; align-items: flex-start; }
 .opt.tall input { margin-top: 3px; }
 .stack { display: flex; flex-direction: column; gap: 4px; }
-.soon { margin-left: auto; font-size: 12px; color: var(--text-label); }
 .small { font-size: 13px; margin: 0; }
 .check { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .dimmed { opacity: .6; }

@@ -91,6 +91,7 @@ function makeState(doc: string, path: string): EditorState {
   return EditorState.create({
     doc,
     extensions: [
+      EditorView.contentAttributes.of({ 'aria-label': 'Editor for ' + path }),
       lineNumbers(), foldGutter(), lintGutter(), highlightActiveLine(), highlightActiveLineGutter(),
       drawSelection(), history(), indentOnInput(), bracketMatching(), highlightSelectionMatches(),
       syntaxHighlighting(highlight), themeSlot.of(themes[theme.value]), language(path),

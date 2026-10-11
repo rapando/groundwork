@@ -16,6 +16,20 @@ const emit = defineEmits<{
 }>()
 
 const tab = ref<'file' | 'all'>('file')
+// arrow keys move between tabs and focus the new one (roving tabindex)
+function tabKeys(e: KeyboardEvent) {
+  const order: Array<'file' | 'all'> = ['file', 'all']
+  let i = order.indexOf(tab.value)
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') i = (i + 1) % order.length
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') i = (i + order.length - 1) % order.length
+  else if (e.key === 'Home') i = 0
+  else if (e.key === 'End') i = order.length - 1
+  else return
+  e.preventDefault()
+  tab.value = order[i]
+  const el = (e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role=tab]')[i]
+  el?.focus()
+}
 const shown = computed(() => (tab.value === 'file' ? props.fileDiagnostics : props.allDiagnostics))
 const sevLabel = { error: 'error', warning: 'warn', info: 'info' } as const
 const ranAny = computed(() => props.unit?.results.some((r) => r.status !== 'idle') ?? false)
@@ -34,9 +48,9 @@ const statusText = (r: UnitStatus['results'][number]) => {
 <template>
   <section class="tray" aria-label="Problems">
     <header class="bar">
-      <div class="tabs" role="tablist">
-        <button class="tab" :class="{ on: tab === 'file' }" role="tab" :aria-selected="tab === 'file'" @click="tab = 'file'">This file ({{ fileDiagnostics.length }})</button>
-        <button class="tab" :class="{ on: tab === 'all' }" role="tab" :aria-selected="tab === 'all'" @click="tab = 'all'">All problems ({{ allDiagnostics.length }})</button>
+      <div class="tabs" role="tablist" @keydown="tabKeys">
+        <button class="tab" :class="{ on: tab === 'file' }" role="tab" :aria-selected="tab === 'file'" :tabindex="tab === 'file' ? 0 : -1" @click="tab = 'file'">This file ({{ fileDiagnostics.length }})</button>
+        <button class="tab" :class="{ on: tab === 'all' }" role="tab" :aria-selected="tab === 'all'" :tabindex="tab === 'all' ? 0 : -1" @click="tab = 'all'">All problems ({{ allDiagnostics.length }})</button>
       </div>
       <div v-if="unit" class="chips">
         <span v-for="r in unit.results" :key="r.tool" class="chip mono" :class="r.status" :title="[r.message, r.hint].filter(Boolean).join(' — ')">

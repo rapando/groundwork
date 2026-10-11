@@ -4,6 +4,8 @@ import { serviceApi } from '../api/client'
 import type { ProjectView, ServiceInfo } from '../api/types'
 import BrandMark from '../components/BrandMark.vue'
 import ThemeToggle from '../components/ThemeToggle.vue'
+import { swallow } from '../api/swallow'
+import Modal from '../components/Modal.vue'
 
 const projects = ref<ProjectView[] | null>(null)
 const info = ref<ServiceInfo | null>(null)
@@ -71,7 +73,7 @@ let timer = 0
 const onFocus = () => refresh()
 onMounted(async () => {
   document.title = 'Projects · groundwork'
-  serviceApi<ServiceInfo>('/service').then((i) => (info.value = i)).catch(() => {})
+  serviceApi<ServiceInfo>('/service').then((i) => (info.value = i)).catch(swallow('service info'))
   await refresh()
   timer = window.setInterval(refresh, 10_000)
   window.addEventListener('focus', onFocus)
@@ -138,8 +140,8 @@ onUnmounted(() => {
       </ul>
     </main>
 
-    <div v-if="removing" class="scrim" @click.self="removing = null">
-      <div class="card dialog" role="dialog" aria-modal="true" aria-labelledby="rm-title">
+    <Modal v-if="removing" labelledby="rm-title" @close="removing = null">
+      <div class="card dialog">
         <h2 id="rm-title">Remove {{ removing.name }}?</h2>
         <p class="muted">groundwork stops watching it. Files in <span class="mono">{{ removing.path }}</span>, including its <span class="mono">.groundwork/</span> history, are left in place, so importing it again picks up where you left off.</p>
         <p v-if="removeError" class="err" role="alert">{{ removeError }}</p>
@@ -148,7 +150,7 @@ onUnmounted(() => {
           <button class="btn danger" type="button" @click="confirmRemove">Remove project</button>
         </div>
       </div>
-    </div>
+    </Modal>
   </div>
 </template>
 
@@ -183,7 +185,6 @@ a.pname:hover { color: var(--accent-hover); }
 .pill.fail { color: var(--fail); background: color-mix(in srgb, var(--fail) 12%, transparent); }
 .pill.run { color: var(--running); background: color-mix(in srgb, var(--running) 12%, transparent); }
 .btn.danger { background: var(--fail); border-color: var(--fail); color: var(--on-accent); }
-.scrim { position: fixed; inset: 0; background: var(--scrim); display: grid; place-items: center; padding: 16px; }
 .dialog { max-width: 520px; width: 100%; }
 .dialog p { margin: 0; font-size: 15px; line-height: 1.6; }
 @media (max-width: 640px) { .body { padding: 24px 16px; } .top { padding: 14px 16px; } }

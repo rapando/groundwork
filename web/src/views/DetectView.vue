@@ -160,7 +160,7 @@ async function start() {
           </p>
         </div>
 
-        <pre class="term" aria-label="Scan output"><template v-for="(l, i) in terminal" :key="i"><span v-if="l.mark" :class="l.cls">{{ l.mark }}</span><span v-if="l.mark"> </span><span :class="l.cls === 'muted' ? 'muted' : ''">{{ l.text }}</span>
+        <pre class="term" tabindex="0" aria-label="Scan output"><template v-for="(l, i) in terminal" :key="i"><span v-if="l.mark" :class="l.cls">{{ l.mark }}</span><span v-if="l.mark"> </span><span :class="l.cls === 'muted' ? 'muted' : ''">{{ l.text }}</span>
 </template></pre>
 
         <section aria-label="Detected projects" class="stack">
@@ -206,7 +206,7 @@ async function start() {
             <h2 id="map">Environments</h2>
             <span class="muted small">Matched by name across Terraform and Ansible.</span>
           </div>
-          <div class="scroll">
+          <div class="scroll" tabindex="0" aria-label="Environments table">
             <table class="mono">
               <thead><tr><th>environment</th><th>terraform</th><th>ansible</th><th>status</th></tr></thead>
               <tbody>
@@ -229,7 +229,7 @@ async function start() {
             <h2>groundwork.yaml</h2>
             <span class="mono small ok">only new file</span>
           </div>
-          <pre class="mono yaml">{{ yaml }}</pre>
+          <pre class="mono yaml" tabindex="0" aria-label="groundwork.yaml preview">{{ yaml }}</pre>
         </div>
         <div class="card tight">
           <span class="lbl">Also add (optional)</span>
@@ -273,7 +273,7 @@ h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .ev { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; font-size: 14px; }
 .ev dt { color: var(--text-label); }
 .ev dd { margin: 0; font-family: var(--font-mono); font-size: 13.5px; color: var(--text-code); word-break: break-word; }
-.dim { opacity: .85; }
+.dim { border-style: dashed; }
 .small { font-size: 13px; margin: 0; }
 .scroll { overflow-x: auto; }
 table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 13.5px; }

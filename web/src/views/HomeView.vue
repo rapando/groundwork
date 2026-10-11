@@ -12,6 +12,7 @@ import { useGit } from '../stores/git'
 import { ago, duration, kindLabel, useRuns } from '../stores/runs'
 import { useNow } from '../composables/now'
 import type { DriftSchedule, EnvTarget, Onboarding } from '../api/types'
+import { swallow } from '../api/swallow'
 
 const router = useRouter()
 const route = useRoute()
@@ -31,8 +32,8 @@ async function loadOnboarding() {
 }
 onMounted(() => {
   checks.refresh(); git.refresh(); runs.refresh(); issues.refresh()
-  loadOnboarding().catch(() => {})
-  api<DriftSchedule>('/drift/schedule').then((s) => (schedule.value = s)).catch(() => {})
+  loadOnboarding().catch(swallow('onboarding state'))
+  api<DriftSchedule>('/drift/schedule').then((s) => (schedule.value = s)).catch(swallow('drift schedule'))
 })
 watch(() => route.query.tour, (t) => { if (t === '1') touring.value = true })
 async function tourDone() {

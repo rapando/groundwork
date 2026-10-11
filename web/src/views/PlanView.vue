@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../components/AppShell.vue'
 import StatusPill from '../components/StatusPill.vue'
@@ -8,6 +8,7 @@ import type { PlanChange, PlanReview, ResourceDiff } from '../api/types'
 import { ago, useRuns } from '../stores/runs'
 import { onEvent } from '../composables/events'
 import { useNow } from '../composables/now'
+import { swallow } from '../api/swallow'
 
 const route = useRoute()
 const router = useRouter()
@@ -29,8 +30,11 @@ async function load() {
 }
 onMounted(load)
 watch(id, () => { selected.value = ''; diff.value = null; load() })
-onEvent('run.updated', (d: { id: number }) => { if (d.id === id.value) load() })
-onEvent('checks.updated', () => load())
+const offs = [
+  onEvent('run.updated', (d: { id: number }) => { if (d.id === id.value) load() }),
+  onEvent('checks.updated', () => load()),
+]
+onBeforeUnmount(() => offs.forEach((off) => off()))
 
 // ---- resource list ----
 type Filter = 'all' | 'replace' | 'update' | 'create' | 'delete'
@@ -127,7 +131,7 @@ async function replan() {
 }
 async function discard() {
   if (!window.confirm('Discard this plan?')) return
-  await runs.cancel(id.value).catch(() => {})
+  await runs.cancel(id.value).catch(swallow('cancel run'))
   load()
 }
 

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { api } from '../api/client'
 import type { EnvView, RunBrief } from '../api/types'
 import { onEvent } from '../composables/events'
+import { swallow } from '../api/swallow'
 
 let timer: number | undefined
 
@@ -13,10 +14,7 @@ export const useRuns = defineStore('runs', {
   },
   actions: {
     async refresh() {
-      const [runs, envs] = await Promise.all([
-        api<{ runs: RunBrief[] }>('/runs?limit=100'),
-        api<{ envs: EnvView[] }>('/envs'),
-      ])
+      const [runs, envs] = await Promise.all([api<{ runs: RunBrief[] }>('/runs?limit=100'), api<{ envs: EnvView[] }>('/envs')])
       this.list = runs.runs
       this.envs = envs.envs
       this.loaded = true
@@ -37,7 +35,7 @@ export const useRuns = defineStore('runs', {
     init() {
       const later = () => {
         window.clearTimeout(timer)
-        timer = window.setTimeout(() => this.refresh().catch(() => {}), 150)
+        timer = window.setTimeout(() => this.refresh().catch(swallow('runs refresh after event')), 150)
       }
       onEvent('run.updated', later)
       onEvent('reconnected', later)
@@ -48,21 +46,35 @@ export const useRuns = defineStore('runs', {
 })
 
 export const STATUS_LABEL: Record<string, string> = {
-  queued: 'queued', running: 'running', waiting_approval: 'needs approval',
-  succeeded: 'succeeded', failed: 'failed', cancelled: 'cancelled',
+  queued: 'queued',
+  running: 'running',
+  waiting_approval: 'needs approval',
+  succeeded: 'succeeded',
+  failed: 'failed',
+  cancelled: 'cancelled',
 }
 export const STATUS_CLASS: Record<string, string> = {
-  queued: 'idle', running: 'run', waiting_approval: 'warn', succeeded: 'ok', failed: 'fail', cancelled: 'idle',
+  queued: 'idle',
+  running: 'run',
+  waiting_approval: 'warn',
+  succeeded: 'ok',
+  failed: 'fail',
+  cancelled: 'idle',
 }
 
 export function kindLabel(r: Pick<RunBrief, 'kind' | 'stage' | 'apply' | 'status'> & { target?: RunBrief['target'] }): string {
   const t = r.target
   switch (r.kind) {
-    case 'ans.check': return `ansible-playbook ${t?.playbook ?? ''} --check`
-    case 'ans.playbook': return `ansible-playbook ${t?.playbook ?? ''}`
-    case 'ans.ping': return 'ansible ping'
-    case 'ans.facts': return 'ansible gather facts'
-    case 'ans.adhoc': return `ansible -m ${t?.module ?? ''}${t?.args ? ' ' + t.args : ''}`
+    case 'ans.check':
+      return `ansible-playbook ${t?.playbook ?? ''} --check`
+    case 'ans.playbook':
+      return `ansible-playbook ${t?.playbook ?? ''}`
+    case 'ans.ping':
+      return 'ansible ping'
+    case 'ans.facts':
+      return 'ansible gather facts'
+    case 'ans.adhoc':
+      return `ansible -m ${t?.module ?? ''}${t?.args ? ' ' + t.args : ''}`
   }
   if (r.kind === 'tf.init') return 'terraform init'
   if (r.kind === 'tf.drift') return 'terraform plan -refresh-only'

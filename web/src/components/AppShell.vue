@@ -7,6 +7,7 @@ import { useRuns } from '../stores/runs'
 import { useIssues } from '../stores/issues'
 import BrandMark from './BrandMark.vue'
 import ThemeToggle from './ThemeToggle.vue'
+import { connection } from '../composables/events'
 
 const ws = useWorkspace()
 const checks = useChecks()
@@ -98,10 +99,13 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
       </div>
       <div class="foot">
         <ThemeToggle />
+        <span v-if="connection !== 'open'" class="mono conn" role="status" :title="connection === 'connecting' ? 'Connecting to the groundwork service' : 'The service is not answering; retrying. What you see may be out of date.'">
+          <span class="dot" aria-hidden="true" />{{ connection === 'connecting' ? 'connecting…' : 'reconnecting…' }}
+        </span>
         <span v-if="ws.ws?.version" class="mono ver" :title="`groundwork ${ws.ws.version}, port ${port}`">{{ /^\d/.test(ws.ws.version) ? 'v' + ws.ws.version : ws.ws.version }} · :{{ port }}</span>
       </div>
     </aside>
-    <main class="main"><slot /></main>
+    <main class="main" :class="{ stale: connection === 'reconnecting' }"><slot /></main>
   </div>
 </template>
 
@@ -117,6 +121,10 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
 .switch:hover { text-decoration: underline; }
 .name { font-weight: 700; font-size: 14px; }
 .ver { font-size: 12px; color: var(--text-label); word-break: break-all; }
+.conn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--warn); padding: 3px 8px; border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); border-radius: 999px; }
+.conn .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+.main.stale { opacity: .6; transition: opacity .3s; }
 .repo { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-card); }
 .rname { font-size: 14px; font-weight: 500; word-break: break-all; }
 .rline { font-size: 13px; color: var(--text-muted); }

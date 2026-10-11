@@ -9,7 +9,7 @@ const now = useNow()
 
 // "summary" (reading the plan back) is plumbing: only show it if it breaks
 const items = computed(() => props.stages.filter((s) => s.name !== 'summary' || s.status === 'failed').map((s) => {
-  let note = ''
+  let note: string
   switch (s.status) {
     case 'succeeded': note = '✓ ' + duration(s.started_at, s.ended_at); break
     case 'running': note = (s.name === 'approve' ? '● waiting' : '● ' + duration(s.started_at, undefined, now.value)); break

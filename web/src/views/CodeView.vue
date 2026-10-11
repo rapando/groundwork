@@ -14,6 +14,7 @@ import { useFiles } from '../stores/files'
 import { useGit } from '../stores/git'
 import { useWorkspace } from '../stores/workspace'
 import { onEvent } from '../composables/events'
+import { swallow } from '../api/swallow'
 
 const route = useRoute()
 const router = useRouter()
@@ -214,7 +215,7 @@ const showEditor = computed(() => !canVisualize.value || viewMode.value !== 'vis
 const showVisual = computed(() => canVisualize.value && viewMode.value !== 'code' && !!loaded.value && !diffOpen.value)
 let visualizeRecorded = false // for the Getting started checklist
 watch(showVisual, (v) => {
-  if (v && !visualizeRecorded) { visualizeRecorded = true; api('/onboarding/event', { body: { name: 'visualize.opened' } }).catch(() => {}) }
+  if (v && !visualizeRecorded) { visualizeRecorded = true; api('/onboarding/event', { body: { name: 'visualize.opened' } }).catch(swallow('onboarding event')) }
 }, { immediate: true })
 function gotoFrom(file: string, line: number) {
   if (file === path.value) {
