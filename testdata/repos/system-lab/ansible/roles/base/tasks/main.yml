@@ -1,0 +1,4 @@
+---
+- name: Base packages
+  ansible.builtin.debug:
+    msg: base

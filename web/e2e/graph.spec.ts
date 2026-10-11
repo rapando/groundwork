@@ -109,3 +109,27 @@ test('dependency graph renders and switches to the modules view', async ({ page 
   const file = await (await dl).path()
   expect(readFileSync(file!, 'utf8')).toContain('<svg')
 })
+
+test('system view places Ansible hosts on the servers in state, with roles and port checks', async ({ page }) => {
+  const state = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../testdata/terraform/state_system.json')
+  gw = await start('system-lab', { files: { 'infra/.terraform/.keep': '' }, env: { FAKE_STATE_FILE: state } })
+  await login(page)
+  await page.goto(origin() + '/graph?root=infra&env=dev&view=system')
+  const sys = page.getByRole('region', { name: 'System architecture' })
+  await expect(sys.getByText(/1 servers · 2 hosts placed · 1 not placed · from terraform state/)).toBeVisible()
+  await expect(sys.getByText('roles base, app')).toBeVisible()
+  await expect(sys.getByText('⚠ blocked 8080')).toBeVisible()
+  await expect(sys.getByText(/stray.*no instance in state has address 192\.0\.2\.50/)).toBeVisible()
+
+  await sys.getByRole('button', { name: /aws_instance app/ }).click({ force: true })
+  const insp = page.getByRole('region', { name: 'Selected resource' })
+  await expect(insp.getByRole('link', { name: 'app-1' })).toBeVisible()
+  const row = insp.locator('article', { hasText: 'app-1' }).locator('tr', { hasText: '8080' })
+  await expect(row).toContainText('app_port (role app)')
+  await expect(row).toContainText('no firewall rule allows it')
+  await page.screenshot({ path: path.join(SHOTS, 'graph-system.png'), fullPage: true })
+
+  // the mode is in the URL; switching back keeps the stack
+  await page.getByRole('button', { name: 'Resources' }).click()
+  await expect(page).toHaveURL(/root=infra&env=dev$/)
+})

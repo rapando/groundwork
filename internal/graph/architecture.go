@@ -16,6 +16,7 @@ var rulesYAML []byte
 type Rules struct {
 	Containers []string            `yaml:"containers"` // network-like resource types, outermost first
 	Via        map[string][]string `yaml:"via"`        // argument name → container types it points into
+	Servers    []string            `yaml:"servers"`    // machines Ansible configures (system view)
 }
 
 func LoadRules() Rules {

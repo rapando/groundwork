@@ -39,10 +39,10 @@ Not edited here: INI inventories, inventory directories and dynamic inventories 
 | Kind | What runs | Approval |
 |---|---|---|
 | ping | `ansible <hosts> -m ping` | none; updates reachability |
-| gather facts | `ansible <hosts> -m setup -a gather_subset=min` | none; caches a small set of facts (OS, kernel, CPU/memory, Python, address). `ansible_env` is never kept. |
+| gather facts | `ansible <hosts> -m setup -a gather_subset=min` | none; caches a small set of facts (OS, kernel, CPU/memory, Python, address). `ansible_env` is never kept. Listening ports from `listen_ports_facts` (the [system view](graph.md#system-graph-screen--system)'s *Check listening ports*) are cached alongside, without command lines. |
 | dry run | `ansible-playbook --syntax-check`, then `--check --diff` | none |
 | playbook | dry run, then **waits for approval**, then the real run with `--diff` | always; prod-like environments need the name typed |
-| ad-hoc | `ansible <pattern> -m <module> -a <args>` | read-only modules (`ping`, `setup`, `stat`, `debug`, `*_facts`) need none; anything else needs the environment name typed, recorded as an approval |
+| ad-hoc | `ansible <pattern> -m <module> -a <args>` | read-only modules (`ping`, `setup`, `stat`, `debug`, `package_facts`, `service_facts`, `listen_ports_facts`) need none; anything else needs the environment name typed, recorded as an approval |
 
 A playbook's dry run is its "plan": approving it is refused if the project's files changed since the dry run, or if the dry run is older than `terraform.plan_ttl` (default 1h); the check is repeated under the job lock right before the real run. A dry run with failed or unreachable hosts can still be approved (check mode often trips over tasks that depend on earlier changes), and the failures are shown for review.
 

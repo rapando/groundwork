@@ -1,0 +1,11 @@
+version: 1
+mode: standalone
+terraform:
+  roots:
+    - path: infra
+      env: dev
+ansible:
+  projects:
+    - path: ansible
+      inventories:
+        dev: inventory/dev.yml

@@ -1,0 +1,4 @@
+---
+- name: Start the app
+  ansible.builtin.debug:
+    msg: "app on {{ app_port }}"

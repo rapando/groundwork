@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../components/AppShell.vue'
 import GraphCanvas, { type GEdge, type GNode } from '../components/GraphCanvas.vue'
+import SystemPanel from '../components/SystemPanel.vue'
 import DiffView from '../components/DiffView.vue'
 import { api, ApiError } from '../api/client'
 import type { DriftAttr, DriftResource, GraphModel } from '../api/types'
@@ -32,7 +33,12 @@ const stackKey = computed({
   set: (v: string) => { const [root, env] = v.split('|'); router.replace({ query: { ...route.query, root, env } }) },
 })
 const target = computed(() => { const [root, env] = stackKey.value.split('|'); return { root, env } })
-const mode = ref<'resources' | 'modules'>('resources')
+type Mode = 'resources' | 'modules' | 'system'
+// ?view=system opens the system view directly
+const mode = computed<Mode>({
+  get: () => (['modules', 'system'].includes(String(route.query.view)) ? (route.query.view as Mode) : 'resources'),
+  set: (v) => { selected.value = ''; router.replace({ query: { ...route.query, view: v === 'resources' ? undefined : v } }) },
+})
 
 const model = ref<GraphModel | null>(null)
 const planRun = ref<number | null>(null)
@@ -141,13 +147,14 @@ async function applyPreview() {
       <div class="seg-group" role="group" aria-label="Graph type">
         <button class="seg" :class="{ on: mode === 'resources' }" type="button" :aria-pressed="mode === 'resources'" @click="mode = 'resources'">Resources</button>
         <button class="seg" :class="{ on: mode === 'modules' }" type="button" :aria-pressed="mode === 'modules'" @click="mode = 'modules'">Modules</button>
+        <button class="seg" :class="{ on: mode === 'system' }" type="button" :aria-pressed="mode === 'system'" title="Servers with the Ansible roles and ports on them" @click="mode = 'system'">System</button>
       </div>
       <label class="stack">Stack
         <select v-model="stackKey" class="sel" aria-label="Stack">
           <option v-for="s in stacks" :key="s.root + s.env" :value="`${s.root}|${s.env}`">{{ s.env }} / {{ s.root }}</option>
         </select>
       </label>
-      <div class="legend">
+      <div v-if="mode !== 'system'" class="legend">
         <span><i class="lg" />unchanged</span><span><i class="lg drift" />drift</span><span><i class="lg update" />~ update</span>
         <span><i class="lg create" />+ create</span><span><i class="lg replace" />± replace / destroy</span>
       </div>
@@ -155,6 +162,9 @@ async function applyPreview() {
     </header>
     <p v-if="error" class="pad err" role="alert">{{ error }}</p>
     <p v-else-if="!stacks.length" class="pad muted">No Terraform roots are configured.</p>
+    <div v-else-if="mode === 'system'" class="body">
+      <SystemPanel :root="target.root" :env="target.env" />
+    </div>
     <div v-else class="body">
       <section class="gpanel" aria-label="Dependency graph">
         <div class="gbar">

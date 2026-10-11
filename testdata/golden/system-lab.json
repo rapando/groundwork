@@ -1,0 +1,78 @@
+{
+  "mode": "standalone",
+  "empty": false,
+  "file_count": 8,
+  "iac_ratio": 1,
+  "terraform_roots": [
+    {
+      "path": "infra",
+      "kind": "root",
+      "score": 3,
+      "providers": [
+        "aws"
+      ],
+      "evidence": [
+        {
+          "file": "infra/main.tf",
+          "line": 1,
+          "note": "provider \"aws\" block"
+        }
+      ]
+    }
+  ],
+  "terraform_modules": [],
+  "ansible": [
+    {
+      "path": "ansible",
+      "config": "ansible/ansible.cfg",
+      "playbooks": [
+        "ansible/site.yml"
+      ],
+      "roles": [
+        "ansible/roles/app",
+        "ansible/roles/base"
+      ],
+      "inventories": [
+        "ansible/inventory/dev.yml"
+      ],
+      "evidence": [
+        {
+          "file": "ansible/ansible.cfg",
+          "note": "ansible.cfg"
+        },
+        {
+          "file": "ansible/inventory/dev.yml",
+          "note": "inventory"
+        },
+        {
+          "file": "ansible/roles/app/tasks/main.yml",
+          "note": "role app"
+        },
+        {
+          "file": "ansible/roles/base/tasks/main.yml",
+          "note": "role base"
+        },
+        {
+          "file": "ansible/site.yml",
+          "line": 2,
+          "note": "playbook (hosts + tasks/roles)"
+        }
+      ]
+    }
+  ],
+  "ci": [],
+  "envs": [
+    {
+      "name": "dev",
+      "ansible": [
+        "ansible/inventory/dev.yml"
+      ]
+    },
+    {
+      "name": "infra",
+      "terraform": [
+        "infra"
+      ]
+    }
+  ]
+}

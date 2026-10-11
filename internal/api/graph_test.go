@@ -2,9 +2,15 @@ package api
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/go-chi/chi/v5"
+
+	"github.com/rapando/groundwork/internal/events"
+	"github.com/rapando/groundwork/internal/store"
 )
 
 func TestGraphAndArchitectureOverHTTP(t *testing.T) {
@@ -123,5 +129,92 @@ func TestDriftOverHTTPWithActions(t *testing.T) {
 	rec = call(t, e.h, "POST", "/drift/"+itoa(int(permID))+"/action", map[string]any{"action": "revert"})
 	if rec.Code != 202 || into(t, rec)["run"].(map[string]any)["kind"] != "tf.plan" {
 		t.Fatalf("%d %s", rec.Code, rec.Body)
+	}
+}
+
+func TestSystemViewOverHTTP(t *testing.T) {
+	if _, err := exec.LookPath("ansible-inventory"); err != nil {
+		t.Skip("ansible not installed")
+	}
+	withFakeTerraform(t)
+	root := fixture(t, "system-lab")
+	st, _ := store.Open(filepath.Join(t.TempDir(), "s.db"))
+	defer st.Close()
+	a := New(root, "test", events.NewBus(), st)
+	h := chi.NewRouter()
+	a.Routes(h)
+	sys := func(q string) map[string]any {
+		rec := call(t, h, "GET", "/graph/system?root=infra&env=dev"+q, nil)
+		if rec.Code != 200 {
+			t.Fatalf("%d %s", rec.Code, rec.Body)
+		}
+		return into(t, rec)
+	}
+
+	// not initialised: the architecture is drawn, every host is unlinked with the reason
+	m := sys("")
+	if !strings.Contains(m["state_error"].(string), "isn't initialised") {
+		t.Fatalf("%v", m["state_error"])
+	}
+	s := m["system"].(map[string]any)
+	if len(s["unlinked"].([]any)) != 3 || len(s["containers"].([]any)) != 1 {
+		t.Fatalf("%v", s)
+	}
+
+	// initialised with state: hosts land on the instances they run on
+	if err := os.MkdirAll(filepath.Join(root, "infra", ".terraform"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("FAKE_STATE_FILE", abs(t, "../../testdata/terraform/state_system.json"))
+	_ = st.SetFacts("ansible#dev", "app-1", `{"ansible_distribution":"Ubuntu","ansible_distribution_version":"24.04","groundwork_listen_at":"2026-10-01T10:00:00Z","tcp_listen":[{"port":22,"protocol":"tcp","address":"0.0.0.0","name":"sshd"}]}`)
+	m = sys("&refresh=1")
+	if m["state_error"] != "" {
+		t.Fatalf("%v", m["state_error"])
+	}
+	s = m["system"].(map[string]any)
+	app := s["servers"].(map[string]any)["aws_instance.app"].([]any)
+	if len(app) != 2 {
+		t.Fatalf("%v", s["servers"])
+	}
+	h1 := app[0].(map[string]any)
+	if h1["name"] != "app-1" || h1["instance"] != "aws_instance.app[0]" || h1["os"] != "Ubuntu 24.04" {
+		t.Fatalf("%v", h1)
+	}
+	var roles []string
+	for _, r := range h1["roles"].([]any) {
+		roles = append(roles, r.(map[string]any)["name"].(string))
+	}
+	if strings.Join(roles, ",") != "base,app" {
+		t.Fatalf("%v", roles)
+	}
+	flags := map[float64]string{}
+	for _, p := range h1["ports"].([]any) {
+		p := p.(map[string]any)
+		f, _ := p["flag"].(string)
+		flags[p["port"].(float64)] = f
+	}
+	// 22: declared (ssh), allowed, listening; 8080: the role's port, no rule allows it
+	if flags[22] != "" || flags[8080] != "blocked" {
+		t.Fatalf("%v", flags)
+	}
+	if u := s["unlinked"].([]any); len(u) != 1 || u[0].(map[string]any)["name"] != "stray" {
+		t.Fatalf("%v", u)
+	}
+	if len(s["rules"].(map[string]any)["aws_security_group.app"].([]any)) != 1 {
+		t.Fatalf("%v", s["rules"])
+	}
+	// a project without inventories: its one inventory pairs with every stack
+	cfg := filepath.Join(root, "groundwork.yaml")
+	y, _ := os.ReadFile(cfg)
+	if err := os.WriteFile(cfg, []byte(strings.Replace(string(y), "      inventories:\n        dev: inventory/dev.yml\n", "", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	a.reloadConfig()
+	m = sys("")
+	if sc := m["scopes"].([]any); len(sc) != 1 || sc[0].(map[string]any)["env"] != "default" || len(m["system"].(map[string]any)["servers"].(map[string]any)) != 1 {
+		t.Fatalf("%v", m["scopes"])
+	}
+	if call(t, h, "GET", "/graph/system?root=nope&env=dev", nil).Code != 400 {
+		t.Fatal("bad root")
 	}
 }

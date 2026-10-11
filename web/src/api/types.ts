@@ -516,6 +516,45 @@ export interface Architecture {
   unmapped: string[]
   errors?: string[]
 }
+export interface PortRow {
+  port: number
+  proto: string
+  declared: string[]
+  allowed: string[]
+  listening: string[]
+  flag?: 'blocked' | 'not-listening' | 'undeclared' | 'unused'
+}
+export interface SystemHost {
+  project: string
+  env: string
+  name: string
+  address: string
+  os?: string
+  roles: { name: string; playbooks: string[] }[]
+  listen_at?: string
+  instance: string
+  matched_by: string
+  ports: PortRow[]
+  firewalls: string[]
+  open_all?: boolean
+}
+export interface FirewallRule {
+  proto: string
+  from: number
+  to: number
+  sources?: string[]
+}
+export interface SystemModel extends Architecture {
+  servers: Record<string, SystemHost[]>
+  unlinked: { project: string; name: string; address: string; reason: string }[]
+  rules: Record<string, FirewallRule[]>
+}
+export interface SystemScope {
+  project: string
+  env: string
+  hosts: number
+  error?: string
+}
 export interface DriftAttr {
   id: number
   root: string

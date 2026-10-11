@@ -16,6 +16,7 @@ func FuzzInventoryAndPatterns(f *testing.F) {
 			for _, h := range inv.Hosts {
 				inv.GroupsOf(h)
 			}
+			inv.Match(pattern)
 		}
 		if ValidPattern(pattern) && len(pattern) > 0 && pattern[0] == '-' {
 			t.Fatalf("pattern %q would be read as an option", pattern)

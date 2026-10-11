@@ -28,6 +28,11 @@ FACT_KEYS = (
     "ansible_python_version", "ansible_hostname", "ansible_fqdn", "ansible_default_ipv4",
 )
 
+# From listen_ports_facts, only these fields of each socket: cmdline, user and
+# pid are dropped (a command line can carry credentials).
+LISTEN_KEYS = ("tcp_listen", "udp_listen")
+LISTEN_FIELDS = ("port", "protocol", "address", "name")
+
 
 def _clip(s):
     if s is None:
@@ -100,6 +105,10 @@ class CallbackModule(CallbackBase):
             ip = facts.get("ansible_default_ipv4")
             if isinstance(ip, dict):  # keep only the address
                 facts["ansible_default_ipv4"] = ip.get("address")
+            for k in LISTEN_KEYS:
+                if isinstance(f.get(k), list):
+                    facts[k] = [{x: s.get(x) for x in LISTEN_FIELDS} for s in f[k] if isinstance(s, dict)]
+                    facts["groundwork_listen_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         task = result._task
         started = self._task_start.get(task._uuid)
         self._emit(

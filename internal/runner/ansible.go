@@ -218,7 +218,15 @@ func (r *Runner) recordHost(scope, module string, res ansible.HostResult) {
 		}
 	}
 	if len(res.Facts) > 0 {
-		if b, err := json.Marshal(res.Facts); err == nil {
+		// merge: setup and listen_ports_facts each refresh their own keys
+		merged := map[string]any{}
+		if f, _ := r.Store.GetFacts(scope, res.Host); f != nil {
+			_ = json.Unmarshal([]byte(f.JSON), &merged)
+		}
+		for k, v := range res.Facts {
+			merged[k] = v
+		}
+		if b, err := json.Marshal(merged); err == nil {
 			_ = r.Store.SetFacts(scope, res.Host, string(b))
 		}
 	}

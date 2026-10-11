@@ -205,7 +205,11 @@ var ReadOnlyModules = map[string]bool{
 	"debug": true, "ansible.builtin.debug": true,
 	"package_facts": true, "ansible.builtin.package_facts": true,
 	"service_facts": true, "ansible.builtin.service_facts": true,
+	"listen_ports_facts": true, "community.general.listen_ports_facts": true,
 }
+
+// ListenPortsModule gathers listening sockets (Linux; needs community.general).
+const ListenPortsModule = "community.general.listen_ports_facts"
 
 // ---- inventory ----
 

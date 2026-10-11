@@ -6,6 +6,26 @@ Pick a stack (root + environment). Resources are nodes; an arrow points from a d
 
 The model comes from **static analysis of the HCL**: it needs no `terraform init` and no credentials. References are followed through module variables and outputs, so an edge from a root resource into a module's resource is exact. When the root has been initialised, edges from `terraform graph` are merged in. Overlays: the newest plan waiting for approval (create / update / replace / destroy) and recorded drift (dashed amber). **Modules** collapses the graph to one node per module. Export as SVG or PNG.
 
+## System (Graph screen → System)
+
+The architecture below, with the Ansible hosts of the same environment placed on the servers Terraform creates: what runs on each machine and which ports it uses. A stack pairs with every Ansible inventory whose environment has the same name (`dev` ↔ `inventories: {dev: …}`); a project without `inventories:` has one inventory for all environments and pairs with every stack.
+
+![System view](images/graph-system.png)
+
+**Placing hosts.** groundwork runs `terraform state pull` (read-only, 30 s timeout, reused for a minute; *Refresh state* pulls again) and matches each host's address (`ansible_host`, else its name) against the IP addresses in state, then against machine names (`name`, `tags.Name`, `hostname`, …). A match on something that isn't a server (an elastic IP, a network interface) moves to the server that references it; server types are listed in `internal/graph/rules.yaml`. Hosts that match nothing, or several servers, are listed under *Hosts not placed* with the reason. The state is reduced to addresses and firewall rules as it is read and never stored or logged. The root must be initialised; without state the diagram shows the code alone.
+
+**Software** is the roles of every play whose `hosts:` pattern takes in the host (groups, globs, `~regex`, `&` and `!` are resolved as Ansible does; templated patterns are skipped), including `include_role`/`import_role` tasks and role dependencies from `meta/main.yml`.
+
+**Ports** come from three places, lined up per host in the inspector:
+
+| Column | Source |
+|---|---|
+| declared by | `*_port` / `*_ports` variables: role defaults, then the inventory's values, then role vars; `"{{ other_var }}"` is followed, other templates aren't. `ansible_port` (default 22) shows as ssh unless the host uses a local/container connection. |
+| allowed by | Inbound rules in state attached to the instance: AWS security groups (inline, `aws_security_group_rule`, `aws_vpc_security_group_ingress_rule`), `hcloud_firewall`, `google_compute_firewall` (by target tags), `digitalocean_firewall`, Vultr firewall groups (`vultr_firewall_rule`), and a `docker_container`'s published `ports`. Azure NSGs aren't read yet. |
+| listening | *Check listening ports* runs `community.general.listen_ports_facts` on the environment's hosts: a read-only ad-hoc run that needs no approval. It works on Linux hosts that have `ss` (iproute2) or `netstat` (net-tools, busybox), and needs the `community.general` collection on the machine running groundwork; slim container images usually lack both tools, and the hosts it fails on are listed above the diagram with the reason. Only port, protocol, address and process name are kept; loopback listeners are left out. |
+
+Flags: **blocked** (declared, but no attached firewall allows it), **not listening** (declared, but the last check found nothing on it), and as notes, *undeclared* (listening and open but no variable mentions it) and *unused* (open, but nothing declares or listens on it). Wide ranges and rules open to every port are shown with the firewall's rules rather than as rows.
+
 ## Architecture (Code screen → Split / Visualize)
 
 For `.tf` files the Code screen can show what the code builds: network resources (`aws_vpc`, `google_compute_network`, `azurerm_virtual_network`, `hcloud_network`, `digitalocean_vpc`) are drawn as containers, and resources that reference them, directly or through a subnet-like argument (`vpc_id`, `subnet_id(s)`, `subnetwork`, `network_id`, …), sit inside. The rules are data (`internal/graph/rules.yaml`); resources that relate to nothing drawn are listed as "not placed" rather than guessed.

@@ -1,0 +1,7 @@
+{"version":4,"resources":[
+ {"mode":"managed","type":"aws_vpc","name":"main","instances":[{"attributes":{"id":"vpc-1","cidr_block":"10.0.0.0/16"}}]},
+ {"mode":"managed","type":"aws_security_group","name":"app","instances":[{"attributes":{"id":"sg-app","name":"app","ingress":[{"protocol":"tcp","from_port":22,"to_port":22,"cidr_blocks":["10.0.0.0/8"]}]}}]},
+ {"mode":"managed","type":"aws_instance","name":"app","instances":[
+  {"index_key":0,"attributes":{"id":"i-1","private_ip":"10.0.1.10","vpc_security_group_ids":["sg-app"]}},
+  {"index_key":1,"attributes":{"id":"i-2","private_ip":"10.0.1.11","vpc_security_group_ids":["sg-app"]}}]}
+]}

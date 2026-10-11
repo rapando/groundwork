@@ -125,6 +125,7 @@ func (a *API) Routes(r chi.Router) {
 	r.Get("/graph/deps", a.graphDeps)
 	r.Get("/graph/roots", a.graphRoots)
 	r.Post("/graph/architecture", a.graphArchitecture)
+	r.Get("/graph/system", a.graphSystem)
 	r.Get("/drift", a.listDrift)
 	r.Post("/drift/{id}/action", a.driftAction)
 	r.Get("/inventory/host", a.getInventoryHost)

@@ -1,0 +1,6 @@
+---
+- name: Configure the app servers
+  hosts: app
+  roles:
+    - base
+    - app

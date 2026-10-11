@@ -2,7 +2,9 @@
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { theme, token } from '../composables/theme'
 
-export interface GNode { id: string; title: string; label: string; count?: string; state?: string; errors?: number; dim?: boolean }
+// rows: extra lines under the label (the system view lists roles and ports)
+export interface GNodeRow { text: string; tone?: 'warn' | 'muted' }
+export interface GNode { id: string; title: string; label: string; count?: string; state?: string; errors?: number; dim?: boolean; rows?: GNodeRow[] }
 export interface GEdge { from: string; to: string; label?: string }
 export interface GContainer { id: string; label: string; children: string[] }
 
@@ -12,7 +14,8 @@ const props = withDefaults(defineProps<{
 }>(), { containers: () => [], selected: '', focus: '', direction: 'RIGHT', ariaLabel: 'Graph' })
 const emit = defineEmits<{ (e: 'select', id: string): void }>()
 
-const NW = 210, NH = 60
+const NW = 210, NH = 60, ROW = 17
+const height = (n: GNode) => (n.rows?.length ? NH + 8 + n.rows.length * ROW : NH)
 interface Box { id: string; x: number; y: number; w: number; h: number; node?: GNode; container?: GContainer }
 interface Path { d: string; label?: string; lx?: number; ly?: number; key: string }
 const boxes = shallowRef<Box[]>([])
@@ -37,7 +40,7 @@ async function layout() {
   for (const c of props.containers) for (const ch of c.children) containerOf.set(ch, c.id)
   const containerIds = new Set(props.containers.map((c) => c.id))
   const visible = new Set(props.nodes.map((n) => n.id))
-  const leaf = (n: GNode) => ({ id: n.id, width: NW, height: NH })
+  const leaf = (n: GNode) => ({ id: n.id, width: NW, height: height(n) })
   const children: any[] = []
   for (const c of props.containers) {
     children.push({
@@ -171,7 +174,7 @@ const pal = computed(() => {
   const c = (n: string) => token('--' + n)
   return {
     canvas: c('bg-inset'), dot: c('line-strong'), edge: c('text-faint'), label: c('text-muted'), text: c('text'),
-    box: c('line-hover'), selected: c('text'), focus: c('accent'), tint: c('hover-tint'), fail: c('fail'),
+    box: c('line-hover'), selected: c('text'), focus: c('accent'), tint: c('hover-tint'), fail: c('fail'), warn: c('warn'),
     style: {
       '': { stroke: c('line-hover'), fill: c('bg-panel') },
       create: { stroke: c('ok'), fill: c('ok-bg'), tag: '+ create', tagColor: c('ok') },
@@ -224,6 +227,11 @@ const summary = computed(() => `${props.nodes.length} nodes, ${props.edges.lengt
             <text :x="b.x + 14" :y="b.y + 24" font-size="11" :fill="look(b.node).tagColor ?? pal.label">{{ trunc(b.node.title + (look(b.node).tag ? ' · ' + look(b.node).tag : ''), 30) }}</text>
             <text :x="b.x + 14" :y="b.y + 44" font-size="13" font-weight="700" :fill="pal.text">{{ trunc(b.node.label, 22) }}<tspan v-if="b.node.count" :fill="pal.label" font-weight="400"> {{ b.node.count }}</tspan></text>
             <text v-if="b.node.errors" :x="b.x + b.w - 12" :y="b.y + 20" font-size="11" text-anchor="end" :fill="pal.fail">! {{ b.node.errors }}</text>
+            <template v-if="b.node.rows?.length">
+              <line :x1="b.x + 10" :x2="b.x + b.w - 10" :y1="b.y + NH - 2" :y2="b.y + NH - 2" :stroke="look(b.node).stroke" stroke-opacity="0.5" />
+              <text v-for="(r, i) in b.node.rows" :key="i" :x="b.x + 14" :y="b.y + NH + 13 + i * ROW" font-size="11"
+                :fill="r.tone === 'warn' ? pal.warn : r.tone === 'muted' ? pal.label : pal.text">{{ trunc(r.text, 30) }}</text>
+            </template>
           </g>
         </template>
       </g>
