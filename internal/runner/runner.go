@@ -246,6 +246,11 @@ type job struct {
 	fallbackErr string     // first error-level line of any kind, used if there is no diagnostic
 	apply       *ApplySummary
 	cancelled   bool
+
+	// parked (guarded by Runner.mu) is set when the job has handed its run
+	// over to a human (waiting for approval) and is only winding down: it no
+	// longer counts as "in flight" for Approve or Cancel.
+	parked bool
 }
 
 // timedOut reports whether the job's context ended because of run_timeout
@@ -402,6 +407,9 @@ func (r *Runner) Cancel(id int64) error {
 	}
 	r.mu.Lock()
 	j := r.jobs[id]
+	if j != nil && j.parked { // the plan is done; cancelling means discarding it, below
+		j = nil
+	}
 	r.mu.Unlock()
 	switch {
 	case j != nil:
@@ -436,7 +444,7 @@ type ApproveRequest struct {
 // The apply stage re-checks freshness under the root lock right before it runs.
 func (r *Runner) Approve(id int64, req ApproveRequest) error {
 	r.mu.Lock()
-	if r.jobs[id] != nil { // an apply for this run is already in flight
+	if cur := r.jobs[id]; cur != nil && !cur.parked { // an apply for this run is already in flight
 		r.mu.Unlock()
 		return ErrNotApprovable
 	}
@@ -587,9 +595,22 @@ func (r *Runner) newJobLocked(id int64, kind string, t Target) *job {
 	return j
 }
 
+// dropJob unregisters j, and only j: a plan job winding down after parking
+// must not unregister the apply job that Approve registered under the same id.
 func (r *Runner) dropJob(j *job) {
 	r.mu.Lock()
-	delete(r.jobs, j.id)
+	if r.jobs[j.id] == j {
+		delete(r.jobs, j.id)
+	}
+	r.mu.Unlock()
+}
+
+// park marks j as having handed its run over for approval. Call it before
+// the run's status says waiting_approval, so an Approve that sees that status
+// is never refused because the plan job hasn't unregistered yet.
+func (r *Runner) park(j *job) {
+	r.mu.Lock()
+	j.parked = true
 	r.mu.Unlock()
 }
 

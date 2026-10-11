@@ -369,6 +369,7 @@ func (r *Runner) runAnsPlaybookPhase(j *job) {
 	now := time.Now()
 	approve := "approve"
 	r.setStage(store.RunStage{RunID: j.id, Name: "approve", Status: "running", StartedAt: &now, Detail: "waiting for approval"})
+	r.park(j)
 	r.updateRun(j.id, store.RunUpdate{Status: store.StatusWaitingApproval, Stage: &approve})
 	r.release(j)
 	locked = false
