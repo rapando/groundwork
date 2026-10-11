@@ -79,7 +79,7 @@ jobs:
       - uses: hashicorp/setup-terraform@v4
         if: matrix.binary == 'terraform'
         with: { terraform_wrapper: false }
-      - uses: opentofu/setup-opentofu@v1
+      - uses: opentofu/setup-opentofu@v2
         if: matrix.binary == 'tofu'
         with: { tofu_wrapper: false }
       - uses: terraform-linters/setup-tflint@v6
