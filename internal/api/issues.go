@@ -22,12 +22,20 @@ import (
 	"github.com/rapando/groundwork/internal/workspace"
 )
 
-// Start runs the background services: the issue engine and the drift schedule.
+// Start runs the background services: the issue engine, an inventory
+// warm-up and the drift schedule. They stop when ctx ends; Wait blocks until
+// they have, so the store isn't closed (or the folder removed) under them.
 func (a *API) Start(ctx context.Context) {
-	a.Issues.Start(ctx)
+	engine := a.Issues.Start(ctx)
+	a.bg.Add(3)
+	go func() { defer a.bg.Done(); <-engine }()
 	safego.Go(nil, "inventory warm-up", a.InternalError, func() { // the Overview needs host counts first thing
+		defer a.bg.Done()
 		cfg, _ := a.config()
 		for _, sc := range scopesFor(cfg, a.Root) {
+			if ctx.Err() != nil {
+				return
+			}
 			c, cancel := context.WithTimeout(ctx, 10*time.Second)
 			_, _ = a.loadInventory(c, sc)
 			cancel()
@@ -35,10 +43,15 @@ func (a *API) Start(ctx context.Context) {
 	})
 	a.Drift.Apply()
 	go func() {
+		defer a.bg.Done()
 		<-ctx.Done()
-		a.Drift.Stop()
+		a.Drift.Stop() // waits for a drift check in progress
 	}()
 }
+
+// Wait blocks until the goroutines Start began have returned (after the
+// context given to Start is done).
+func (a *API) Wait() { a.bg.Wait() }
 
 func (a *API) getIssueParam(w http.ResponseWriter, r *http.Request) (*store.Issue, bool) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)

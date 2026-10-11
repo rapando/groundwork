@@ -141,6 +141,7 @@ func (in *instance) close(ctx context.Context) {
 		in.watcher.Close()
 	}
 	in.stop()
+	in.api.Wait()         // issue engine, inventory warm-up, drift: all done with the store and the folder
 	in.api.Checks.Close() // after the watcher stops feeding it, before the store closes
 	in.store.Close()
 }

@@ -193,8 +193,10 @@ func (e *Engine) rule(id string) *Rule {
 
 // Start processes runs and findings as they change, plus a periodic sweep
 // (the bus drops events for slow subscribers).
-func (e *Engine) Start(ctx context.Context) {
-	safego.Loop(ctx, e.Log, "issue engine", e.OnPanic, func(ctx context.Context) {
+//
+// The returned channel is closed once the engine has stopped after ctx ends.
+func (e *Engine) Start(ctx context.Context) <-chan struct{} {
+	return safego.Loop(ctx, e.Log, "issue engine", e.OnPanic, func(ctx context.Context) {
 		ch, cancel := e.Bus.Subscribe()
 		defer cancel()
 		tick := time.NewTicker(30 * time.Second)

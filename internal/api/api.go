@@ -47,6 +47,7 @@ type API struct {
 	tools     []doctor.Tool
 
 	secrets *vars.Secrets
+	bg      sync.WaitGroup   // goroutines started by Start
 	red     *redact.Redactor // for output the API shows that didn't pass through a job (git diff)
 
 	Issues     *diagnostics.Engine

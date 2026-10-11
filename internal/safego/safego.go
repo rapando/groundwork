@@ -45,9 +45,12 @@ func Run(log *slog.Logger, name string, onPanic Hook, fn func()) (ok bool) {
 // Loop runs fn on a new goroutine and, if it panics, starts it again after a
 // backoff (1s, doubling to a minute) until ctx is done. fn is expected to
 // return on its own only when ctx is done; a loop that returns normally is
-// not restarted.
-func Loop(ctx context.Context, log *slog.Logger, name string, onPanic Hook, fn func(ctx context.Context)) {
+// not restarted. The returned channel is closed once the loop has stopped
+// for good, so owners can wait for it before closing what it uses.
+func Loop(ctx context.Context, log *slog.Logger, name string, onPanic Hook, fn func(ctx context.Context)) <-chan struct{} {
+	stopped := make(chan struct{})
 	go func() {
+		defer close(stopped)
 		delay := time.Second
 		for {
 			if Run(log, name, onPanic, func() { fn(ctx) }) {
@@ -63,4 +66,5 @@ func Loop(ctx context.Context, log *slog.Logger, name string, onPanic Hook, fn f
 			}
 		}
 	}()
+	return stopped
 }
