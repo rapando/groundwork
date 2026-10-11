@@ -23,6 +23,7 @@ import (
 	"github.com/rapando/groundwork/internal/doctor"
 	"github.com/rapando/groundwork/internal/drift"
 	"github.com/rapando/groundwork/internal/events"
+	"github.com/rapando/groundwork/internal/redact"
 	"github.com/rapando/groundwork/internal/runner"
 	"github.com/rapando/groundwork/internal/scaffold"
 	"github.com/rapando/groundwork/internal/store"
@@ -46,6 +47,7 @@ type API struct {
 	tools     []doctor.Tool
 
 	secrets *vars.Secrets
+	red     *redact.Redactor // for output the API shows that didn't pass through a job (git diff)
 
 	Issues     *diagnostics.Engine
 	Drift      *drift.Scheduler
@@ -53,7 +55,8 @@ type API struct {
 }
 
 func New(root, version string, bus *events.Bus, st *store.Store) *API {
-	a := &API{Root: root, Version: version, Bus: bus, Store: st}
+	a := &API{Root: root, Version: version, Bus: bus, Store: st, red: redact.New()}
+	a.red.AddEnv(os.Environ())
 	a.reloadConfig()
 	a.Runner = runner.New(root, st, bus, func() *config.Config { c, _ := a.config(); return c }, nil)
 	a.Checks = checks.New(root, func() *config.Config { c, _ := a.config(); return c }, checks.OSExec{}, st, bus, nil)

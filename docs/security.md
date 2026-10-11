@@ -22,7 +22,8 @@ groundwork runs on your machine with your credentials and can run `terraform app
 
 ## Secrets
 
-- Run logs are redacted as they're written: values of secret-looking environment variables (`*_TOKEN`, `*_SECRET*`, `*PASSWORD*`, AWS keys, …), `password = …`-style assignments, and known credential formats (AWS access keys, bearer tokens, GitHub/GitLab/Slack tokens). Terraform itself prints sensitive values as `(sensitive value)`.
+- Run logs are redacted as they're written: values of secret-looking environment variables (`*_TOKEN`, `*_SECRET*`, `*PASSWORD*`, AWS keys, …), the values a run gives to variables declared `sensitive = true` (from tfvars, `-var-file` files, defaults and `TF_VAR_*`), `password = …`-style assignments, and known credential formats (AWS access keys, bearer tokens, GitHub/GitLab/Slack tokens). Terraform itself prints sensitive values as `(sensitive value)`, but a provider or a stage error may echo one, so the same masking applies to stage error details and the run's error summary.
+- The same masking covers everything else that is stored or shown from a tool's output: linter and `terraform validate` findings in the Problems tray, and `git diff` in the Code view. Values revealed from SOPS or vault files are returned once for that response and are never stored, so there is nothing to redact later.
 - Plans show sensitive values masked, including the same values where Terraform didn't mark them.
 - Revealing a secret decrypts it for that one response only; it's never stored, logged or cached. An audit list records which secret was revealed and when, never the value.
 - groundwork never stores credentials. It uses whatever your shell provides (AWS profiles, SSO, SSH agent, vault password files).

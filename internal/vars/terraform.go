@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -292,6 +293,40 @@ func RawValue(repoRoot string, t Target, d *Decl) (string, error) {
 		return "", fmt.Errorf("%s has no value in %s", d.Name, t.Env)
 	}
 	return val, nil
+}
+
+// SensitiveValues returns every value a target gives to a variable declared
+// `sensitive = true`: from tfvars and -var-file files, from defaults and from
+// TF_VAR_* in environ. A run's redactor is seeded with them, so a provider or
+// linter that echoes one can't put it in the log. Strings are returned both
+// as HCL renders them and bare, since output quotes them either way.
+func SensitiveValues(repoRoot string, t Target, environ []string) []string {
+	var out []string
+	for name, d := range Declarations(repoRoot, filepath.Join(repoRoot, filepath.FromSlash(t.Root))) {
+		if !d.Sensitive {
+			continue
+		}
+		if d.HasDefault {
+			out = append(out, d.Default) // rendered: a string keeps its quotes
+			if u, err := strconv.Unquote(d.Default); err == nil {
+				out = append(out, u)
+			}
+		}
+		for _, kv := range environ {
+			if k, v, ok := strings.Cut(kv, "="); ok && k == "TF_VAR_"+name {
+				out = append(out, v)
+			}
+		}
+		for _, f := range sourcesFor(repoRoot, t) {
+			if a, ok := readTfvars(f)[name]; ok {
+				out = append(out, Render(a.value))
+				if a.value.Type() == cty.String && !a.value.IsNull() && a.value.IsKnown() {
+					out = append(out, a.value.AsString())
+				}
+			}
+		}
+	}
+	return out
 }
 
 // Matrix builds rows for a set of targets (typically one stack across envs).

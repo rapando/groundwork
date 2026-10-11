@@ -36,7 +36,7 @@ fail() { echo "Error: $sub failed: boom (key AKIAIOSFODNN7EXAMPLE)" >&2; done_; 
 case "$sub" in
   version) echo "Terraform v1.9.8" ;;
   init) echo "Terraform has been successfully initialized!" ;;
-  workspace) echo "Switched to workspace \"${args[3]:-}\"." ;;
+  workspace) echo "Switched to workspace \"${args[${#args[@]}-1]}\"." ;;
   validate) echo "Success! The configuration is valid." ;;
   plan)
     if printf '%s\n' "${args[@]}" | grep -qx -- '-refresh-only'; then

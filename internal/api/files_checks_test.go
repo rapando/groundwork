@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -302,6 +303,28 @@ func TestGitEndpointsOutsideAndInsideRepo(t *testing.T) {
 	}
 	if call(t, e.h, "GET", "/git/diff?path=../x", nil).Code != 400 {
 		t.Fatal("diff path escape")
+	}
+	// inside a repository the diff is shown, with secrets masked like run output
+	t.Setenv("DEPLOY_SECRET", "secret-in-diff-value-1")
+	e = newConfigured(t) // the redactor reads the environment when the API is created
+	git := func(args ...string) {
+		cmd := exec.Command("git", append([]string{"-c", "user.name=t", "-c", "user.email=t@e.com"}, args...)...)
+		cmd.Dir = e.root
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v %s", args, err, out)
+		}
+	}
+	git("init", "-q")
+	git("add", "-A")
+	git("commit", "-qm", "initial")
+	os.WriteFile(filepath.Join(e.root, "terraform", "envs", "dev", "variables.tf"), []byte("variable \"x\" { default = \"secret-in-diff-value-1\" }\npassword = \"hunter2hunter2\"\n"), 0o644)
+	m = into(t, call(t, e.h, "GET", "/git/diff?path=terraform/envs/dev/variables.tf", nil))
+	diff, _ := m["diff"].(string)
+	if !strings.Contains(diff, "variable") {
+		t.Fatalf("no diff: %v", m)
+	}
+	if strings.Contains(diff, "secret-in-diff-value-1") || strings.Contains(diff, "hunter2hunter2") {
+		t.Fatalf("diff leaks secrets: %s", diff)
 	}
 	_ = files.MaxEditSize
 }

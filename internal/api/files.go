@@ -197,5 +197,5 @@ func (a *API) gitDiff(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 500, "git_failed", err.Error(), nil)
 		return
 	}
-	writeJSON(w, 200, map[string]any{"diff": d})
+	writeJSON(w, 200, map[string]any{"diff": a.red.Text(d)})
 }

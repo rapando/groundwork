@@ -72,6 +72,18 @@ func (r *Redactor) AddEnv(environ []string) {
 	}
 }
 
+// Text redacts a multi-line string (an error detail, a diff, a linter message).
+func (r *Redactor) Text(s string) string {
+	if s == "" {
+		return s
+	}
+	lines := strings.Split(s, "\n")
+	for i, l := range lines {
+		lines[i] = r.Line(l)
+	}
+	return strings.Join(lines, "\n")
+}
+
 // Line redacts one line of output.
 func (r *Redactor) Line(s string) string {
 	r.mu.Lock()

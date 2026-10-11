@@ -12,6 +12,7 @@ import (
 	"github.com/rapando/groundwork/internal/redact"
 	"github.com/rapando/groundwork/internal/store"
 	"github.com/rapando/groundwork/internal/terraform"
+	"github.com/rapando/groundwork/internal/vars"
 )
 
 // lockKey: one active job per Terraform root. (The plan keys on root+workspace,
@@ -47,10 +48,18 @@ func (r *Runner) release(j *job) {
 	<-ch
 }
 
-// begin opens the log and gives the job its own redactor.
+// begin opens the log and gives the job its own redactor, seeded with the
+// secret-looking environment and with the values of the target's sensitive
+// variables: terraform masks those itself, but a provider, a linter or a
+// stage error may echo them.
 func (r *Runner) begin(j *job) error {
 	j.red = redact.New()
 	j.red.AddEnv(os.Environ())
+	if j.target.Tool != "ansible" && j.target.Root != "" {
+		for _, v := range vars.SensitiveValues(r.Root, vars.Target{Root: j.target.Root, Env: j.target.Env, VarFiles: j.target.VarFiles}, os.Environ()) {
+			j.red.AddSecret(v)
+		}
+	}
 	lw, err := openLog(r.logPath(j.id), func(lines []LogLine) {
 		r.Bus.Publish("log.line", map[string]any{"run": j.id, "lines": lines})
 	})
@@ -86,7 +95,7 @@ func (r *Runner) stage(j *job, name string, fn func() error) error {
 	case errors.Is(err, errCancelled):
 		st.Status = "cancelled"
 	case err != nil:
-		st.Status, st.Detail = "failed", err.Error()
+		st.Status, st.Detail = "failed", j.red.Text(err.Error())
 	}
 	_ = r.Store.UpsertStage(st)
 	r.publishRun(j.id)
@@ -117,6 +126,9 @@ func (r *Runner) saveSummary(id int64, mutate func(*Summary)) {
 func (r *Runner) end(j *job, status string, exit *int, errMsg string) {
 	now := time.Now()
 	if errMsg != "" {
+		if j.red != nil {
+			errMsg = j.red.Text(errMsg)
+		}
 		r.saveSummary(j.id, func(s *Summary) { s.Error = errMsg })
 	}
 	r.skipPending(j)

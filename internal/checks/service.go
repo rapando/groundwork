@@ -20,6 +20,7 @@ import (
 	"github.com/rapando/groundwork/internal/config"
 	"github.com/rapando/groundwork/internal/doctor"
 	"github.com/rapando/groundwork/internal/events"
+	"github.com/rapando/groundwork/internal/redact"
 	"github.com/rapando/groundwork/internal/store"
 	"github.com/rapando/groundwork/internal/workspace"
 )
@@ -57,6 +58,7 @@ type Service struct {
 	Log   *slog.Logger
 
 	realRoot string
+	red      *redact.Redactor
 	sem      chan struct{}
 	initMu   sync.Mutex // terraform's plugin cache is not safe for concurrent writers
 	unitMu   sync.Map   // unit id → *sync.Mutex: one validate (and shadow tree rebuild) per unit at a time
@@ -93,7 +95,16 @@ func New(root string, cfg func() *config.Config, ex Exec, st *store.Store, bus *
 		sem: make(chan struct{}, 3), dirty: true, debounce: 400 * time.Millisecond,
 		status: map[string]map[string]ToolStatus{}, cache: map[string]cached{},
 		cancels: map[string]context.CancelFunc{}, timers: map[string]*time.Timer{},
+		red: newRedactor(),
 	}
+}
+
+// newRedactor masks secret-looking environment values and credential
+// patterns in what linters report, since findings are stored and shown.
+func newRedactor() *redact.Redactor {
+	r := redact.New()
+	r.AddEnv(os.Environ())
+	return r
 }
 
 // Units returns the current units, re-detecting if the config or files changed.
@@ -362,7 +373,10 @@ func (s *Service) runTool(ctx context.Context, u Unit, tool, hash string, useCac
 	for i := range diags {
 		diags[i].Unit = u.ID
 		s.normalise(u, &diags[i])
+		diags[i].Message = s.red.Text(diags[i].Message)
+		diags[i].Detail = s.red.Text(diags[i].Detail)
 	}
+	st.Message = s.red.Text(st.Message)
 	if s.Store != nil && st.Status != "failed" {
 		rows := make([]store.DiagRow, len(diags))
 		for i, d := range diags {
