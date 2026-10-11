@@ -211,7 +211,9 @@ func (s *Scheduler) check(ctx context.Context, cfg *config.Config, t target, run
 	prev, _, _ := s.Store.GetKV(key)
 	cur := hex.EncodeToString(sum[:])
 	if len(addrs) == 0 {
-		_ = s.Store.SetKV(key, "")
+		if err := s.Store.SetKV(key, ""); err != nil {
+			s.Log.Warn("record drift state", "err", err)
+		}
 		return
 	}
 	if prev == cur || cfg.Drift.Notify == "none" {
@@ -229,7 +231,9 @@ func (s *Scheduler) check(ctx context.Context, cfg *config.Config, t target, run
 		s.Log.Warn("drift notification failed", "err", err)
 		return
 	}
-	_ = s.Store.SetKV(key, cur)
+	if err := s.Store.SetKV(key, cur); err != nil {
+		s.Log.Warn("record drift notification", "err", err)
+	}
 }
 
 // Send delivers a notice by the configured channel.

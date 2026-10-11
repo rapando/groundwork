@@ -19,6 +19,7 @@ import (
 
 	"github.com/rapando/groundwork/internal/files"
 	"github.com/rapando/groundwork/internal/graph"
+	"github.com/rapando/groundwork/internal/proc"
 	"github.com/rapando/groundwork/internal/runner"
 	"github.com/rapando/groundwork/internal/store"
 	"github.com/rapando/groundwork/internal/terraform"
@@ -63,6 +64,7 @@ func (a *API) terraformGraph(ctx context.Context, t runner.Target) []graph.Edge 
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, bin, terraform.GraphArgs(t.Binary, dir)[1:]...)
+	proc.GroupContext(cmd) // a timeout kills the tool and its children, not just the tool
 	cmd.Env = append(os.Environ(), "TF_IN_AUTOMATION=1", "NO_COLOR=1", "CHECKPOINT_DISABLE=1")
 	if t.Workspace != "" {
 		cmd.Env = append(cmd.Env, "TF_WORKSPACE="+t.Workspace)

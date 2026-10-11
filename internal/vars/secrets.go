@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rapando/groundwork/internal/proc"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -334,6 +335,7 @@ func (s *Secrets) run(ctx context.Context, dir string, env []string, stdin []byt
 		return "", fmt.Errorf("%s isn't installed", argv[0])
 	}
 	cmd := exec.CommandContext(ctx, bin, argv[1:]...)
+	proc.GroupContext(cmd) // a timeout kills the tool and its children, not just the tool
 	cmd.Dir = dir
 	cmd.Env = append(s.Environ(), env...)
 	if stdin != nil {

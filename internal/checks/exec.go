@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/rapando/groundwork/internal/proc"
 	"os"
 	"os/exec"
 	"time"
@@ -41,6 +42,7 @@ func (OSExec) Run(ctx context.Context, c Cmd) (Output, error) {
 		defer cancel()
 	}
 	cmd := exec.CommandContext(ctx, c.Argv[0], c.Argv[1:]...)
+	proc.GroupContext(cmd) // a timeout kills the tool and its children, not just the tool
 	cmd.Dir = c.Dir
 	cmd.Env = append(os.Environ(), c.Env...)
 	var so, se bytes.Buffer

@@ -37,7 +37,7 @@ func ResolveAnsibleTarget(cfg *config.Config, root string, req SubmitRequest) (T
 	if proj == nil {
 		return bad("%s is not a configured Ansible project", req.Project)
 	}
-	t := Target{Tool: "ansible", Project: path.Clean(proj.Path), Env: req.Env}
+	t := Target{Tool: "ansible", Project: path.Clean(proj.Path), Env: req.Env, RunTimeout: cfg.Ansible.RunTimeoutDuration().String()}
 	if len(proj.Inventories) > 0 {
 		inv, ok := proj.Inventories[req.Env]
 		if !ok {
@@ -256,14 +256,14 @@ func (r *Runner) ansPrepare(j *job, stages []string) bool {
 		return false
 	}
 	for _, n := range stages {
-		_ = r.Store.UpsertStage(store.RunStage{RunID: j.id, Name: n, Status: "pending"})
+		r.setStage(store.RunStage{RunID: j.id, Name: n, Status: "pending"})
 	}
 	if !r.acquire(j) {
 		r.end(j, store.StatusCancelled, nil, "")
 		return false
 	}
 	start := time.Now()
-	_ = r.Store.UpdateRun(j.id, store.RunUpdate{Status: store.StatusRunning, Started: &start})
+	r.updateRun(j.id, store.RunUpdate{Status: store.StatusRunning, Started: &start})
 	r.publishRun(j.id)
 	return true
 }
@@ -368,8 +368,8 @@ func (r *Runner) runAnsPlaybookPhase(j *job) {
 	j.emit("check", "info", "Dry run finished. Waiting for approval.", nil)
 	now := time.Now()
 	approve := "approve"
-	_ = r.Store.UpsertStage(store.RunStage{RunID: j.id, Name: "approve", Status: "running", StartedAt: &now, Detail: "waiting for approval"})
-	_ = r.Store.UpdateRun(j.id, store.RunUpdate{Status: store.StatusWaitingApproval, Stage: &approve})
+	r.setStage(store.RunStage{RunID: j.id, Name: "approve", Status: "running", StartedAt: &now, Detail: "waiting for approval"})
+	r.updateRun(j.id, store.RunUpdate{Status: store.StatusWaitingApproval, Stage: &approve})
 	r.release(j)
 	locked = false
 }
@@ -386,13 +386,13 @@ func (r *Runner) runAnsRunPhase(j *job) {
 		return
 	}
 	defer r.release(j)
-	_ = r.Store.UpdateRun(j.id, store.RunUpdate{Status: store.StatusRunning})
+	r.updateRun(j.id, store.RunUpdate{Status: store.StatusRunning})
 	r.publishRun(j.id)
 	run, err := r.Store.GetRun(j.id)
 	if err == nil {
 		if reasons, _, serr := r.staleness(j.ctx, j.target, readSummary(run), false); serr == nil && len(reasons) > 0 {
 			now := time.Now()
-			_ = r.Store.UpsertStage(store.RunStage{RunID: j.id, Name: "run", Status: "failed", EndedAt: &now, Detail: "stale"})
+			r.setStage(store.RunStage{RunID: j.id, Name: "run", Status: "failed", EndedAt: &now, Detail: "stale"})
 			r.failure(j, &StaleError{Reasons: reasons}, 1)
 			return
 		}

@@ -31,6 +31,7 @@ type Run struct {
 	EndedAt   *time.Time      `json:"ended_at,omitempty"`
 	ExitCode  *int            `json:"exit_code,omitempty"`
 	Summary   json.RawMessage `json:"summary"`
+	PGID      int             `json:"pgid,omitempty"` // process group of the tool, while it runs
 }
 
 type RunStage struct {
@@ -67,7 +68,7 @@ func (s *Store) CreateRun(kind string, target, argv any, commit string) (*Run, e
 	return s.GetRun(id)
 }
 
-const runCols = `id, kind, target_json, argv_json, status, stage, "commit", created_at, started_at, ended_at, exit_code, summary_json`
+const runCols = `id, kind, target_json, argv_json, status, stage, "commit", created_at, started_at, ended_at, exit_code, summary_json, pgid`
 
 func scanRun(sc interface{ Scan(...any) error }) (*Run, error) {
 	var r Run
@@ -75,7 +76,7 @@ func scanRun(sc interface{ Scan(...any) error }) (*Run, error) {
 	var started, ended sql.NullTime
 	var exit sql.NullInt64
 	var created sql.NullTime
-	if err := sc.Scan(&r.ID, &r.Kind, &target, &argv, &r.Status, &r.Stage, &r.Commit, &created, &started, &ended, &exit, &summary); err != nil {
+	if err := sc.Scan(&r.ID, &r.Kind, &target, &argv, &r.Status, &r.Stage, &r.Commit, &created, &started, &ended, &exit, &summary, &r.PGID); err != nil {
 		return nil, err
 	}
 	r.Target, r.Argv, r.Summary = json.RawMessage(target), json.RawMessage(argv), json.RawMessage(summary)
@@ -110,6 +111,7 @@ type RunUpdate struct {
 	ExitCode *int
 	Summary  any
 	Argv     any
+	PGID     *int
 }
 
 func (s *Store) UpdateRun(id int64, u RunUpdate) error {
@@ -130,6 +132,9 @@ func (s *Store) UpdateRun(id int64, u RunUpdate) error {
 	}
 	if u.ExitCode != nil {
 		add("exit_code", *u.ExitCode)
+	}
+	if u.PGID != nil {
+		add("pgid", *u.PGID)
 	}
 	if u.Summary != nil {
 		b, _ := json.Marshal(u.Summary)

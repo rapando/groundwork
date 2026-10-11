@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/rapando/groundwork/internal/safego"
+	"github.com/rapando/groundwork/internal/store"
 	"github.com/rapando/groundwork/internal/terraform"
 )
 
@@ -80,6 +81,13 @@ func (r *Runner) execute(j *job, o execOpts) (execResult, error) {
 	if evW != nil {
 		evW.Close() // the child holds its own copy; EOF arrives when it exits
 	}
+	// remembered so a hard stop of groundwork can later tell whether the tool outlived it
+	pgid := cmd.Process.Pid
+	r.updateRun(j.id, store.RunUpdate{PGID: &pgid})
+	defer func() {
+		zero := 0
+		r.updateRun(j.id, store.RunUpdate{PGID: &zero})
+	}()
 
 	var killed atomic.Bool
 	done := make(chan struct{})

@@ -7,6 +7,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"github.com/rapando/groundwork/internal/proc"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -362,6 +363,7 @@ func Query(ctx context.Context, projectDir, ansibleHome string, argv []string) (
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, bin, argv[1:]...)
+	proc.GroupContext(cmd) // a timeout kills the tool and its children, not just the tool
 	cmd.Dir = projectDir
 	_ = os.MkdirAll(ansibleHome, 0o755)
 	cmd.Env = append(os.Environ(), "ANSIBLE_HOME="+ansibleHome, "ANSIBLE_NOCOLOR=1", "ANSIBLE_FORCE_COLOR=0")

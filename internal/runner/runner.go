@@ -25,6 +25,7 @@ import (
 	"github.com/rapando/groundwork/internal/ansible"
 	"github.com/rapando/groundwork/internal/config"
 	"github.com/rapando/groundwork/internal/events"
+	"github.com/rapando/groundwork/internal/proc"
 	"github.com/rapando/groundwork/internal/redact"
 	"github.com/rapando/groundwork/internal/safego"
 	"github.com/rapando/groundwork/internal/store"
@@ -66,6 +67,7 @@ type Target struct {
 	ApprovalRequired bool     `json:"approval_required"`
 	Binary           string   `json:"binary,omitempty"`
 	Upgrade          bool     `json:"upgrade,omitempty"`
+	RunTimeout       string   `json:"run_timeout,omitempty"` // from groundwork.yaml at submit time; shown in the run detail
 
 	// Ansible
 	Project   string `json:"project,omitempty"`   // repo-relative project dir
@@ -116,7 +118,7 @@ func ResolveTarget(cfg *config.Config, root, env string) (Target, error) {
 		if path.Clean(r.Path) != root {
 			continue
 		}
-		t := Target{Root: root, Binary: cfg.Terraform.Binary, ApprovalRequired: r.ApprovalRequired(env)}
+		t := Target{Root: root, Binary: cfg.Terraform.Binary, ApprovalRequired: r.ApprovalRequired(env), RunTimeout: cfg.Terraform.RunTimeoutDuration().String()}
 		if t.Binary == "" {
 			t.Binary = "terraform"
 		}
@@ -246,6 +248,14 @@ type job struct {
 	cancelled   bool
 }
 
+// timedOut reports whether the job's context ended because of run_timeout
+// rather than a cancel (by a person, or the service shutting down).
+func (j *job) timedOut() bool {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	return errors.Is(j.ctx.Err(), context.DeadlineExceeded) && !j.cancelled
+}
+
 func (j *job) errText() string {
 	j.mu.Lock()
 	defer j.mu.Unlock()
@@ -352,12 +362,18 @@ func currentUser() string {
 }
 
 func (r *Runner) newJob(id int64, kind string, t Target) *job {
-	ctx, cancel := context.WithCancel(context.Background())
-	j := &job{id: id, kind: kind, target: t, ctx: ctx, cancel: cancel}
 	r.mu.Lock()
-	r.jobs[id] = j
-	r.mu.Unlock()
-	return j
+	defer r.mu.Unlock()
+	return r.newJobLocked(id, kind, t)
+}
+
+// jobTimeout is the target's run_timeout (terraform.run_timeout or
+// ansible.run_timeout; default two hours), as resolved when it was submitted.
+func jobTimeout(t Target) time.Duration {
+	if d, err := time.ParseDuration(t.RunTimeout); err == nil && d > 0 {
+		return d
+	}
+	return config.DefaultRunTimeout
 }
 
 func (r *Runner) abs(rel string) string { return filepath.Join(r.Root, filepath.FromSlash(rel)) }
@@ -389,14 +405,16 @@ func (r *Runner) Cancel(id int64) error {
 	r.mu.Unlock()
 	switch {
 	case j != nil:
+		j.mu.Lock()
 		j.cancelled = true
+		j.mu.Unlock()
 		j.cancel()
 		return nil
 	case run.Status == store.StatusWaitingApproval:
 		now := time.Now()
-		_ = r.Store.UpsertStage(store.RunStage{RunID: id, Name: "approve", Status: "cancelled", EndedAt: &now})
-		_ = r.Store.UpsertStage(store.RunStage{RunID: id, Name: "apply", Status: "skipped", EndedAt: &now})
-		_ = r.Store.UpdateRun(id, store.RunUpdate{Status: store.StatusCancelled, Ended: &now})
+		r.setStage(store.RunStage{RunID: id, Name: "approve", Status: "cancelled", EndedAt: &now})
+		r.setStage(store.RunStage{RunID: id, Name: "apply", Status: "skipped", EndedAt: &now})
+		r.updateRun(id, store.RunUpdate{Status: store.StatusCancelled, Ended: &now})
 		r.removePlan(id)
 		r.publishRun(id)
 		return nil
@@ -473,8 +491,8 @@ func (r *Runner) Approve(id int64, req ApproveRequest) error {
 		ApprovedAt: now, ConfirmText: req.ConfirmText, AckDanger: req.AckDanger}); err != nil {
 		return fail(err)
 	}
-	_ = r.Store.UpsertStage(store.RunStage{RunID: id, Name: "approve", Status: "succeeded", EndedAt: &now, Detail: "approved by " + who})
-	_ = r.Store.UpdateRun(id, store.RunUpdate{Status: store.StatusQueued})
+	r.setStage(store.RunStage{RunID: id, Name: "approve", Status: "succeeded", EndedAt: &now, Detail: "approved by " + who})
+	r.updateRun(id, store.RunUpdate{Status: store.StatusQueued})
 	r.publishRun(id)
 	r.wg.Add(1)
 	safego.Go(r.Log, "run "+run.Kind, r.jobPanicked(j), func() {
@@ -561,7 +579,9 @@ func (r *Runner) ResourceDiff(id int64, address string) (*terraform.ResourceDiff
 }
 
 func (r *Runner) newJobLocked(id int64, kind string, t Target) *job {
-	ctx, cancel := context.WithCancel(context.Background())
+	// a hung provider or host must not hold the root's lock forever: the
+	// job's context ends at run_timeout and the tool is interrupted, then killed
+	ctx, cancel := context.WithTimeout(context.Background(), jobTimeout(t))
 	j := &job{id: id, kind: kind, target: t, ctx: ctx, cancel: cancel}
 	r.jobs[id] = j
 	return j
@@ -635,7 +655,9 @@ func (r *Runner) Active() int {
 func (r *Runner) Shutdown(ctx context.Context) {
 	r.mu.Lock()
 	for _, j := range r.jobs {
+		j.mu.Lock()
 		j.cancelled = true
+		j.mu.Unlock()
 		j.cancel()
 	}
 	r.mu.Unlock()
@@ -660,6 +682,22 @@ func (r *Runner) Recover(keep int, maxAge time.Duration) error {
 		_ = json.Unmarshal(run.Target, &t)
 		if run.Stage == "apply" {
 			_ = r.Store.RaiseIssue("tf-state-lock-possible", t.Root, map[string]any{"run": run.ID, "env": t.Env, "kind": run.Kind})
+		}
+		// groundwork was killed hard (SIGKILL, power loss) while the tool ran:
+		// without a parent to signal it, terraform or ansible may still be going
+		if run.PGID > 0 && proc.Alive(run.PGID) {
+			target := t.Root
+			if target == "" {
+				target = t.Project
+			}
+			tool := "terraform"
+			if t.isAnsible() {
+				tool = "ansible"
+			}
+			_ = r.Store.RaiseIssue("groundwork-orphaned-process", target, map[string]any{
+				"target_label": target, "run_id": run.ID, "run_kind": run.Kind,
+				"vars": map[string]string{"pgid": strconv.Itoa(run.PGID), "tool": tool, "env": t.Env},
+			})
 		}
 	}
 	ids, err := r.Store.PruneRuns(keep, maxAge)

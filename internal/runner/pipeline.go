@@ -79,11 +79,25 @@ func (r *Runner) finish(j *job) {
 	r.publishRun(j.id)
 }
 
+// setStage and updateRun record run state; a failure to do so is a bug or a
+// broken database and is logged rather than silently dropped.
+func (r *Runner) setStage(st store.RunStage) {
+	if err := r.Store.UpsertStage(st); err != nil {
+		r.Log.Warn("record stage", "run", st.RunID, "stage", st.Name, "err", err)
+	}
+}
+
+func (r *Runner) updateRun(id int64, u store.RunUpdate) {
+	if err := r.Store.UpdateRun(id, u); err != nil {
+		r.Log.Warn("record run", "run", id, "err", err)
+	}
+}
+
 // stage runs fn as a named, recorded stage.
 func (r *Runner) stage(j *job, name string, fn func() error) error {
 	now := time.Now()
-	_ = r.Store.UpsertStage(store.RunStage{RunID: j.id, Name: name, Status: "running", StartedAt: &now})
-	_ = r.Store.UpdateRun(j.id, store.RunUpdate{Stage: &name})
+	r.setStage(store.RunStage{RunID: j.id, Name: name, Status: "running", StartedAt: &now})
+	r.updateRun(j.id, store.RunUpdate{Stage: &name})
 	r.publishRun(j.id)
 	j.emit(name, "info", "── "+name+" ──", nil)
 
@@ -97,7 +111,7 @@ func (r *Runner) stage(j *job, name string, fn func() error) error {
 	case err != nil:
 		st.Status, st.Detail = "failed", j.red.Text(err.Error())
 	}
-	_ = r.Store.UpsertStage(st)
+	r.setStage(st)
 	r.publishRun(j.id)
 	return err
 }
@@ -107,7 +121,7 @@ func (r *Runner) skipPending(j *job) {
 	now := time.Now()
 	for _, s := range stages {
 		if s.Status == "pending" {
-			_ = r.Store.UpsertStage(store.RunStage{RunID: j.id, Name: s.Name, Status: "skipped", EndedAt: &now})
+			r.setStage(store.RunStage{RunID: j.id, Name: s.Name, Status: "skipped", EndedAt: &now})
 		}
 	}
 }
@@ -119,7 +133,7 @@ func (r *Runner) saveSummary(id int64, mutate func(*Summary)) {
 	}
 	s := readSummary(run)
 	mutate(&s)
-	_ = r.Store.UpdateRun(id, store.RunUpdate{Summary: s})
+	r.updateRun(id, store.RunUpdate{Summary: s})
 }
 
 // end records the run's final state.
@@ -132,13 +146,18 @@ func (r *Runner) end(j *job, status string, exit *int, errMsg string) {
 		r.saveSummary(j.id, func(s *Summary) { s.Error = errMsg })
 	}
 	r.skipPending(j)
-	_ = r.Store.UpdateRun(j.id, store.RunUpdate{Status: status, Ended: &now, ExitCode: exit})
+	r.updateRun(j.id, store.RunUpdate{Status: status, Ended: &now, ExitCode: exit})
 	j.emit("", map[string]string{store.StatusFailed: "error", store.StatusCancelled: "warn"}[status]+"", "run "+status, nil)
 }
 
-// failure turns a stage error into the run's final state.
+// failure turns a stage error into the run's final state. A run stopped by
+// its own timeout failed; one stopped by a person or a shutdown was cancelled.
 func (r *Runner) failure(j *job, err error, exit int) {
 	if errors.Is(err, errCancelled) {
+		if j.timedOut() {
+			r.end(j, store.StatusFailed, &exit, fmt.Sprintf("run exceeded its timeout of %s (run_timeout in groundwork.yaml) and was stopped", j.target.RunTimeout))
+			return
+		}
 		r.end(j, store.StatusCancelled, nil, "")
 		return
 	}
@@ -176,17 +195,17 @@ func (r *Runner) preStages(j *job) []string {
 func (r *Runner) runInit(j *job) {
 	defer r.finish(j)
 	if err := r.begin(j); err != nil {
-		r.Log.Error("open log", "err", err)
+		r.end(j, store.StatusFailed, nil, err.Error())
 		return
 	}
-	_ = r.Store.UpsertStage(store.RunStage{RunID: j.id, Name: "init", Status: "pending"})
+	r.setStage(store.RunStage{RunID: j.id, Name: "init", Status: "pending"})
 	if !r.acquire(j) {
 		r.end(j, store.StatusCancelled, nil, "")
 		return
 	}
 	defer r.release(j)
 	start := time.Now()
-	_ = r.Store.UpdateRun(j.id, store.RunUpdate{Status: store.StatusRunning, Started: &start})
+	r.updateRun(j.id, store.RunUpdate{Status: store.StatusRunning, Started: &start})
 	r.publishRun(j.id)
 	dir := r.abs(j.target.Root)
 	res, err := r.tfStage(j, "init", terraform.InitArgs(j.target.Binary, dir, j.target.Upgrade), false)
@@ -203,17 +222,17 @@ func (r *Runner) runInit(j *job) {
 func (r *Runner) runUnlock(j *job, argv []string) {
 	defer r.finish(j)
 	if err := r.begin(j); err != nil {
-		r.Log.Error("open log", "err", err)
+		r.end(j, store.StatusFailed, nil, err.Error())
 		return
 	}
-	_ = r.Store.UpsertStage(store.RunStage{RunID: j.id, Name: "unlock", Status: "pending"})
+	r.setStage(store.RunStage{RunID: j.id, Name: "unlock", Status: "pending"})
 	if !r.acquire(j) {
 		r.end(j, store.StatusCancelled, nil, "")
 		return
 	}
 	defer r.release(j)
 	start := time.Now()
-	_ = r.Store.UpdateRun(j.id, store.RunUpdate{Status: store.StatusRunning, Started: &start})
+	r.updateRun(j.id, store.RunUpdate{Status: store.StatusRunning, Started: &start})
 	r.publishRun(j.id)
 	var res execResult
 	err := r.stage(j, "unlock", func() error {
@@ -236,12 +255,11 @@ func (r *Runner) runUnlock(j *job, argv []string) {
 func (r *Runner) runPlanPhase(j *job) {
 	defer r.finish(j)
 	if err := r.begin(j); err != nil {
-		r.Log.Error("open log", "err", err)
 		r.end(j, store.StatusFailed, nil, err.Error())
 		return
 	}
 	for _, n := range r.preStages(j) {
-		_ = r.Store.UpsertStage(store.RunStage{RunID: j.id, Name: n, Status: "pending"})
+		r.setStage(store.RunStage{RunID: j.id, Name: n, Status: "pending"})
 	}
 	if !r.acquire(j) {
 		r.end(j, store.StatusCancelled, nil, "")
@@ -254,7 +272,7 @@ func (r *Runner) runPlanPhase(j *job) {
 		}
 	}()
 	start := time.Now()
-	_ = r.Store.UpdateRun(j.id, store.RunUpdate{Status: store.StatusRunning, Started: &start})
+	r.updateRun(j.id, store.RunUpdate{Status: store.StatusRunning, Started: &start})
 	r.publishRun(j.id)
 
 	t := j.target
@@ -301,8 +319,8 @@ func (r *Runner) runPlanPhase(j *job) {
 	if res.exit == 0 { // nothing to do
 		now := time.Now()
 		r.saveSummary(j.id, func(s *Summary) { s.NoChanges = true; s.Plan = &terraform.PlanSummary{Changes: []terraform.Change{}} })
-		_ = r.Store.UpsertStage(store.RunStage{RunID: j.id, Name: "approve", Status: "skipped", EndedAt: &now, Detail: "no changes"})
-		_ = r.Store.UpsertStage(store.RunStage{RunID: j.id, Name: "apply", Status: "skipped", EndedAt: &now, Detail: "no changes"})
+		r.setStage(store.RunStage{RunID: j.id, Name: "approve", Status: "skipped", EndedAt: &now, Detail: "no changes"})
+		r.setStage(store.RunStage{RunID: j.id, Name: "apply", Status: "skipped", EndedAt: &now, Detail: "no changes"})
 		r.removePlan(j.id)
 		zero := 0
 		r.end(j, store.StatusSucceeded, &zero, "")
@@ -373,8 +391,8 @@ func (r *Runner) runPlanPhase(j *job) {
 	// hand the lock back while a human decides; Approve re-acquires it for the apply
 	now := time.Now()
 	approve := "approve"
-	_ = r.Store.UpsertStage(store.RunStage{RunID: j.id, Name: "approve", Status: "running", StartedAt: &now, Detail: "waiting for approval"})
-	_ = r.Store.UpdateRun(j.id, store.RunUpdate{Status: store.StatusWaitingApproval, Stage: &approve})
+	r.setStage(store.RunStage{RunID: j.id, Name: "approve", Status: "running", StartedAt: &now, Detail: "waiting for approval"})
+	r.updateRun(j.id, store.RunUpdate{Status: store.StatusWaitingApproval, Stage: &approve})
 	keepPlan = true
 }
 
@@ -391,7 +409,7 @@ func (r *Runner) runApplyPhase(j *job) {
 		return
 	}
 	defer r.release(j)
-	_ = r.Store.UpdateRun(j.id, store.RunUpdate{Status: store.StatusRunning})
+	r.updateRun(j.id, store.RunUpdate{Status: store.StatusRunning})
 	r.publishRun(j.id)
 
 	t := j.target

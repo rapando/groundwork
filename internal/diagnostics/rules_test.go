@@ -37,9 +37,13 @@ func TestEveryRuleFiresOnItsFixture(t *testing.T) {
 			var hit *Hit
 			if r.Raised == "internal" {
 				// raised by groundwork itself, never matched from output; render it instead
-				v := Render(r, Hit{Rule: r, Vars: map[string]string{"where": "run tf.plan", "error": "boom"}}, Context{Target: "run tf.plan"})
-				if !strings.Contains(v.Title, "run tf.plan") || !strings.Contains(v.Explain, "boom") || len(v.Steps) == 0 {
+				vars := map[string]string{"where": "run tf.plan", "error": "boom", "pgid": "4242", "tool": "terraform", "env": "dev"}
+				v := Render(r, Hit{Rule: r, Vars: vars}, Context{Target: "terraform/envs/dev", RunID: 7, RunKind: "tf.plan"})
+				if v.Title == "" || strings.Contains(v.Title+v.Explain, "<no value>") || len(v.Steps) == 0 {
 					t.Fatalf("internal rule renders badly: %+v", v)
+				}
+				if !strings.Contains(v.Title, "run tf.plan") && !strings.Contains(v.Title, "4242") {
+					t.Fatalf("title should name the task or the process group: %q", v.Title)
 				}
 				return
 			}

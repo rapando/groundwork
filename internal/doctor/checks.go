@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/rapando/groundwork/internal/config"
+	"github.com/rapando/groundwork/internal/proc"
 	"github.com/rapando/groundwork/internal/safego"
 	"github.com/rapando/groundwork/internal/store"
 )
@@ -50,6 +51,7 @@ type OSExec struct{}
 func (OSExec) LookPath(n string) (string, error) { return exec.LookPath(n) }
 func (OSExec) Run(ctx context.Context, dir string, argv ...string) (string, string, int, error) {
 	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
+	proc.GroupContext(cmd) // a timeout kills the tool and its children, not just the tool
 	cmd.Dir = dir
 	var o, e bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &o, &e

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -83,21 +84,31 @@ func TestOpenUpgradesAnOldDatabaseWithBackup(t *testing.T) {
 	}
 }
 
-// A database at the current schema (what 0.4.1 wrote) opens as-is: no
-// migration, so no backup.
-func TestOpenCurrentDatabaseLeavesNoBackup(t *testing.T) {
+// A database written by 0.4.1 (schema 8) migrates with a backup when this
+// build knows more migrations, and opens as-is with no backup when it
+// doesn't. Opening it a second time never backs up again.
+func TestOpenDatabaseFrom041(t *testing.T) {
 	p := copyFixture(t, "v0.4.1.db")
-	if SchemaVersion() != 8 {
-		t.Skip("v0.4.1 fixture is schema 8; a newer schema is covered by the upgrade test")
-	}
 	s, err := Open(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
 	assertFixtureData(t, s)
-	if m, _ := filepath.Glob(p + ".bak-*"); len(m) != 0 {
+	s.Close()
+	m, _ := filepath.Glob(p + ".bak-*")
+	if SchemaVersion() == 8 && len(m) != 0 {
 		t.Fatalf("unexpected backup %v", m)
+	}
+	if SchemaVersion() > 8 && (len(m) != 1 || !strings.HasSuffix(m[0], ".bak-8")) {
+		t.Fatalf("want one backup of schema 8, got %v", m)
+	}
+	s, err = Open(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+	if again, _ := filepath.Glob(p + ".bak-*"); len(again) != len(m) {
+		t.Fatalf("a second open at the same schema must not back up again: %v", again)
 	}
 }
 
@@ -113,12 +124,13 @@ func TestOpenRefusesANewerSchema(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.Close()
+	before, _ := filepath.Glob(p + ".bak-*") // from the first, legitimate open
 	_, err = Open(p)
 	if !errors.Is(err, ErrNewerSchema) {
 		t.Fatalf("got %v", err)
 	}
-	if m, _ := filepath.Glob(p + ".bak-*"); len(m) != 0 {
-		t.Fatalf("a refused open must not write backups: %v", m)
+	if after, _ := filepath.Glob(p + ".bak-*"); len(after) != len(before) {
+		t.Fatalf("a refused open must not write backups: %v", after)
 	}
 }
 

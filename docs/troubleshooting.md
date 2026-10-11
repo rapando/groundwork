@@ -70,6 +70,11 @@ Put YAML files in `.groundwork/rules/`. A rule with a built-in's `id` replaces i
 
 `each:` (a regex with named groups, such as `(?P<host>…)`) makes one issue per match. Templates see `.Target`, `.Root`, `.Env`, `.Project`, `.Host`, `.Run.ID`, `.Run.Kind`, the `extract` names, and a `path` function that joins non-empty parts. Rules are re-read every 30 seconds.
 
+### Issues groundwork raises about itself
+
+- **groundwork hit an internal error in …**: a background task crashed and was recovered (see [the service page](service.md#when-somethings-wrong)); the stack trace is in `groundwork service logs`.
+- **… may still be running (process group N)**: groundwork was stopped hard while a run had terraform or ansible going; the issue carries the commands to inspect or stop that process group.
+
 ## Doctor
 
 **Run doctor** on the Troubleshoot screen, or `groundwork doctor` in a terminal (exit code 1 if anything fails; `--json` for scripts). Each check reports ok, warn or fail with a hint:

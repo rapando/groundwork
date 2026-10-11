@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rapando/groundwork/internal/proc"
 	"github.com/rapando/groundwork/internal/terraform"
 )
 
@@ -46,6 +47,7 @@ func (r *Runner) readState(ctx context.Context, t Target) (StateRef, error) {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, bin, terraform.StateSerialArgs(t.Binary, r.abs(t.Root))[1:]...)
+	proc.GroupContext(cmd) // a timeout kills the tool and its children, not just the tool
 	cmd.Dir = r.Root
 	cmd.Env = append(os.Environ(), tfEnv...)
 	if t.Workspace != "" {

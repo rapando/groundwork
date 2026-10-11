@@ -26,7 +26,7 @@ func (r *Runner) runDrift(j *job) {
 	}
 	stages = append(stages, "refresh", "summary")
 	for _, n := range stages {
-		_ = r.Store.UpsertStage(store.RunStage{RunID: j.id, Name: n, Status: "pending"})
+		r.setStage(store.RunStage{RunID: j.id, Name: n, Status: "pending"})
 	}
 	if !r.acquire(j) {
 		r.end(j, store.StatusCancelled, nil, "")
@@ -34,7 +34,7 @@ func (r *Runner) runDrift(j *job) {
 	}
 	defer r.release(j)
 	start := time.Now()
-	_ = r.Store.UpdateRun(j.id, store.RunUpdate{Status: store.StatusRunning, Started: &start})
+	r.updateRun(j.id, store.RunUpdate{Status: store.StatusRunning, Started: &start})
 	r.publishRun(j.id)
 
 	t := j.target
@@ -100,7 +100,7 @@ func (r *Runner) runDrift(j *job) {
 		}
 	} else {
 		now := time.Now()
-		_ = r.Store.UpsertStage(store.RunStage{RunID: j.id, Name: "summary", Status: "skipped", EndedAt: &now, Detail: "no drift"})
+		r.setStage(store.RunStage{RunID: j.id, Name: "summary", Status: "skipped", EndedAt: &now, Detail: "no drift"})
 	}
 	if err := r.Store.ReplaceDrift(t.Root, t.Env, j.id, rows); err != nil {
 		r.failure(j, err, 1)

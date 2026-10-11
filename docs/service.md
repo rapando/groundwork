@@ -33,6 +33,8 @@ This registers a launchd agent on macOS (`~/Library/LaunchAgents/io.github.rapan
 | `groundwork service install` / `uninstall` | add or remove the login service |
 | `groundwork serve [folder…]` | run it in the foreground instead, e.g. in a container or to watch its log; folders given are imported |
 
+**Stopping.** `groundwork service stop`, the login service stopping at logout, or SIGTERM/SIGINT give every run in progress up to 25 seconds: each tool gets SIGINT (terraform releases its state lock and exits; ansible stops after the current task), then SIGKILL, and the run is marked cancelled. launchd and systemd wait 40 seconds before killing the service themselves (`ExitTimeOut` / `TimeoutStopSec`). A *hard* stop (`kill -9`, power loss) can't do any of that: the tools keep running on their own. Each run records its tool's process group, so on the next start groundwork raises an issue for any that is still alive, with the commands to inspect or stop it, and marks the interrupted runs failed. Every run also has a `run_timeout` (default 2 hours, in `groundwork.yaml`) after which it is stopped the same way and fails, so a hung provider or host cannot hold a root's lock forever.
+
 Only one service runs per data directory: `serve` holds a lock on `<data dir>/lock` for its lifetime (released by the kernel if it crashes). A second `serve`, started by hand or by the login service, sees the lock, imports any folders you gave it into the running one, and exits.
 
 ## Projects

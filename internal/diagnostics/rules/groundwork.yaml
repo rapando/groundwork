@@ -19,3 +19,24 @@
     - title: Report it
       detail: Attach the stack trace from the service log (`groundwork service logs`) and the output of `groundwork version`.
       action: { kind: open, label: Open an issue, href: 'https://github.com/rapando/groundwork/issues/new' }
+
+- id: groundwork-orphaned-process
+  scope: any
+  category: groundwork
+  severity: warning
+  raised: internal
+  resolve: manual
+  title: '{{ .tool }} from run #{{ .Run.ID }} may still be running (process group {{ .pgid }})'
+  explain: >
+    groundwork was stopped hard (killed, or the machine went down) while run #{{ .Run.ID }} ({{ .Run.Kind }}) on
+    {{ .Target }} had {{ .tool }} running, and that process group was still alive when groundwork started again.
+    It will finish or fail on its own; until then it may hold the state lock, and groundwork cannot see its output.
+    Runs stopped normally never leave this behind: a stop or cancel interrupts the tool and waits for it.
+  steps:
+    - title: Check what it is doing
+      action: { kind: copy, label: Copy command, text: 'ps -o pid,etime,command -g {{ .pgid }}' }
+    - title: Stop it, if it should not be running
+      detail: SIGINT lets terraform release its state lock; follow with SIGKILL only if it hangs.
+      action: { kind: copy, label: Copy command, text: 'kill -INT -- -{{ .pgid }}' }
+    - title: Re-plan to see what state it left
+      action: { kind: run, label: 'Plan {{ .Target }}', run: { kind: tf.plan } }
