@@ -67,12 +67,12 @@ Run `install` from a shell where `terraform` and `ansible` work: the login servi
 
 ## What else you need
 
-groundwork runs your tools; it doesn't bundle them. `groundwork doctor` lists what it found.
+groundwork runs your tools; it doesn't bundle them. `groundwork doctor` lists what it found and warns when a tool is older than the floor below (nothing is refused: older releases are simply untested).
 
 | Tool | For |
 |---|---|
-| `terraform` ≥ 1.4 or `tofu` | Terraform roots (set `terraform.binary: tofu` for OpenTofu). 1.4 is the floor (`workspace select -or-create`); tested with 1.16. |
-| `ansible-core` | Ansible projects; tested with 2.21 |
+| `terraform` ≥ 1.4 or `tofu` ≥ 1.6 | Terraform roots (set `terraform.binary: tofu` for OpenTofu). 1.4 is the floor (`workspace select -or-create`); tested with 1.16. |
+| `ansible-core` ≥ 2.14 | Ansible projects; tested with 2.21 |
 | `git` | change tracking, commit recorded with each run |
 | tflint, checkov, yamllint, ansible-lint | optional checks; skipped with a hint when missing |
 | `sops`, `ansible-vault` | revealing encrypted values |

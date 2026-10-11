@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/go-version"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -171,6 +172,27 @@ func has(list []string, x string) bool {
 	return false
 }
 
+// Floors are the oldest tool releases groundwork supports: terraform 1.4 for
+// `workspace select -or-create`, tofu 1.6 (its first release), ansible-core
+// 2.14 for the JSON callback behaviour the runner relies on. Doctor warns
+// below them; nothing is refused.
+var Floors = map[string]string{"terraform": "1.4.0", "tofu": "1.6.0", "ansible": "2.14.0"}
+
+// BelowFloor reports whether a detected version is older than floor.
+// Unparseable versions are never "below": a warning must not come from a
+// regex miss.
+func BelowFloor(got, floor string) bool {
+	g, err := version.NewVersion(got)
+	if err != nil {
+		return false
+	}
+	f, err := version.NewVersion(floor)
+	if err != nil {
+		return false
+	}
+	return g.Core().LessThan(f)
+}
+
 func checkTools(ctx context.Context, in Input) []Check {
 	need := map[string]string{} // tool → why
 	if in.Cfg != nil {
@@ -230,8 +252,16 @@ func checkTools(ctx context.Context, in Input) []Check {
 		if spec != nil {
 			o, e, _, _ := in.Exec.Run(ctx, in.Root, append([]string{n}, spec.args...)...)
 			if m := regexp.MustCompile(spec.re).FindStringSubmatch(o + e); m != nil {
-				ver = " " + m[1]
+				ver = m[1]
 			}
+		}
+		if floor, ok := Floors[n]; ok && ver != "" && BelowFloor(ver, floor) {
+			out = append(out, Check{ID: "tool:" + n, Name: n, Status: "warn",
+				Detail: fmt.Sprintf("%s %s is older than the supported floor %s", n, ver, floor),
+				Hint:   "upgrade " + n + "; older releases are untested and some commands groundwork uses may be missing"})
+		}
+		if ver != "" {
+			ver = " " + ver
 		}
 		found = append(found, n+ver)
 	}

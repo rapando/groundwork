@@ -63,7 +63,7 @@ groundwork service install   # launchd on macOS, systemd --user on Linux
 groundwork service status
 ```
 
-Run `install` from a shell where `terraform` and `ansible` work: the login service keeps that shell's `PATH`. groundwork uses the `terraform` (or `tofu`) and `ansible` it finds there, plus any linters you have; `groundwork doctor` shows what it found.
+Run `install` from a shell where `terraform` and `ansible` work: the login service keeps that shell's `PATH`. groundwork uses the `terraform` (or `tofu`) and `ansible` it finds there, plus any linters you have; `groundwork doctor` shows what it found. Supported floors: terraform ≥ 1.4 or tofu ≥ 1.6, and ansible-core ≥ 2.14; Doctor warns below them.
 
 **Upgrading:** install again, then `groundwork service restart` (the CLI warns while the service still runs the old version; project data is migrated on first open and backed up first). Coming from 0.1, where groundwork ran one server per repository in your terminal, see [upgrading to 0.2](docs/install.md#from-01-to-02).
 

@@ -166,3 +166,48 @@ func TestDoctorFailures(t *testing.T) {
 		t.Errorf("%+v", c)
 	}
 }
+
+// Doctor warns about tools older than the floor groundwork is tested
+// against, and says nothing when the version can't be read.
+func TestToolVersionFloors(t *testing.T) {
+	cfg := &config.Config{
+		Terraform: config.Terraform{Roots: []config.TFRoot{{Path: "envs/dev", Env: "dev"}}},
+		Ansible:   config.Ansible{Projects: []config.AnsibleProject{{Path: "ansible"}}},
+	}
+	ex := fakeExec{
+		have: map[string]bool{"terraform": true, "ansible": true, "git": true},
+		run: func(a []string) (string, string, int) {
+			switch a[0] {
+			case "terraform":
+				return "Terraform v1.3.9\n", "", 0
+			case "ansible":
+				return "ansible [core 2.14.2]", "", 0
+			case "git":
+				return "git version (unknown)", "", 0
+			}
+			return "", "", 1
+		},
+	}
+	rep := Run(context.Background(), Input{Root: t.TempDir(), Cfg: cfg, Exec: ex, Home: t.TempDir()})
+	m := byID(rep)
+	if c := m["tool:terraform"]; c.Status != "warn" || !strings.Contains(c.Detail, "1.3.9") || !strings.Contains(c.Detail, "1.4.0") {
+		t.Fatalf("terraform below floor: %+v", c)
+	}
+	if _, ok := m["tool:ansible"]; ok {
+		t.Fatalf("ansible 2.14.2 meets the floor: %+v", m["tool:ansible"])
+	}
+	if _, ok := m["tool:git"]; ok {
+		t.Fatalf("an unreadable version must not warn: %+v", m["tool:git"])
+	}
+	if !strings.Contains(m["tools"].Detail, "terraform 1.3.9") {
+		t.Fatalf("tools line: %+v", m["tools"])
+	}
+	for _, c := range []struct {
+		got, floor string
+		below      bool
+	}{{"1.16.5", "1.4.0", false}, {"1.4.0", "1.4.0", false}, {"1.3.9", "1.4.0", true}, {"1.4.0-rc1", "1.4.0", false}, {"garbage", "1.4.0", false}} {
+		if BelowFloor(c.got, c.floor) != c.below {
+			t.Errorf("BelowFloor(%s, %s) != %v", c.got, c.floor, c.below)
+		}
+	}
+}
