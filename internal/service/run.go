@@ -168,7 +168,10 @@ func Run(ctx context.Context, o Options) error {
 	}
 	defer os.Remove(infoPath)
 
-	httpSrv := &http.Server{Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second}
+	// ReadHeaderTimeout bounds slow clients; no ReadTimeout/WriteTimeout, since
+	// SSE streams and long file uploads are legitimate. IdleTimeout reaps
+	// keep-alive connections nothing uses.
+	httpSrv := &http.Server{Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 2 * time.Minute}
 	errc := make(chan error, 1)
 	go func() { errc <- httpSrv.Serve(ln) }()
 

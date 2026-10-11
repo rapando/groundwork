@@ -10,6 +10,7 @@ groundwork runs on your machine with your credentials and can run `terraform app
 - **CSRF.** State-changing requests need an `Origin` (or `Referer`) from the same host.
 - **Headers on every response.** A strict Content-Security-Policy (`script-src 'self'`, `frame-ancestors 'none'`), `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` (the token never leaks in a Referer), `nosniff`, and `Cache-Control: no-store` for the page and the API.
 - **Bounded input.** JSON bodies are capped at 1 MiB and file writes at 2 MiB.
+- **What's deliberately not there.** There is no rate limit on `?t=` attempts: the token is 256 random bits compared in constant time, so guessing is infeasible, and the port is only reachable from this machine. The server sets `ReadHeaderTimeout` (10s) and `IdleTimeout` (2min) but no read or write deadline, because event streams and large saves are long-lived by design; a local client that holds a connection open only costs itself. The session cookie has no expiry: it is a session cookie (gone when the browser closes), it is bound to the loopback origin, and the token behind it rotates when you delete the `token` file and restart.
 
 - **One service, many projects.** Every project's API sits behind the same checks; a project is only reachable once you've imported it. Importing a folder refuses `/` and your home directory. Cloning accepts only `https://`, `ssh://` and `git@host:path` URLs, runs `git` with `protocol.ext.allow=never` and with prompts disabled, and passes the URL after `--`.
 

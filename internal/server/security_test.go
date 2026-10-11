@@ -63,6 +63,12 @@ func newStack(t *testing.T) *stack {
 	if err := os.Symlink(outside, filepath.Join(root, "escape")); err != nil {
 		t.Fatal(err)
 	}
+	// an in-repo symlink into .git: inside the root, but still protected
+	os.MkdirAll(filepath.Join(root, ".git"), 0o755)
+	os.WriteFile(filepath.Join(root, ".git", "config"), []byte("[core]\n"), 0o644)
+	if err := os.Symlink(filepath.Join(root, ".git"), filepath.Join(root, "dotgit")); err != nil {
+		t.Fatal(err)
+	}
 	st, err := store.Open(filepath.Join(t.TempDir(), "s.db"))
 	if err != nil {
 		t.Fatal(err)
@@ -215,7 +221,8 @@ func TestHeadersOnEveryKindOfResponse(t *testing.T) {
 func TestNoPathEscapesOrArgumentInjection(t *testing.T) {
 	s := newStack(t)
 	escapes := []string{"../../etc/passwd", "/etc/passwd", "escape/secret.txt", "escape/x.yml", "terraform/../../outside"}
-	protected := []string{".git/config", ".groundwork/state.db", "terraform/envs/dev/terraform.tfstate"}
+	protected := []string{".git/config", ".groundwork/state.db", "terraform/envs/dev/terraform.tfstate",
+		".GIT/config", ".Groundwork/state.db", "dotgit/config", "dotgit/hooks/pre-commit"} // case and symlinks don't help
 	type ep struct {
 		method, path string
 		body         any

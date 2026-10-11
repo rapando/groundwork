@@ -140,7 +140,9 @@ const maxDiff = 1 << 20
 // Diff returns the unified diff of one path against HEAD (staged and unstaged
 // together). Untracked files, and repos without commits, diff against nothing.
 func Diff(ctx context.Context, root, rel string) (string, error) {
-	if _, err := SafePath(root, rel); err != nil {
+	// the same rules as the editor: no escapes, and nothing under .git even
+	// through a case-folded or symlinked name
+	if _, err := editablePath(root, rel); err != nil {
 		return "", err
 	}
 	if _, err := os.Stat(filepath.Join(root, ".git")); err != nil {
