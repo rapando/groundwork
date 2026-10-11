@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 	"runtime/debug"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 
 	"github.com/rapando/groundwork/internal/checks"
 	"github.com/rapando/groundwork/internal/doctor"
+	"github.com/rapando/groundwork/internal/server"
 	"github.com/rapando/groundwork/internal/service"
 )
 
@@ -112,9 +114,9 @@ func newRoot() *cobra.Command {
 	logFlags(serveCmd)
 
 	version := &cobra.Command{
-		Use: "version", Short: "Print version information",
+		Use: "version", Short: "Print version information (version, commit, Go version, UI build)",
 		Run: func(cmd *cobra.Command, _ []string) {
-			fmt.Fprintf(cmd.OutOrStdout(), "groundwork %s (commit %s)\n", Version, Commit)
+			fmt.Fprintf(cmd.OutOrStdout(), "groundwork %s (commit %s, %s, ui %s)\n", Version, Commit, runtime.Version(), server.UIHash())
 		},
 	}
 	root.AddCommand(serveCmd, version, newInit(), newCheck(func() checks.Exec { return checks.OSExec{} }), newDoctor(doctor.OSExec{}), newDrift())

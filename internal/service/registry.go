@@ -48,6 +48,8 @@ const RegistryFormat = 1
 // Registry is the persisted project list (<home>/projects.json).
 type Registry struct {
 	path string
+	// Quarantined is set when projects.json was unreadable and moved aside.
+	Quarantined string
 
 	mu       sync.Mutex
 	projects []Project
@@ -67,7 +69,15 @@ func OpenRegistry(home string) (*Registry, error) {
 		Projects []Project `json:"projects"`
 	}
 	if err := json.Unmarshal(b, &doc); err != nil {
-		return nil, fmt.Errorf("%s: %w", r.path, err)
+		// a damaged file must not keep the whole service from starting: set
+		// it aside (nothing is deleted) and start with no projects; the
+		// caller logs Quarantined so the user knows what to restore
+		q := fmt.Sprintf("%s.broken-%s", r.path, time.Now().UTC().Format("20060102T150405Z"))
+		if rerr := os.Rename(r.path, q); rerr != nil {
+			return nil, fmt.Errorf("%s: %w (and could not set it aside: %v)", r.path, err, rerr)
+		}
+		r.Quarantined = fmt.Sprintf("%s could not be read (%v); it was moved to %s and the project list starts empty. Import your repositories again, or fix and restore the file.", r.path, err, q)
+		return r, nil
 	}
 	if doc.Format > RegistryFormat {
 		return nil, fmt.Errorf("%s was written by a newer groundwork (format %d; this build reads up to %d): upgrade groundwork", r.path, doc.Format, RegistryFormat)

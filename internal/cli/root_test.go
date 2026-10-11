@@ -31,7 +31,7 @@ func TestVersionCommand(t *testing.T) {
 	Version, Commit = "1.2.3", "abc1234"
 	t.Cleanup(func() { Version, Commit = "dev", "none" })
 	out, _, err := execCLI(t, "version")
-	if err != nil || !strings.Contains(out, "groundwork 1.2.3") || !strings.Contains(out, "abc1234") {
+	if err != nil || !strings.Contains(out, "groundwork 1.2.3") || !strings.Contains(out, "abc1234") || !strings.Contains(out, "go1.") || !strings.Contains(out, "ui ") {
 		t.Fatalf("%q %v", out, err)
 	}
 }
@@ -94,9 +94,13 @@ func TestDoctorJSONReportsFloorsAndMissingTools(t *testing.T) {
 	err := cmd.ExecuteContext(context.Background())
 	var rep struct {
 		Checks []struct{ ID, Status, Detail string }
+		Build  map[string]string
 	}
 	if jerr := json.Unmarshal(out.Bytes(), &rep); jerr != nil {
 		t.Fatalf("not JSON: %v\n%s", jerr, out.String())
+	}
+	if rep.Build["version"] == "" || rep.Build["go"] == "" || rep.Build["ui"] == "" || rep.Build["os"] == "" {
+		t.Fatalf("doctor --json should identify the build: %v", rep.Build)
 	}
 	byID := map[string]struct{ ID, Status, Detail string }{}
 	for _, c := range rep.Checks {

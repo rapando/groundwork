@@ -78,6 +78,30 @@ func TestRegistryRefusesANewerFormat(t *testing.T) {
 	}
 }
 
+// A corrupt projects.json is set aside, not fatal: the service starts with
+// no projects and the file is kept for the user to repair.
+func TestRegistryQuarantinesACorruptFile(t *testing.T) {
+	home := t.TempDir()
+	os.WriteFile(filepath.Join(home, "projects.json"), []byte(`{"projects": [`), 0o600)
+	r, err := OpenRegistry(home)
+	if err != nil || r.Quarantined == "" || len(r.List()) != 0 {
+		t.Fatalf("%v %+v", err, r)
+	}
+	moved, _ := filepath.Glob(filepath.Join(home, "projects.json.broken-*"))
+	if len(moved) != 1 {
+		t.Fatalf("damaged file not set aside: %v", moved)
+	}
+	if _, err := os.Stat(filepath.Join(home, "projects.json")); err == nil {
+		t.Fatal("the damaged file should have been moved")
+	}
+	if _, _, err := r.Add(t.TempDir(), ""); err != nil {
+		t.Fatal(err)
+	}
+	if again, err := OpenRegistry(home); err != nil || again.Quarantined != "" || len(again.List()) != 1 {
+		t.Fatalf("fresh file: %v %+v", err, again)
+	}
+}
+
 func TestRegistryPersists(t *testing.T) {
 	home := t.TempDir()
 	r, err := OpenRegistry(home)

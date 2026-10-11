@@ -38,6 +38,10 @@ type Check struct {
 type Report struct {
 	RanAt  time.Time `json:"ran_at"`
 	Checks []Check   `json:"checks"`
+	// Build identifies the groundwork that ran the checks (version, commit,
+	// go, ui); the CLI fills it in for --json so a report can be pasted into a
+	// bug report as it is.
+	Build map[string]string `json:"build,omitempty"`
 }
 
 // Exec runs external commands; tests replace it.

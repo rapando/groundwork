@@ -60,6 +60,9 @@ func New(ctx context.Context, home, version string, log *slog.Logger) (*Service,
 	if err != nil {
 		return nil, err
 	}
+	if reg.Quarantined != "" {
+		log.Error("project list unreadable", "detail", reg.Quarantined)
+	}
 	return &Service{Home: home, Version: version, Log: log, Reg: reg, ctx: ctx, live: map[string]*instance{}}, nil
 }
 

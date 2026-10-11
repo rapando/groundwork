@@ -3,6 +3,7 @@ package server
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"embed"
 	"encoding/hex"
@@ -28,6 +29,30 @@ import (
 
 //go:embed all:dist
 var distFS embed.FS
+
+var (
+	uiHashOnce sync.Once
+	uiHash     string
+)
+
+// UIHash identifies the embedded SPA build: a short hash over index.html and
+// the asset file names (which carry their own content hashes). Bug reports
+// quote it so a UI bug can be tied to a build.
+func UIHash() string {
+	uiHashOnce.Do(func() {
+		h := sha256.New()
+		if b, err := fs.ReadFile(distFS, "dist/index.html"); err == nil {
+			h.Write(b)
+		}
+		if entries, err := fs.ReadDir(distFS, "dist/assets"); err == nil {
+			for _, e := range entries {
+				h.Write([]byte(e.Name() + "\n"))
+			}
+		}
+		uiHash = hex.EncodeToString(h.Sum(nil))[:12]
+	})
+	return uiHash
+}
 
 const (
 	TokenHeader = "X-Groundwork-Token"

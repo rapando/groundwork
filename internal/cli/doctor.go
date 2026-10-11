@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -22,6 +23,7 @@ import (
 	"github.com/rapando/groundwork/internal/drift"
 	"github.com/rapando/groundwork/internal/events"
 	"github.com/rapando/groundwork/internal/runner"
+	"github.com/rapando/groundwork/internal/server"
 	"github.com/rapando/groundwork/internal/store"
 	"github.com/rapando/groundwork/internal/workspace"
 )
@@ -85,6 +87,7 @@ func newDoctor(ex doctor.Exec) *cobra.Command {
 			ctx, cancel := context.WithTimeout(cmd.Context(), 60*time.Second)
 			defer cancel()
 			rep := doctor.Run(ctx, doctor.Input{Root: root, Cfg: cfg, Providers: providers, Store: st, Exec: ex})
+			rep.Build = map[string]string{"version": Version, "commit": Commit, "go": runtime.Version(), "ui": server.UIHash(), "os": runtime.GOOS + "/" + runtime.GOARCH}
 			if b, err := json.Marshal(rep); err == nil {
 				_ = st.SetKV("doctor.last", string(b)) // the UI shows the latest run
 			}
