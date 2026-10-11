@@ -435,7 +435,7 @@ func (a *API) listEnvs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// ansible scopes join the same environments by name; inventories load in parallel
-	scopes := scopesFor(cfg)
+	scopes := scopesFor(cfg, a.Root)
 	invs := make([]*ansible.Inventory, len(scopes))
 	var wg sync.WaitGroup
 	for i, sc := range scopes {

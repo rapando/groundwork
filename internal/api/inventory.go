@@ -27,16 +27,18 @@ type invScope struct {
 	Env       string `json:"env"`
 	Inventory string `json:"inventory"` // relative to the project ("" = ansible.cfg default)
 	Vault     string `json:"-"`         // vault password file ("" = none)
+	vaultErr  error  // why the vault file was refused (ansible runs are refused too)
 }
 
-func scopesFor(cfg *config.Config) []invScope {
+func scopesFor(cfg *config.Config, root string) []invScope {
 	var out []invScope
 	if cfg == nil {
 		return out
 	}
 	for _, p := range cfg.Ansible.Projects {
+		vault, vaultErr := cfg.VaultFile(root, p)
 		if len(p.Inventories) == 0 {
-			out = append(out, invScope{Project: path.Clean(p.Path), Env: "default", Vault: p.VaultPath()})
+			out = append(out, invScope{Project: path.Clean(p.Path), Env: "default", Vault: vault, vaultErr: vaultErr})
 			continue
 		}
 		envs := make([]string, 0, len(p.Inventories))
@@ -47,7 +49,7 @@ func scopesFor(cfg *config.Config) []invScope {
 			return envRank(envs[i]) < envRank(envs[j]) || envRank(envs[i]) == envRank(envs[j]) && envs[i] < envs[j]
 		})
 		for _, e := range envs {
-			out = append(out, invScope{Project: path.Clean(p.Path), Env: e, Inventory: p.Inventories[e], Vault: p.VaultPath()})
+			out = append(out, invScope{Project: path.Clean(p.Path), Env: e, Inventory: p.Inventories[e], Vault: vault, vaultErr: vaultErr})
 		}
 	}
 	return out
@@ -97,6 +99,9 @@ func (a *API) loadInventory(ctx context.Context, s invScope) (*ansible.Inventory
 	if e, ok := invCache.Load(key); ok && e.(invCacheEntry).fp == fp { // loaded while we waited
 		return e.(invCacheEntry).inv, nil
 	}
+	if s.vaultErr != nil {
+		return nil, s.vaultErr
+	}
 	out, err := ansible.Query(ctx, dir, a.ansibleHome(), ansible.InventoryListArgs(s.Inventory, dir, s.Vault))
 	if err != nil {
 		return nil, vaultHint(err, s)
@@ -124,7 +129,7 @@ func vaultHint(err error, s invScope) error {
 
 func (a *API) scopeFromQuery(r *http.Request) (invScope, []invScope, error) {
 	cfg, _ := a.config()
-	all := scopesFor(cfg)
+	all := scopesFor(cfg, a.Root)
 	if len(all) == 0 {
 		return invScope{}, all, fmt.Errorf("no Ansible projects are configured")
 	}

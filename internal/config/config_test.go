@@ -2,6 +2,8 @@ package config
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -136,5 +138,83 @@ func TestPlanTTLAndDangerValidation(t *testing.T) {
 		if _, err := Parse([]byte(base+bad), FileName); err == nil {
 			t.Errorf("accepted %q", bad)
 		}
+	}
+}
+
+// Everything in groundwork.yaml that reaches a subprocess or the filesystem is
+// validated: the file is part of the repository, so a cloned repository
+// controls it.
+func TestRepoControlledValuesAreValidated(t *testing.T) {
+	base := "version: 1\nmode: standalone\n"
+	good := []string{
+		"terraform:\n  roots:\n    - path: a\n      envs: { dev: { workspace: dev-1 }, prod.eu: {} }\n",
+		"ansible:\n  projects:\n    - path: a\n      config: ansible.cfg\n      vault_password_file: .vault\n",
+		"ansible:\n  projects:\n    - path: a\n      vault_password_file: ~/.vault\n",
+		"ansible:\n  projects:\n    - path: a\n      vault_password_file: /etc/vault-pass\n",
+		"drift: { schedule: '0 * * * *', notify: webhook, webhook: https://hooks.example.com/x }\n",
+		"ignore: ['vendor/', '*.bak']\n",
+	}
+	for _, g := range good {
+		if _, err := Parse([]byte(base+g), FileName); err != nil {
+			t.Errorf("rejected %q: %v", g, err)
+		}
+	}
+	bad := map[string]string{
+		"terraform:\n  roots:\n    - path: a\n      envs: { dev: { workspace: '-chdir=/' } }\n": "terraform.roots[0].envs.dev.workspace",
+		"terraform:\n  roots:\n    - path: a\n      envs: { 'de v': {} }\n":                     "terraform.roots[0].envs.de v",
+		"terraform:\n  roots:\n    - path: a\n      env: 'a/b'\n":                               "terraform.roots[0].env",
+		"ansible:\n  projects:\n    - path: a\n      config: ../ansible.cfg\n":                  "ansible.projects[0].config",
+		"ansible:\n  projects:\n    - path: a\n      vault_password_file: ../../x\n":            "ansible.projects[0].vault_password_file",
+		"ansible:\n  projects:\n    - path: a\n      vault_password_file: ~root/x\n":            "ansible.projects[0].vault_password_file",
+		"ansible:\n  projects:\n    - path: a\n      inventories: { 'd;v': inv }\n":             "ansible.projects[0].inventories.d;v",
+		"drift: { notify: webhook, webhook: 'file:///etc/passwd' }\n":                           "drift.webhook",
+		"drift: { notify: webhook, webhook: 'https://user:pw@h/x' }\n":                          "drift.webhook",
+		"drift: { notify: webhook, webhook: 'not a url' }\n":                                    "drift.webhook",
+		"ignore: ['']\n": "ignore[0]",
+	}
+	for src, path := range bad {
+		_, err := Parse([]byte(base+src), FileName)
+		var ve *ValidationError
+		if !errors.As(err, &ve) {
+			t.Errorf("accepted %q", src)
+			continue
+		}
+		found := false
+		for _, p := range ve.Problems {
+			found = found || p.Path == path
+		}
+		if !found {
+			t.Errorf("%q: want a problem at %s, got %v", src, path, err)
+		}
+	}
+}
+
+// ansible executes a vault password file that has the execute bit set, so a
+// repository can't point groundwork at a script unless the user opts in.
+func TestVaultFileRefusesExecutables(t *testing.T) {
+	root := t.TempDir()
+	os.MkdirAll(filepath.Join(root, "ans"), 0o755)
+	os.WriteFile(filepath.Join(root, "ans", "plain"), []byte("pw\n"), 0o600)
+	os.WriteFile(filepath.Join(root, "ans", "script"), []byte("#!/bin/sh\necho pw\n"), 0o700)
+	c := &Config{}
+	p := AnsibleProject{Path: "ans", VaultPasswordFile: "plain"}
+	if got, err := c.VaultFile(root, p); err != nil || got != filepath.Join(root, "ans", "plain") {
+		t.Fatalf("plain: %q %v", got, err)
+	}
+	p.VaultPasswordFile = "script"
+	if _, err := c.VaultFile(root, p); err == nil || !strings.Contains(err.Error(), "allow_vault_script") {
+		t.Fatalf("executable accepted: %v", err)
+	}
+	c.Ansible.AllowVaultScript = true
+	if got, err := c.VaultFile(root, p); err != nil || got != filepath.Join(root, "ans", "script") {
+		t.Fatalf("opted in: %q %v", got, err)
+	}
+	// missing files are the doctor's business, not an error here
+	p.VaultPasswordFile = "nope"
+	if _, err := (&Config{}).VaultFile(root, p); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := (&Config{}).VaultFile(root, AnsibleProject{}); got != "" {
+		t.Fatal("no file should stay empty")
 	}
 }

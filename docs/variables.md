@@ -35,7 +35,7 @@ The Secrets tab lists encrypted values and credential variables. Nothing is decr
 | ansible-vault, inline | `key: !vault \|` values | `ansible-vault decrypt` of that value |
 | Environment | known credential variables (`AWS_*`, `ARM_*`, `GOOGLE_*`, `VAULT_TOKEN`, …) set in groundwork's environment | never: names only |
 
-Vault commands run in the Ansible project with its `ansible.cfg`. Set the password with `vault_password_file:` on the project in `groundwork.yaml` (relative to the project, or `~/…`); `ANSIBLE_VAULT_PASSWORD_FILE` or `vault_password_file` in `ansible.cfg` also work. States: **can decrypt**, **wrong password**, **no password** (none configured), **tool missing**.
+Vault commands run in the Ansible project with its `ansible.cfg`. Set the password with `vault_password_file:` on the project in `groundwork.yaml` (relative to the project, `~/…` or absolute; never with `..`); `ANSIBLE_VAULT_PASSWORD_FILE` or `vault_password_file` in `ansible.cfg` also work. Ansible *executes* a password file that has the execute bit set, and `groundwork.yaml` is part of the repository, so groundwork refuses an executable file unless the project sets `ansible.allow_vault_script: true`. States: **can decrypt**, **wrong password**, **no password** (none configured), **tool missing**.
 
 **Reveal** decrypts one value on request. The value is sent in that one response (`Cache-Control: no-store`), shown for 30 seconds, and never written to groundwork's database, logs or cache. Each reveal is recorded in an audit list with the secret's name, file and time, never its value. Sensitive Terraform variables can be revealed from the detail panel the same way.
 

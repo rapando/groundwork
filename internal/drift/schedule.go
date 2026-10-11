@@ -238,6 +238,15 @@ func Send(ctx context.Context, d config.Drift, n Notice) error {
 	return desktop(ctx, "groundwork: drift in "+n.Env, n.Text)
 }
 
+// webhookClient has its own timeout and follows no redirects: the URL was
+// validated as http(s) with a host, and a redirect could point elsewhere.
+var webhookClient = &http.Client{
+	Timeout: 10 * time.Second,
+	CheckRedirect: func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	},
+}
+
 func webhook(ctx context.Context, url string, n Notice) error {
 	b, _ := json.Marshal(n)
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
@@ -248,7 +257,7 @@ func webhook(ctx context.Context, url string, n Notice) error {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "groundwork")
-	res, err := http.DefaultClient.Do(req)
+	res, err := webhookClient.Do(req)
 	if err != nil {
 		return err
 	}

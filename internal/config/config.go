@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -62,6 +63,11 @@ type TFEnv struct {
 
 type Ansible struct {
 	Projects []AnsibleProject `yaml:"projects,omitempty"`
+	// AllowVaultScript lets vault_password_file name an executable, which
+	// ansible runs to obtain the password. Off by default: groundwork.yaml is
+	// part of the repository, so a repository cloned through the UI could
+	// otherwise run a script of its own choosing.
+	AllowVaultScript bool `yaml:"allow_vault_script,omitempty"`
 }
 
 type AnsibleProject struct {
@@ -71,17 +77,40 @@ type AnsibleProject struct {
 	VaultPasswordFile string            `yaml:"vault_password_file,omitempty"`
 }
 
-// VaultPath is the vault password file with a leading ~/ expanded ("" = none).
-// A relative path is relative to the project, where ansible runs.
-func (p AnsibleProject) VaultPath() string {
+// VaultFile resolves p's vault password file to an absolute path ("" = none):
+// a relative path is relative to the project, `~/` is the home directory. It
+// refuses a file with the execute bit set unless ansible.allow_vault_script is
+// on, since ansible executes such a file instead of reading it.
+func (c *Config) VaultFile(repoRoot string, p AnsibleProject) (string, error) {
 	v := p.VaultPasswordFile
-	if strings.HasPrefix(v, "~/") {
-		if home, err := os.UserHomeDir(); err == nil {
-			v = filepath.Join(home, v[2:])
+	switch {
+	case v == "":
+		return "", nil
+	case strings.HasPrefix(v, "~/"):
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
 		}
+		v = filepath.Join(home, v[2:])
+	case filepath.IsAbs(v):
+	default:
+		v = filepath.Join(repoRoot, filepath.FromSlash(p.Path), filepath.FromSlash(v))
 	}
-	return v
+	if c.Ansible.AllowVaultScript {
+		return v, nil
+	}
+	if st, err := os.Stat(v); err == nil && st.Mode().IsRegular() && st.Mode().Perm()&0o111 != 0 {
+		return "", fmt.Errorf("vault_password_file %s is executable and ansible would run it; make it a plain file, or set ansible.allow_vault_script: true in groundwork.yaml if that is intended", p.VaultPasswordFile)
+	}
+	return v, nil
 }
+
+// envNameRe is what an environment or workspace name may look like: it goes
+// into `terraform workspace select`, TF_WORKSPACE, URLs and inventory lookups.
+var envNameRe = regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
+
+// ValidEnvName reports whether s is an acceptable environment/workspace name.
+func ValidEnvName(s string) bool { return envNameRe.MatchString(s) }
 
 type Checks struct {
 	Enabled []string `yaml:"enabled,omitempty"`
@@ -275,7 +304,16 @@ func (c *Config) validate() []problem {
 		if !validApproval(r.Approval) {
 			add("approval must be required or none", "terraform", "roots", i, "approval")
 		}
+		if r.Env != "" && !ValidEnvName(r.Env) {
+			add("environment names may contain letters, digits, '_', '.' and '-'", "terraform", "roots", i, "env")
+		}
 		for name, e := range r.Envs {
+			if !ValidEnvName(name) {
+				add("environment names may contain letters, digits, '_', '.' and '-'", "terraform", "roots", i, "envs", name)
+			}
+			if e.Workspace != "" && !ValidEnvName(e.Workspace) {
+				add("workspace names may contain letters, digits, '_', '.' and '-'", "terraform", "roots", i, "envs", name, "workspace")
+			}
 			if !validApproval(e.Approval) {
 				add("approval must be required or none", "terraform", "roots", i, "envs", name, "approval")
 			}
@@ -305,10 +343,26 @@ func (c *Config) validate() []problem {
 		if msg := checkRelPath(p.Path); msg != "" {
 			add(msg, "ansible", "projects", i, "path")
 		}
+		if p.Config != "" {
+			if msg := checkRelPath(p.Config); msg != "" {
+				add(msg, "ansible", "projects", i, "config")
+			}
+		}
+		if msg := checkVaultPath(p.VaultPasswordFile); msg != "" {
+			add(msg, "ansible", "projects", i, "vault_password_file")
+		}
 		for env, inv := range p.Inventories {
+			if !ValidEnvName(env) {
+				add("environment names may contain letters, digits, '_', '.' and '-'", "ansible", "projects", i, "inventories", env)
+			}
 			if msg := checkRelPath(inv); msg != "" {
 				add(msg, "ansible", "projects", i, "inventories", env)
 			}
+		}
+	}
+	for i, p := range c.Ignore {
+		if strings.TrimSpace(p) == "" || strings.ContainsAny(p, "\n\x00") {
+			add("must be a single .gitignore-style pattern", "ignore", i)
 		}
 	}
 	for i, ch := range c.Checks.Enabled {
@@ -325,6 +379,11 @@ func (c *Config) validate() []problem {
 	default:
 		add("notify must be desktop, webhook or none", "drift", "notify")
 	}
+	if c.Drift.Webhook != "" {
+		if msg := checkWebhook(c.Drift.Webhook); msg != "" {
+			add(msg, "drift", "webhook")
+		}
+	}
 	if s := c.Drift.Schedule; s != "" && len(strings.Fields(s)) != 5 {
 		add("schedule must be a 5-field cron expression", "drift", "schedule")
 	}
@@ -340,6 +399,42 @@ func contains(l []string, v string) bool {
 		}
 	}
 	return false
+}
+
+// checkVaultPath allows a vault password file relative to the project, under
+// ~/ or absolute, as long as it never climbs with "..". The execute-bit rule
+// needs the filesystem and lives in Config.VaultFile.
+func checkVaultPath(p string) string {
+	if p == "" {
+		return ""
+	}
+	if strings.ContainsRune(p, 0) {
+		return "invalid path"
+	}
+	for _, seg := range strings.Split(filepath.ToSlash(p), "/") {
+		if seg == ".." {
+			return "must not contain \"..\""
+		}
+	}
+	if strings.HasPrefix(p, "~") && !strings.HasPrefix(p, "~/") {
+		return "only ~/ is expanded"
+	}
+	return ""
+}
+
+// checkWebhook accepts an absolute http(s) URL with a host.
+func checkWebhook(s string) string {
+	u, err := url.Parse(s)
+	if err != nil {
+		return "invalid URL"
+	}
+	if u.Scheme != "https" && u.Scheme != "http" {
+		return "must be an http:// or https:// URL"
+	}
+	if u.Host == "" || u.User != nil {
+		return "must have a host and no credentials"
+	}
+	return ""
 }
 
 // checkRelPath returns a message if p is not a clean repo-relative path.

@@ -265,14 +265,8 @@ func (a *API) secretStore() *vars.Secrets {
 			if c := filepath.Join(dir, firstNonEmptyS(p.Config, "ansible.cfg")); fileExists(c) {
 				vp.Config = c
 			}
-			if pw := p.VaultPasswordFile; pw != "" {
-				if strings.HasPrefix(pw, "~/") {
-					if home, err := os.UserHomeDir(); err == nil {
-						pw = filepath.Join(home, pw[2:])
-					}
-				} else if !filepath.IsAbs(pw) {
-					pw = filepath.Join(dir, pw)
-				}
+			// a refused (executable) vault file is left unset: reveals then report "no password"
+			if pw, err := cfg.VaultFile(a.Root, p); err == nil {
 				vp.PasswordFile = pw
 			}
 			ps = append(ps, vp)

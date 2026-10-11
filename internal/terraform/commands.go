@@ -18,9 +18,11 @@ func ForceUnlockArgs(bin, dir, lockID string) []string {
 	return append(chdir(bin, dir), "force-unlock", "-force", "--", lockID)
 }
 
-// WorkspaceArgs selects a workspace, creating it if missing.
+// WorkspaceArgs selects a workspace, creating it if missing. The name comes
+// from groundwork.yaml (validated there) and follows "--" so it can never be
+// read as an option.
 func WorkspaceArgs(bin, dir, workspace string) []string {
-	return append(chdir(bin, dir), "workspace", "select", "-or-create", workspace)
+	return append(chdir(bin, dir), "workspace", "select", "-or-create", "--", workspace)
 }
 
 func ValidateArgs(bin, dir string) []string {

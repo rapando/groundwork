@@ -17,6 +17,7 @@ groundwork runs on your machine with your credentials and can run `terraform app
 
 - **Paths.** Every path from a request is resolved against the repository, with symlinks followed, and refused if it lands outside it. `.git/`, `.groundwork/`, `.terraform/` and state files can't be read or written through the API.
 - **No shell.** Tools run from an argument list, never through a shell. Values from the UI (host patterns, tags, playbooks, lock IDs) are validated, passed as `--flag=value`, and positional arguments come after `--`, so nothing can turn into an option.
+- **`groundwork.yaml` is repository-controlled**, including in repositories cloned through the UI, so it's validated like request input: every path must stay inside the repository (`vault_password_file` may also be `~/…` or absolute, never `..`), environment and workspace names are `[A-Za-z0-9_.-]`, the drift webhook must be an `http(s)` URL with a host and no credentials, and an executable vault password file (which ansible would run) is refused unless `ansible.allow_vault_script: true`.
 - **Approvals.** An apply runs only the saved plan you reviewed, and only if the code, state and plan file are unchanged and the plan isn't older than `terraform.plan_ttl`. Production-like environments, destructive changes and mutating ad-hoc commands need typed confirmation.
 
 ## Secrets

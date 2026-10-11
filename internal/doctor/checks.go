@@ -562,6 +562,8 @@ func checkVault(_ context.Context, in Input) []Check {
 		}
 		info, err := os.Stat(pw)
 		switch {
+		case err == nil && info.Mode().IsRegular() && info.Mode().Perm()&0o111 != 0 && !in.Cfg.Ansible.AllowVaultScript:
+			c.Status, c.Detail, c.Hint = "fail", p.VaultPasswordFile+" is executable, so ansible would run it", "chmod -x it, or set ansible.allow_vault_script: true if it is meant to be a script"
 		case err != nil:
 			c.Status, c.Detail, c.Hint = "fail", p.VaultPasswordFile+" doesn't exist", "create it, or fix vault_password_file in groundwork.yaml"
 		case info.Mode().Perm()&0o077 != 0 && info.Mode().Perm()&0o111 == 0:

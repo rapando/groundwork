@@ -26,7 +26,7 @@ func (a *API) Start(ctx context.Context) {
 	a.Issues.Start(ctx)
 	go func() { // warm the inventory cache: the Overview needs host counts first thing
 		cfg, _ := a.config()
-		for _, sc := range scopesFor(cfg) {
+		for _, sc := range scopesFor(cfg, a.Root) {
 			c, cancel := context.WithTimeout(ctx, 10*time.Second)
 			_, _ = a.loadInventory(c, sc)
 			cancel()

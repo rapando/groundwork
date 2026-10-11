@@ -41,7 +41,7 @@ type varTarget struct {
 
 func (a *API) findScope(project, env string) (invScope, error) {
 	cfg, _ := a.config()
-	for _, s := range scopesFor(cfg) {
+	for _, s := range scopesFor(cfg, a.Root) {
 		if (project == "" || s.Project == path.Clean(project)) && s.Env == env {
 			return s, nil
 		}

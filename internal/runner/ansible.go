@@ -51,7 +51,11 @@ func ResolveAnsibleTarget(cfg *config.Config, root string, req SubmitRequest) (T
 		t.Env = "default"
 	}
 	t.ApprovalRequired = config.IsProdLike(t.Env)
-	t.Vault = proj.VaultPath()
+	vault, err := cfg.VaultFile(root, *proj)
+	if err != nil {
+		return bad("%v", err)
+	}
+	t.Vault = vault
 	for name, v := range map[string]string{"limit": req.Limit, "tags": req.Tags, "skip_tags": req.SkipTags} {
 		if v != "" && !ansible.ValidPattern(v) {
 			return bad("invalid %s %q", name, v)
