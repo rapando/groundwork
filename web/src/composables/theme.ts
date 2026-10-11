@@ -9,7 +9,9 @@ function stored(): Theme {
   try {
     const v = localStorage.getItem(KEY)
     return v === 'dark' ? 'dark' : 'paper'
-  } catch { return 'paper' }
+  } catch {
+    return 'paper'
+  }
 }
 
 export const theme = ref<Theme>(stored())
@@ -21,7 +23,11 @@ apply(theme.value)
 
 watch(theme, (t) => {
   apply(t)
-  try { localStorage.setItem(KEY, t) } catch { /* private mode: the choice lasts this page only */ }
+  try {
+    localStorage.setItem(KEY, t)
+  } catch {
+    /* private mode: the choice lasts this page only */
+  }
 })
 
 export function toggleTheme() {

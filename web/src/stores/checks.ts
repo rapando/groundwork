@@ -3,7 +3,10 @@ import { api } from '../api/client'
 import type { ChecksResponse, Diagnostic, UnitStatus } from '../api/types'
 import { onEvent } from '../composables/events'
 
-export interface Badge { errors: number; warnings: number }
+export interface Badge {
+  errors: number
+  warnings: number
+}
 
 export const useChecks = defineStore('checks', {
   state: () => ({
@@ -31,15 +34,17 @@ export const useChecks = defineStore('checks', {
     },
     running: (s) => s.units.some((u) => u.running),
     forFile: (s) => (file: string) => s.diagnostics.filter((d) => d.file === file),
-    unitFor: (s) => (file: string): UnitStatus | undefined => {
-      let best: UnitStatus | undefined
-      for (const u of s.units) {
-        if (file === u.path || file.startsWith(u.path + '/') || u.path === '.') {
-          if (!best || u.path.length > best.path.length) best = u
+    unitFor:
+      (s) =>
+      (file: string): UnitStatus | undefined => {
+        let best: UnitStatus | undefined
+        for (const u of s.units) {
+          if (file === u.path || file.startsWith(u.path + '/') || u.path === '.') {
+            if (!best || u.path.length > best.path.length) best = u
+          }
         }
-      }
-      return best
-    },
+        return best
+      },
   },
   actions: {
     async refresh() {

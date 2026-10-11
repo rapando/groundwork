@@ -13,11 +13,16 @@ export const useIssues = defineStore('issues', {
         this.resolved = r.resolved
         this.resolvedThisWeek = r.resolved_this_week
         this.ruleErrors = r.rule_errors ?? []
-      } finally { this.loaded = true }
+      } finally {
+        this.loaded = true
+      }
     },
     listen() {
       let t: number | undefined
-      const later = () => { window.clearTimeout(t); t = window.setTimeout(() => this.refresh(), 200) }
+      const later = () => {
+        window.clearTimeout(t)
+        t = window.setTimeout(() => this.refresh(), 200)
+      }
       onEvent('issues.updated', later)
       onEvent('reconnected', later)
     },

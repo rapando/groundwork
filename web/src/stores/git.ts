@@ -13,10 +13,17 @@ export const useGit = defineStore('git', {
   },
   actions: {
     async refresh() {
-      try { this.status = await api<GitStatus>('/git/status') } catch { /* git is optional */ }
+      try {
+        this.status = await api<GitStatus>('/git/status')
+      } catch {
+        /* git is optional */
+      }
     },
     init() {
-      const later = () => { window.clearTimeout(timer); timer = window.setTimeout(() => this.refresh(), 400) }
+      const later = () => {
+        window.clearTimeout(timer)
+        timer = window.setTimeout(() => this.refresh(), 400)
+      }
       onEvent('file.changed', later)
       onEvent('reconnected', () => this.refresh())
       window.addEventListener('focus', () => this.refresh())

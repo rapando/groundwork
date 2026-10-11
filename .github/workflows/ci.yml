@@ -43,6 +43,7 @@ jobs:
       - run: make web
       - name: embedded dist is up to date
         run: git diff --exit-code -- internal/server/dist
+      - run: cd web && npm run lint
       - run: cd web && npm test
   e2e:
     # split across runners: on one runner, parallel tests starve each other's ansible/terraform runs

@@ -31,7 +31,7 @@ The `pr-title` check enforces the prefix; reviewers enforce the wording. The PR 
 ## Tests
 
 - Go: `go test -race ./...` must pass on macOS and Linux. Keep unit tests hermetic; anything that needs a real tool goes behind the `integration` build tag.
-- Web: `cd web && npm test` for unit tests, `npm run typecheck` for `vue-tsc`.
+- Web: `cd web && npm test` for unit tests, `npm run typecheck` for `vue-tsc`, `npm run lint` for ESLint and Prettier (`npm run format` fixes TypeScript formatting; Vue templates are kept compact by hand). Browser tests include an axe scan of every screen (`e2e/a11y.spec.ts`): new UI must introduce no serious violations.
 - Security: `internal/server/security_test.go` walks every route. A new route is covered automatically, but if it takes a path or a value that reaches a subprocess, add it to the injection cases there.
 - Fuzz targets live next to their parsers; add one when you add a parser or validator and register it in the `fuzz` target of the Makefile.
 
