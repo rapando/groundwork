@@ -17,7 +17,7 @@ PRs are squash-merged, so the **PR title** is the commit that counts; the `pr-ti
 
 1. `ci` runs.
 2. When it passes, `release` runs `scripts/next-version.sh` on that commit. If no commit since the last `vX.Y.Z` tag warrants a release, it stops.
-3. Otherwise it tags the commit (`v0.4.0`), and goreleaser builds the archives, `checksums.txt`, and the GitHub release with a changelog grouped by commit type.
+3. Otherwise it tags the commit (`v0.4.0`), and goreleaser builds the archives, `checksums.txt`, an SPDX SBOM per archive, a keyless cosign signature of `checksums.txt` (`checksums.txt.sig` and `.pem`; the workflow has `id-token: write` for this), and the GitHub release with a changelog grouped by commit type. Snapshots (`make release-snapshot`, the `demo` CI job) skip signing and SBOMs.
 
 The first release is `v0.1.0`. To preview what the next one would be:
 

@@ -8,9 +8,14 @@
 # GROUNDWORK_INSTALL_DIR   where to put the binary (default: ~/.local/bin, or
 #                          /usr/local/bin if writable and ~/.local/bin isn't on PATH)
 # GROUNDWORK_DOWNLOAD_BASE mirror of the release downloads (testing, air-gapped installs)
+# GROUNDWORK_REQUIRE_SIGNATURE=1  fail unless checksums.txt's cosign signature verifies
+#                          (default: verify when cosign is installed and a signature is published)
 set -eu
 
 REPO="rapando/groundwork"
+# the release workflow's identity in the keyless signing certificate
+SIGNER_RE="^https://github.com/$REPO/\.github/workflows/release\.yml@refs/(heads/main|tags/v[0-9].*)\$"
+OIDC_ISSUER="https://token.actions.githubusercontent.com"
 
 say() { printf '%s\n' "$*" >&2; }
 die() { say "groundwork install: $*"; exit 1; }
@@ -56,6 +61,29 @@ trap 'rm -rf "$tmp"' EXIT INT TERM
 say "Downloading groundwork ${version} for ${os}/${arch}..."
 fetch "$base/$archive" "$tmp/$archive" || die "download failed: $base/$archive"
 fetch "$base/checksums.txt" "$tmp/checksums.txt" || die "download failed: $base/checksums.txt"
+
+# checksums.txt is signed with cosign (keyless, Sigstore). The signature proves
+# the file came from this repository's release workflow; the checksum then
+# proves the archive is the one it listed.
+verify_signature() {
+  if ! command -v cosign >/dev/null 2>&1; then
+    say "Signature not verified (cosign not installed); checksum verified only"
+    [ "${GROUNDWORK_REQUIRE_SIGNATURE:-}" != 1 ] || die "GROUNDWORK_REQUIRE_SIGNATURE=1 but cosign isn't installed"
+    return 0
+  fi
+  if ! fetch "$base/checksums.txt.sig" "$tmp/checksums.txt.sig" 2>/dev/null ||
+     ! fetch "$base/checksums.txt.pem" "$tmp/checksums.txt.pem" 2>/dev/null; then
+    say "Signature not verified (none published for $version); checksum verified only"
+    [ "${GROUNDWORK_REQUIRE_SIGNATURE:-}" != 1 ] || die "GROUNDWORK_REQUIRE_SIGNATURE=1 but $version has no signature"
+    return 0
+  fi
+  cosign verify-blob \
+    --certificate "$tmp/checksums.txt.pem" --signature "$tmp/checksums.txt.sig" \
+    --certificate-identity-regexp "$SIGNER_RE" --certificate-oidc-issuer "$OIDC_ISSUER" \
+    "$tmp/checksums.txt" >/dev/null 2>&1 || die "checksums.txt signature does not verify: not installing"
+  say "Signature verified (cosign)"
+}
+verify_signature
 
 want=$(awk -v f="$archive" '$2 == f || $2 == "*"f { print $1 }' "$tmp/checksums.txt")
 [ -n "$want" ] || die "$archive isn't listed in checksums.txt"

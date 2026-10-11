@@ -92,5 +92,5 @@ jobs:
       - uses: hashicorp/setup-terraform@v4
         with: { terraform_wrapper: false }
       - uses: goreleaser/goreleaser-action@v7
-        with: { distribution: goreleaser, version: "~> v2", args: release --snapshot --clean --skip=publish }
+        with: { distribution: goreleaser, version: "~> v2", args: release --snapshot --clean --skip=publish,sign,sbom }
       - run: scripts/demo.sh

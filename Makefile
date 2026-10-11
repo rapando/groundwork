@@ -35,9 +35,9 @@ fuzz:
 		redact:FuzzRedactsRegisteredSecret vars:FuzzScan vars:FuzzLiteralRoundTrip checks:FuzzToolParsers \
 		config:FuzzParse graph:FuzzParseDOT diagnostics:FuzzMatchLog; do \
 		pkg=$${t%%:*}; fn=$${t##*:}; echo "== $$fn"; go test ./internal/$$pkg -run '^$$' -fuzz "^$$fn\$$" -fuzztime $(FUZZTIME); done
-# Release archives in dist/ without publishing (needs goreleaser on PATH).
+# Release archives in dist/ without publishing, signing or SBOMs (needs goreleaser on PATH).
 release-snapshot:
-	goreleaser release --snapshot --clean --skip=publish
+	goreleaser release --snapshot --clean --skip=publish,sign,sbom
 # Install from local release archives and drive the demo end to end (see scripts/demo.sh).
 demo: release-snapshot
 	scripts/demo.sh

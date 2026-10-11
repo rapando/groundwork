@@ -18,6 +18,8 @@ curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh 
 
 It downloads the release archive for your OS and CPU from GitHub, **verifies its SHA-256 against the release's `checksums.txt`** and refuses to install on a mismatch, then puts `groundwork` in `~/.local/bin` (or `/usr/local/bin` if that's writable and `~/.local/bin` isn't on your PATH). It never uses `sudo`.
 
+`checksums.txt` is signed with [cosign](https://docs.sigstore.dev/cosign/installation/) (keyless: the certificate names this repository's release workflow). When `cosign` is on your PATH the script verifies the signature before trusting the checksums and says so; otherwise it prints `Signature not verified (cosign not installed)` and relies on the checksum alone. Set `GROUNDWORK_REQUIRE_SIGNATURE=1` to make a missing or failing signature fatal. Releases before 0.5.0 are not signed.
+
 | Variable | |
 |---|---|
 | `GROUNDWORK_VERSION` | a release such as `v0.4.1` or `0.4.1` (default: the latest release; pre-releases like `v1.0.0-rc.1` only when named) |
@@ -30,10 +32,15 @@ To read it first: `curl -fsSLO https://raw.githubusercontent.com/rapando/groundw
 Download `groundwork_<version>_<os>_<arch>.tar.gz` and `checksums.txt` from the [releases page](https://github.com/rapando/groundwork/releases), then:
 
 ```sh
+cosign verify-blob --certificate checksums.txt.pem --signature checksums.txt.sig \
+  --certificate-identity-regexp '^https://github.com/rapando/groundwork/\.github/workflows/release\.yml@' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com checksums.txt
 shasum -a 256 -c checksums.txt --ignore-missing
 tar xzf groundwork_*_darwin_arm64.tar.gz groundwork
 mv groundwork ~/.local/bin/
 ```
+
+Each archive also has a software bill of materials next to it (`groundwork_<version>_<os>_<arch>.tar.gz.sbom.spdx.json`).
 
 On macOS a binary downloaded with a browser is quarantined because it isn't notarized: `xattr -d com.apple.quarantine ~/.local/bin/groundwork`.
 
