@@ -71,14 +71,13 @@ verify_signature() {
     [ "${GROUNDWORK_REQUIRE_SIGNATURE:-}" != 1 ] || die "GROUNDWORK_REQUIRE_SIGNATURE=1 but cosign isn't installed"
     return 0
   fi
-  if ! fetch "$base/checksums.txt.sig" "$tmp/checksums.txt.sig" 2>/dev/null ||
-     ! fetch "$base/checksums.txt.pem" "$tmp/checksums.txt.pem" 2>/dev/null; then
+  if ! fetch "$base/checksums.txt.sigstore.json" "$tmp/checksums.txt.sigstore.json" 2>/dev/null; then
     say "Signature not verified (none published for $version); checksum verified only"
     [ "${GROUNDWORK_REQUIRE_SIGNATURE:-}" != 1 ] || die "GROUNDWORK_REQUIRE_SIGNATURE=1 but $version has no signature"
     return 0
   fi
   cosign verify-blob \
-    --certificate "$tmp/checksums.txt.pem" --signature "$tmp/checksums.txt.sig" \
+    --bundle "$tmp/checksums.txt.sigstore.json" \
     --certificate-identity-regexp "$SIGNER_RE" --certificate-oidc-issuer "$OIDC_ISSUER" \
     "$tmp/checksums.txt" >/dev/null 2>&1 || die "checksums.txt signature does not verify: not installing"
   say "Signature verified (cosign)"

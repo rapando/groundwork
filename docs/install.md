@@ -18,7 +18,7 @@ curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh 
 
 It downloads the release archive for your OS and CPU from GitHub, **verifies its SHA-256 against the release's `checksums.txt`** and refuses to install on a mismatch, then puts `groundwork` in `~/.local/bin` (or `/usr/local/bin` if that's writable and `~/.local/bin` isn't on your PATH). It never uses `sudo`.
 
-`checksums.txt` is signed with [cosign](https://docs.sigstore.dev/cosign/installation/) (keyless: the certificate names this repository's release workflow). When `cosign` is on your PATH the script verifies the signature before trusting the checksums and says so; otherwise it prints `Signature not verified (cosign not installed)` and relies on the checksum alone. Set `GROUNDWORK_REQUIRE_SIGNATURE=1` to make a missing or failing signature fatal. Releases before 0.5.0 are not signed.
+`checksums.txt` is signed with [cosign](https://docs.sigstore.dev/cosign/installation/) (keyless: the certificate names this repository's release workflow). When `cosign` is on your PATH the script verifies the signature before trusting the checksums and says so; otherwise it prints `Signature not verified (cosign not installed)` and relies on the checksum alone. Set `GROUNDWORK_REQUIRE_SIGNATURE=1` to make a missing or failing signature fatal. Releases before 0.5.0 are not signed. Verifying needs cosign 2.4 or later (the signature is a Sigstore bundle).
 
 | Variable | |
 |---|---|
@@ -32,7 +32,7 @@ To read it first: `curl -fsSLO https://raw.githubusercontent.com/rapando/groundw
 Download `groundwork_<version>_<os>_<arch>.tar.gz` and `checksums.txt` from the [releases page](https://github.com/rapando/groundwork/releases), then:
 
 ```sh
-cosign verify-blob --certificate checksums.txt.pem --signature checksums.txt.sig \
+cosign verify-blob --bundle checksums.txt.sigstore.json \
   --certificate-identity-regexp '^https://github.com/rapando/groundwork/\.github/workflows/release\.yml@' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com checksums.txt
 shasum -a 256 -c checksums.txt --ignore-missing

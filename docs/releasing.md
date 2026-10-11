@@ -20,7 +20,7 @@ What counts as breaking (and so needs the `!`) is defined in [compatibility](com
 The release is part of the `ci` run, not a separate workflow that waits for it:
 
 1. `ci` starts all its jobs at once: Go tests on both OSes, web, e2e shards, integration (terraform and tofu), lint, vulnerability scans, the demo, and `release-version`, which runs `scripts/next-version.sh` on the commit. If nothing since the last `vX.Y.Z` tag warrants a release, the run ends there.
-2. `release-publish` waits for every other job. When all have passed, it tags the commit (`v0.4.0`), and goreleaser builds the archives, `checksums.txt`, an SPDX SBOM per archive, a keyless cosign signature of `checksums.txt` (`checksums.txt.sig` and `.pem`; the job has `id-token: write` for this), and the GitHub release with a changelog grouped by commit type. Publishes are serialised (one `release` concurrency group). Snapshots (`make release-snapshot`, the `demo` CI job) skip signing and SBOMs.
+2. `release-publish` waits for every other job. When all have passed, it tags the commit (`v0.4.0`), and goreleaser builds the archives, `checksums.txt`, an SPDX SBOM per archive, a keyless cosign signature of `checksums.txt` (the Sigstore bundle `checksums.txt.sigstore.json`; the job has `id-token: write` for this), and the GitHub release with a changelog grouped by commit type. Publishes are serialised (one `release` concurrency group). Snapshots (`make release-snapshot`, the `demo` CI job) skip signing and SBOMs.
 
 Both jobs call `.github/workflows/release.yml`, which also runs on its own for *Run workflow* and for a pushed tag.
 

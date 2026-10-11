@@ -35,21 +35,20 @@ checksum:
   name_template: checksums.txt
   algorithm: sha256
 
-# Keyless signing with cosign (Sigstore): the certificate names this
-# repository's release workflow, so install.sh can verify who built it.
-# checksums.txt covers every archive, so signing it signs them all.
+# Keyless signing with cosign (Sigstore): the certificate in the bundle names
+# this repository's release workflow, so install.sh can verify who built it.
+# checksums.txt covers every archive, so signing it signs them all. cosign 3
+# writes one bundle (signature, certificate, transparency-log entry).
 signs:
   - id: checksums
     cmd: cosign
     artifacts: checksum
     output: true
-    certificate: "${artifact}.pem"
-    signature: "${artifact}.sig"
+    signature: "${artifact}.sigstore.json"
     args:
       - sign-blob
       - --yes
-      - --output-certificate=${certificate}
-      - --output-signature=${signature}
+      - --bundle=${signature}
       - ${artifact}
 
 sboms:
@@ -92,5 +91,5 @@ release:
     Install: `curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | sh`,
     or `go install github.com/rapando/groundwork/cmd/groundwork@{{ .Tag }}`.
     Verify downloads against checksums.txt; checksums.txt is signed with cosign
-    (checksums.txt.sig + checksums.txt.pem) and each archive has an SPDX SBOM.
+    (checksums.txt.sigstore.json) and each archive has an SPDX SBOM.
     See docs/install.md for the verify command.
