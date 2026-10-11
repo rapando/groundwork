@@ -1,0 +1,13 @@
+[Unit]
+Description=groundwork: local console for Terraform and Ansible
+
+[Service]
+ExecStart="/home/me/.local/bin/groundwork" serve --no-open
+Environment="GROUNDWORK_HOME=/home/me/.config/groundwork \"quoted\" 100%%"
+Environment="PATH=/home/me/.local/bin:/usr/bin"
+Restart=on-failure
+KillSignal=SIGTERM
+TimeoutStopSec=40
+
+[Install]
+WantedBy=default.target

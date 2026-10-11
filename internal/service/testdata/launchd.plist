@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>io.github.rapando.groundwork</string>
+  <key>ProgramArguments</key>
+  <array><string>/opt/groundwork/bin/groundwork</string><string>serve</string><string>--no-open</string></array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>GROUNDWORK_HOME</key><string>/Users/me/Library/Application Support/groundwork</string>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
+  <key>ExitTimeOut</key><integer>40</integer>
+  <key>StandardOutPath</key><string>/Users/me/Library/Application Support/groundwork/groundwork.log</string>
+  <key>StandardErrorPath</key><string>/Users/me/Library/Application Support/groundwork/groundwork.log</string>
+</dict>
+</plist>
