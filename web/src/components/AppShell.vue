@@ -43,7 +43,7 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
     <aside class="side" aria-label="Sidebar">
       <a class="brand" href="/" title="All projects">
         <BrandMark />
-        <div class="col"><span class="mono name">groundwork</span><span class="mono ver">{{ ws.ws?.version }} · :{{ port }}</span></div>
+        <span class="mono name">groundwork</span>
       </a>
 
       <div class="repo">
@@ -96,7 +96,10 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
           <span v-if="STATUS_TEXT[envStatus.get(e) ?? '']" class="mono badge" :class="envStatus.get(e) === 'failed' ? 'fail' : envStatus.get(e) === 'pending' || envStatus.get(e) === 'drift' ? 'warn' : 'run'">{{ STATUS_TEXT[envStatus.get(e) ?? ''] }}</span>
         </span>
       </div>
-      <div class="foot"><ThemeToggle /></div>
+      <div class="foot">
+        <ThemeToggle />
+        <span v-if="ws.ws?.version" class="mono ver" :title="`groundwork ${ws.ws.version}, port ${port}`">{{ /^\d/.test(ws.ws.version) ? 'v' + ws.ws.version : ws.ws.version }} · :{{ port }}</span>
+      </div>
     </aside>
     <main class="main"><slot /></main>
   </div>
@@ -112,13 +115,12 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
 .between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .switch { font-size: 14px; text-decoration: none; }
 .switch:hover { text-decoration: underline; }
-.col { display: flex; flex-direction: column; }
 .name { font-weight: 700; font-size: 14px; }
 .ver { font-size: 12px; color: var(--text-label); word-break: break-all; }
 .repo { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-card); }
 .rname { font-size: 14px; font-weight: 500; word-break: break-all; }
 .rline { font-size: 13px; color: var(--text-muted); }
-.foot { margin-top: auto; padding: 0 6px; }
+.foot { margin-top: auto; padding: 0 6px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
 .nav-list { display: flex; flex-direction: column; gap: 2px; }
 .nav { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 6px; color: var(--text-soft); text-decoration: none; font-size: 14px; }
 .nav:hover:not(.static) { background: var(--bg-hover); color: var(--text); }
