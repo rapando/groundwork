@@ -29,11 +29,18 @@ func FindRoot(dir string) (string, error) {
 }
 
 // Bootstrap creates .groundwork/ with a self-ignoring .gitignore so the repo's
-// own files are never touched.
+// own files are never touched. The directory is private to the user: it holds
+// run logs and saved plans, which can carry sensitive values.
 func Bootstrap(root string) (string, error) {
 	dir := filepath.Join(root, StateDir)
-	if err := os.MkdirAll(filepath.Join(dir, "runs"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "runs"), 0o700); err != nil {
 		return "", err
+	}
+	// tighten a directory created by an earlier release
+	for _, d := range []string{dir, filepath.Join(dir, "runs")} {
+		if st, err := os.Stat(d); err == nil && st.Mode().Perm() != 0o700 {
+			_ = os.Chmod(d, 0o700)
+		}
 	}
 	gi := filepath.Join(dir, ".gitignore")
 	if _, err := os.Stat(gi); errors.Is(err, os.ErrNotExist) {

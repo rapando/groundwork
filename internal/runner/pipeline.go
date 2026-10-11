@@ -283,7 +283,16 @@ func (r *Runner) runPlanPhase(j *job) {
 		}
 	}
 
+	// The raw plan can hold sensitive values. It stays on disk only once the
+	// run is waiting for approval; every other way out of this function
+	// removes it.
 	planFile := r.planPath(j.id)
+	keepPlan := false
+	defer func() {
+		if !keepPlan {
+			r.removePlan(j.id)
+		}
+	}()
 	res, err := r.tfStage(j, "plan", terraform.PlanArgs(t.Binary, dir, planFile, r.absAll(t.VarFiles)), true)
 	if err != nil {
 		r.failure(j, err, res.exit)
@@ -366,6 +375,7 @@ func (r *Runner) runPlanPhase(j *job) {
 	approve := "approve"
 	_ = r.Store.UpsertStage(store.RunStage{RunID: j.id, Name: "approve", Status: "running", StartedAt: &now, Detail: "waiting for approval"})
 	_ = r.Store.UpdateRun(j.id, store.RunUpdate{Status: store.StatusWaitingApproval, Stage: &approve})
+	keepPlan = true
 }
 
 // runApplyPhase applies the saved plan after Approve.

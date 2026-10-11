@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -232,6 +233,29 @@ func TestNoChangesSkipsApproval(t *testing.T) {
 		if strings.HasPrefix(l, "start show") || strings.HasPrefix(l, "start apply") {
 			t.Fatalf("unexpected %s", l)
 		}
+	}
+}
+
+// A plan that failed after `terraform plan` wrote the plan file (summary,
+// show, state) must not leave the raw plan behind: it can hold sensitive
+// values and nothing will ever apply it.
+func TestFailedPlanLeavesNoPlanFile(t *testing.T) {
+	g := newRig(t)
+	t.Setenv("FAKE_FAIL_STAGE", "show")
+	run, _ := g.r.Submit(SubmitRequest{Kind: KindPlan, Root: "terraform/envs/dev", Env: "dev"})
+	d := g.wait(t, run.ID, store.StatusFailed)
+	if stageStatus(d)["plan"] != "succeeded" || stageStatus(d)["summary"] != "failed" {
+		t.Fatalf("%v", stageStatus(d))
+	}
+	if _, err := os.Stat(g.r.planPath(run.ID)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("plan file left behind after a failed summary: %v", err)
+	}
+	// and a plan waiting for approval keeps it, since the apply needs it
+	t.Setenv("FAKE_FAIL_STAGE", "")
+	run, _ = g.r.Submit(SubmitRequest{Kind: KindPlan, Root: "terraform/envs/dev", Env: "dev"})
+	g.wait(t, run.ID, store.StatusWaitingApproval)
+	if _, err := os.Stat(g.r.planPath(run.ID)); err != nil {
+		t.Fatalf("plan awaiting approval should be kept: %v", err)
 	}
 }
 
