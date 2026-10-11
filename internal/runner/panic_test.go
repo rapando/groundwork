@@ -3,6 +3,7 @@ package runner
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/rapando/groundwork/internal/store"
 )
@@ -11,8 +12,8 @@ import (
 // the run "running" or the root locked, and must be reported.
 func TestPanicInAJobFailsTheRunAndKeepsTheRunner(t *testing.T) {
 	g := newRig(t)
-	var reported []string
-	g.r.OnPanic = func(name string, v any) { reported = append(reported, name+": "+v.(string)) }
+	reported := make(chan string, 4) // the hook runs on the job goroutine
+	g.r.OnPanic = func(name string, v any) { reported <- name + ": " + v.(string) }
 	g.r.Hooks.BeforeStart = func(kind string) {
 		if kind == KindPlan {
 			panic("simulated bug")
@@ -26,8 +27,13 @@ func TestPanicInAJobFailsTheRunAndKeepsTheRunner(t *testing.T) {
 	if !strings.Contains(d.Summary.Error, "internal error") || !strings.Contains(d.Summary.Error, "simulated bug") {
 		t.Fatalf("summary error: %q", d.Summary.Error)
 	}
-	if len(reported) != 1 || !strings.Contains(reported[0], "simulated bug") {
-		t.Fatalf("OnPanic: %v", reported)
+	select {
+	case r := <-reported:
+		if !strings.Contains(r, "simulated bug") {
+			t.Fatalf("OnPanic: %q", r)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("OnPanic was not called")
 	}
 	if g.r.Active() != 0 {
 		t.Fatalf("job still registered: %d", g.r.Active())

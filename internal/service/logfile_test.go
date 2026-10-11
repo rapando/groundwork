@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -85,6 +86,21 @@ func TestTailLogPrintsLastLinesAndFollowsThroughRotation(t *testing.T) {
 	}
 }
 
-type syncBuffer struct{ b *bytes.Buffer }
+// syncBuffer is a bytes.Buffer safe to write from one goroutine and read
+// from another (Run and TailLog write from their own goroutines).
+type syncBuffer struct {
+	mu sync.Mutex
+	b  *bytes.Buffer
+}
 
-func (s *syncBuffer) Write(p []byte) (int, error) { return s.b.Write(p) }
+func (s *syncBuffer) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.Write(p)
+}
+
+func (s *syncBuffer) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.String()
+}

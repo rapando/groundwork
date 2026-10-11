@@ -16,11 +16,11 @@ import (
 
 // startRun runs the service on a free port in the background with a fresh
 // home and returns its captured output; cancelling ctx stops it.
-func startRun(t *testing.T, home string, o Options) (*bytes.Buffer, func()) {
+func startRun(t *testing.T, home string, o Options) (*syncBuffer, func()) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
-	var out bytes.Buffer
-	o.Home, o.Port, o.NoOpen, o.Log, o.Out = home, 0, true, quiet(), &out
+	out := &syncBuffer{b: &bytes.Buffer{}}
+	o.Home, o.Port, o.NoOpen, o.Log, o.Out = home, 0, true, quiet(), out
 	done := make(chan error, 1)
 	go func() { done <- Run(ctx, o) }()
 	deadline := time.Now().Add(10 * time.Second)
@@ -38,7 +38,7 @@ func startRun(t *testing.T, home string, o Options) (*bytes.Buffer, func()) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	return &out, func() {
+	return out, func() {
 		cancel()
 		select {
 		case <-done:
