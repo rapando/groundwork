@@ -283,7 +283,9 @@ func (systemd) path() string {
 func (s systemd) installed() bool { _, err := os.Stat(s.path()); return err == nil }
 
 func (systemd) render(exe, home, path string) (string, error) {
-	q := func(v string) string { return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`, "%", "%%").Replace(v) + `"` }
+	q := func(v string) string {
+		return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`, "%", "%%").Replace(v) + `"`
+	}
 	return renderTemplate(systemdUnit, unitData{Exe: q(exe), Home: q("GROUNDWORK_HOME=" + home), Path: q("PATH=" + path)})
 }
 

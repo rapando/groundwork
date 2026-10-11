@@ -114,4 +114,4 @@ make perf    # 5,000-file repository timings
 make fuzz    # each fuzz target for 30s
 ```
 
-The UI is Vue 3 + TypeScript in `web/`, built into `internal/server/dist` and embedded in the binary. [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) describes the architecture; [design/](design/) holds the UI design.
+The UI is Vue 3 + TypeScript in `web/`, built into `internal/server/dist` and embedded in the binary. [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) describes the architecture; [design/](design/) holds the UI design. See [CONTRIBUTING.md](CONTRIBUTING.md) for how changes land and [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
