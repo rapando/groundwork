@@ -20,7 +20,7 @@ It downloads the release archive for your OS and CPU from GitHub, **verifies its
 
 | Variable | |
 |---|---|
-| `GROUNDWORK_VERSION` | a release such as `v0.1.0` or `0.1.0` (default: the latest release; pre-releases like `v1.0.0-rc.1` only when named) |
+| `GROUNDWORK_VERSION` | a release such as `v0.4.1` or `0.4.1` (default: the latest release; pre-releases like `v1.0.0-rc.1` only when named) |
 | `GROUNDWORK_INSTALL_DIR` | where to put the binary |
 
 To read it first: `curl -fsSLO https://raw.githubusercontent.com/rapando/groundwork/main/install.sh && less install.sh && sh install.sh`.
@@ -40,7 +40,7 @@ On macOS a binary downloaded with a browser is quarantined because it isn't nota
 ## From source
 
 ```sh
-go install github.com/rapando/groundwork/cmd/groundwork@latest   # or @v0.1.0
+go install github.com/rapando/groundwork/cmd/groundwork@latest   # or @v0.4.1
 ```
 
 Versions follow [semantic versioning](https://semver.org): a major bump (or a minor bump while on `0.x`) signals a breaking change. See [releasing](releasing.md) for how versions are chosen.

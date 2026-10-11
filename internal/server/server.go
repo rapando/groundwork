@@ -30,7 +30,7 @@ const (
 	cookieName  = "groundwork_session"
 )
 
-// Info is what /api/workspace returns in M0; later milestones extend it.
+// Info is what /api/workspace returns.
 type Info struct {
 	Root    string `json:"root"`
 	Version string `json:"version"`

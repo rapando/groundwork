@@ -38,7 +38,7 @@ type Diagnostic struct {
 	EndCol   int       `json:"end_col,omitempty"`
 	Link     string    `json:"link,omitempty"`
 	Fix      *QuickFix `json:"fix,omitempty"`
-	RuleRef  string    `json:"rule_ref,omitempty"` // troubleshooting rule id (M8)
+	RuleRef  string    `json:"rule_ref,omitempty"` // troubleshooting rule id
 }
 
 const (

@@ -28,7 +28,7 @@ groundwork
 - **Ansible**: inventory with reachability and facts, variable provenance per host, dry run → approve → run, ad-hoc commands ([ansible](docs/ansible.md)).
 - **Graph and drift**: resource dependency graph, an architecture view that follows unsaved edits, refresh-only drift detection with copy / ignore / revert, optionally on a schedule with notifications ([graph](docs/graph.md)).
 - **Variables and secrets**: per-environment variable matrix with sources, SOPS and ansible-vault values revealed on request, moving plaintext secrets into the vault ([variables](docs/variables.md)).
-- **Troubleshooting**: failures matched to known causes (stale state locks, expired credentials, unreachable hosts, …) with guided fixes, and a Doctor for your tools, credentials and backends ([troubleshooting](docs/troubleshooting.md)).
+- **Troubleshooting**: failures matched to known causes (stale state locks, expired credentials, unreachable hosts, …) with guided fixes, and a Doctor for your tools, credentials, SSH agent and S3 state backends ([troubleshooting](docs/troubleshooting.md)).
 
 | | |
 |---|---|
@@ -81,7 +81,7 @@ See [install](docs/install.md) for manual downloads, checksums, the install scri
 | `groundwork serve [folder…]` | run the service in the foreground (what the login service runs) |
 | `groundwork init [--detect] [--yes]` | write `groundwork.yaml` (or scaffold an empty repo) without the UI |
 | `groundwork check [--json]` | run all checks once; non-zero exit on problems (for CI) |
-| `groundwork doctor [--json]` | tools, credentials, backends, SSH agent, disk |
+| `groundwork doctor [--json]` | tools, credentials, S3 backends and locking, SSH agent, disk |
 | `groundwork drift [--env prod]` | refresh-only drift check of every environment |
 | `groundwork version` | |
 

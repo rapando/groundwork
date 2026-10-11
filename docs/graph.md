@@ -26,4 +26,4 @@ Three actions per drifted attribute:
 
 Code edits go through `hclwrite` (comments and formatting are kept), are shown as a diff first, and are written only if the file hasn't changed since the preview. A resource deleted outside Terraform can only be reverted (the plan recreates it).
 
-A drift schedule (`drift.schedule` in `groundwork.yaml`) arrives with Doctor and notifications.
+A drift schedule (`drift.schedule` in `groundwork.yaml`) checks every environment on a cron and notifies when drift changes; see [scheduled drift](troubleshooting.md#scheduled-drift).
