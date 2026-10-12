@@ -30,6 +30,35 @@ watch(theme, (t) => {
   }
 })
 
+// The accent is a separate axis from the theme (an experiment): green is the
+// default, orange swaps only the --accent* tokens. Applied as <html data-accent>.
+export type Accent = 'green' | 'orange'
+const ACCENT_KEY = 'groundwork.accent'
+
+function storedAccent(): Accent {
+  try {
+    return localStorage.getItem(ACCENT_KEY) === 'orange' ? 'orange' : 'green'
+  } catch {
+    return 'green'
+  }
+}
+
+export const accent = ref<Accent>(storedAccent())
+document.documentElement.dataset.accent = accent.value
+
+watch(accent, (a) => {
+  document.documentElement.dataset.accent = a
+  try {
+    localStorage.setItem(ACCENT_KEY, a)
+  } catch {
+    /* private mode: the choice lasts this page only */
+  }
+})
+
+export function toggleAccent() {
+  accent.value = accent.value === 'orange' ? 'green' : 'orange'
+}
+
 export function toggleTheme() {
   theme.value = theme.value === 'dark' ? 'paper' : 'dark'
 }

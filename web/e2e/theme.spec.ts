@@ -31,3 +31,23 @@ test('paper by default; dark is one click away, remembered, and recolours the ed
   await expect.poll(editorBg).not.toBe(dark)
   await expect(page.getByRole('radio', { name: 'Paper' })).toHaveAttribute('aria-checked', 'true')
 })
+
+test('the accent switches between green and orange in either theme, and is remembered', async ({ page }) => {
+  gw = await start('iac-only', { init: true })
+  await page.goto(gw.url)
+  const html = page.locator('html')
+  const accent = () => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim().toLowerCase())
+  await expect(html).toHaveAttribute('data-accent', 'green')
+  expect(await accent()).toBe('#4c7514')
+
+  await page.getByRole('radio', { name: 'Orange accent' }).click()
+  await expect(html).toHaveAttribute('data-accent', 'orange')
+  expect(await accent()).toBe('#b8460b')
+
+  await page.getByRole('radio', { name: 'Dark' }).click()
+  expect(await accent()).toBe('#ff8b3d')
+
+  await page.reload()
+  await expect(html).toHaveAttribute('data-accent', 'orange')
+  await expect(page.getByRole('radio', { name: 'Orange accent' })).toHaveAttribute('aria-checked', 'true')
+})

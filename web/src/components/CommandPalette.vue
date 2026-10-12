@@ -8,7 +8,7 @@ import { useChecks } from '../stores/checks'
 import { useFiles } from '../stores/files'
 import { useIssues } from '../stores/issues'
 import { kindLabel, useRuns } from '../stores/runs'
-import { theme, toggleTheme } from '../composables/theme'
+import { accent, theme, toggleAccent, toggleTheme } from '../composables/theme'
 import { useWorkspace } from '../stores/workspace'
 import { swallow } from '../api/swallow'
 
@@ -61,6 +61,7 @@ const items = computed<Item[]>(() => {
   out.push({ id: 'doctor', group: 'Actions', label: 'Run doctor', run: () => go('/troubleshoot?doctor=1') })
   out.push({ id: 'tour', group: 'Actions', label: 'Show tips', run: () => go('/?tour=1') })
   out.push({ id: 'theme', group: 'Actions', label: theme.value === 'dark' ? 'Switch to paper theme' : 'Switch to dark theme', run: toggleTheme })
+  out.push({ id: 'accent', group: 'Actions', label: accent.value === 'orange' ? 'Switch to green accent' : 'Switch to orange accent', run: toggleAccent })
   out.push({ id: 'help', group: 'Actions', label: 'Keyboard shortcuts', hint: '?', run: () => { help.value = true } })
   for (const i of issues.open) out.push({ id: 'issue:' + i.id, group: 'Issues', label: i.title, hint: i.category, run: () => go('/troubleshoot/' + i.id) })
   for (const r of runs.list.slice(0, 30)) out.push({ id: 'run:' + r.id, group: 'Runs', label: `#${r.id} ${kindLabel(r)}`, hint: `${r.target.env} · ${r.status.replace('_', ' ')}`, run: () => go('/runs/' + r.id) })

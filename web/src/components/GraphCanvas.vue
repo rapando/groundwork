@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
-import { theme, token } from '../composables/theme'
+import { accent, theme, token } from '../composables/theme'
 
 // rows: extra lines under the label (the system view lists roles and ports)
 export interface GNodeRow { text: string; tone?: 'warn' | 'muted' }
@@ -168,9 +168,10 @@ defineExpose({ fit, zoom, exportSVG, exportPNG })
 
 // ---- look ----
 // Concrete colours (not var()) so an exported SVG/PNG looks the same outside
-// the page; re-read from the tokens whenever the theme changes.
+// the page; re-read from the tokens whenever the theme or accent changes.
 const pal = computed(() => {
   void theme.value
+  void accent.value
   const c = (n: string) => token('--' + n)
   return {
     canvas: c('bg-inset'), dot: c('line-strong'), edge: c('text-faint'), label: c('text-muted'), text: c('text'),

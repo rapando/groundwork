@@ -1,4 +1,5 @@
-/* Design tokens. Two themes: Paper (default) and Dark (design/README.md, Option A).
+/* Design tokens. Two themes: Paper (default) and Dark (design/README.md, Option A),
+   each with a green (default) or orange accent.
    Components use these variables only; no colour is hard-coded outside this file
    (the graph reads them at runtime so its SVG/PNG export keeps concrete colours). */
 :root, :root[data-theme='paper'] {
@@ -125,10 +126,29 @@
   --syn-gutter: #7A868E;
 }
 
+/* Orange accent (experimental; <html data-accent='orange'>). Only the accent
+   moves: it stays clear of --warn (amber) by leaning red. */
+:root[data-accent='orange'] {
+  --accent: #B8460B;
+  --accent-hover: #933707;
+  --accent-bg: #FBE9DD;
+  --accent-line: #EDC3A6;
+}
+
+:root[data-theme='dark'][data-accent='orange'] {
+  --accent: #FF8B3D;
+  --accent-hover: #FFAD70;
+  --accent-bg: #21150D;
+  --accent-line: #4D2E18;
+}
+
 :root {
   --font-ui: 'IBM Plex Sans', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
   --r-control: 6px;
   --r-card: 10px;
   --r-panel: 12px;
+  /* accent picker swatches: the paper accents, fixed in both themes */
+  --swatch-green: #4C7514;
+  --swatch-orange: #B8460B;
 }
