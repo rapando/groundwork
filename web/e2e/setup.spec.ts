@@ -1,8 +1,7 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, start, Instance } from './helpers'
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { start, Instance } from './helpers'
 
 const SHOTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'screens')
 let gw: Instance
@@ -10,15 +9,19 @@ test.afterEach(async () => {
   await gw?.stop()
 })
 
-test('requests without the session token are rejected', async ({ request }) => {
+test('requests without a session are rejected', async ({ request }) => {
   gw = await start('embedded')
   const origin = new URL(gw.url).origin
   const api = origin + '/api' + new URL(gw.base).pathname
   expect((await request.get(api + '/workspace')).status()).toBe(401)
   expect((await request.get(api + '/events')).status()).toBe(401)
   expect((await request.get(origin + '/api/projects')).status()).toBe(401)
-  expect((await request.get(gw.base + '/')).status()).toBe(401)
-  expect((await request.get(origin + '/')).status()).toBe(401)
+  // pages load (as the sign-in screen) but never carry the API token
+  for (const u of [gw.base + '/', origin + '/']) {
+    const res = await request.get(u)
+    expect(res.status()).toBe(200)
+    expect(await res.text()).not.toContain('groundwork-token')
+  }
 })
 
 test('empty repo: scaffold screen validates, previews, creates', async ({ page }) => {

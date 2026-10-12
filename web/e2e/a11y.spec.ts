@@ -1,6 +1,5 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, start, Instance, Page } from './helpers'
 import AxeBuilder from '@axe-core/playwright'
-import { start, Instance } from './helpers'
 
 let gw: Instance
 test.afterEach(async () => {
@@ -11,7 +10,7 @@ test.afterEach(async () => {
 // checked too (the themes are designed for it).
 const screens = ['/', '/runs', '/graph', '/inventory', '/variables', '/troubleshoot', '/code/terraform/envs/dev/main.tf']
 
-async function scan(page: import('@playwright/test').Page, where: string) {
+async function scan(page: Page, where: string) {
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'best-practice']).analyze()
   const bad = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
   expect(bad.map((v) => `${where}: ${v.id} (${v.impact}) ${v.help} — ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([])

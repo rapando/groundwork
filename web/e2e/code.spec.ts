@@ -1,8 +1,7 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, start, Instance, Page } from './helpers'
 import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { start, Instance } from './helpers'
 
 const SHOTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'screens')
 let gw: Instance
@@ -21,7 +20,7 @@ resource "aws_vpc" "cluster" {
 }
 `
 
-async function open(page: import('@playwright/test').Page, url: string, file: string) {
+async function open(page: Page, url: string, file: string) {
   await page.goto(url)
   await page.goto(new URL(url).origin + new URL(url).pathname.replace(/\/$/, '') + '/code/' + file)
   await expect(page.locator('.cm-content')).toBeVisible()

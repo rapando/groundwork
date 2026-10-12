@@ -31,10 +31,10 @@ func (c *Client) do(method, path string, body, out any) error {
 	if err != nil {
 		return err
 	}
-	// the same credentials the browser holds; Origin satisfies the CSRF check
+	// the token from the 0600 token file stands in for a browser sign-in;
+	// Origin satisfies the CSRF check
 	req.Header.Set("X-Groundwork-Token", c.si.Token)
 	req.Header.Set("Origin", c.si.Base())
-	req.AddCookie(&http.Cookie{Name: "groundwork_session", Value: c.si.Token})
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}

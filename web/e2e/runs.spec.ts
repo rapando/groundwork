@@ -1,5 +1,4 @@
-import { test, expect, Page } from '@playwright/test'
-import { start, Instance } from './helpers'
+import { test, expect, Page, start, Instance } from './helpers'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 

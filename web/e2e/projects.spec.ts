@@ -1,9 +1,8 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, start, Instance } from './helpers'
 import { mkdtempSync, renameSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
-import { start, Instance } from './helpers'
 
 let gw: Instance
 test.afterEach(async () => {

@@ -1,8 +1,7 @@
-import { test, expect, Page } from '@playwright/test'
+import { test, expect, Page, start, Instance } from './helpers'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { start, Instance } from './helpers'
 
 const SHOTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'screens')
 let gw: Instance

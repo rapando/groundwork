@@ -15,7 +15,7 @@ cd your-infra-repo
 groundwork
 ```
 
-`groundwork` starts the service if it isn't running, imports the repository you're in as a project and opens it at `http://127.0.0.1:7420`. Run it in other repositories to add them, or import a folder or a git URL from the console's project list. `groundwork service install` starts the service at login.
+`groundwork` starts the service if it isn't running, imports the repository you're in as a project and opens it at `http://localhost:7420`. On the first visit you choose how to sign in: Touch ID (or another passkey), a password, or both. Run it in other repositories to add them, or import a folder or a git URL from the console's project list. `groundwork service install` starts the service at login.
 
 ![Overview: environments, a stale state lock under Needs attention, checks](docs/images/overview.png)
 
@@ -86,10 +86,10 @@ See [install](docs/install.md) for manual downloads, checksums, the install scri
 
 ## Safety
 
-- The server listens on `127.0.0.1` only. Every request needs the session token from the URL it prints; other websites can't reach it (Host and Origin checks, strict CSP). See [security](docs/security.md).
+- The server listens on `127.0.0.1` only, and the console asks for your password or passkey; other websites can't reach it (Host and Origin checks, strict CSP). Locked out? `groundwork auth reset`. See [security](docs/security.md).
 - Nothing changes infrastructure without a plan you reviewed and approved. Production-like environments need their name typed.
 - Each project's state (runs, plans, history) lives in its own `.groundwork/` (git-ignored). The only file groundwork adds to your repo is `groundwork.yaml`.
-- The service keeps its project list, session token, log and cloned repositories in `~/Library/Application Support/groundwork` (macOS) or `~/.config/groundwork` (Linux); set `GROUNDWORK_HOME` to move it.
+- The service keeps its project list, sign-in settings, CLI token, log and cloned repositories in `~/Library/Application Support/groundwork` (macOS) or `~/.config/groundwork` (Linux); set `GROUNDWORK_HOME` to move it.
 - What stays stable across releases (`groundwork.yaml`, the CLI, how data is migrated and backed up) is written down in [compatibility](docs/compatibility.md); the HTTP API is private to the bundled UI.
 
 ## Try it

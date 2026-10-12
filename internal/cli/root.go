@@ -62,8 +62,6 @@ func newRoot() *cobra.Command {
 			Version: Version, Commit: Commit, Add: add,
 			// the service writes its own rotated log; a terminal also sees it
 			LogLevel: f.logLevel, LogFormat: f.logFormat, LogToStderr: term.IsTerminal(int(os.Stderr.Fd())),
-			// the token goes to a person at a terminal, never to a log file
-			ShowToken: term.IsTerminal(int(os.Stdout.Fd())),
 		})
 	}
 	logFlags := func(c *cobra.Command) {
@@ -121,6 +119,6 @@ func newRoot() *cobra.Command {
 	}
 	root.AddCommand(serveCmd, version, newInit(), newCheck(func() checks.Exec { return checks.OSExec{} }), newDoctor(doctor.OSExec{}), newDrift())
 	root.AddCommand(newProjectCmds()...)
-	root.AddCommand(newServiceCmd())
+	root.AddCommand(newServiceCmd(), newAuthCmd())
 	return root
 }

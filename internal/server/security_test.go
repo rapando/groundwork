@@ -206,13 +206,9 @@ func TestHeadersOnEveryKindOfResponse(t *testing.T) {
 	if cases["api"].Header.Get("Cache-Control") != "no-store" || cases["page"].Header.Get("Cache-Control") != "no-store" {
 		t.Error("API responses and the page (it holds the token) must not be cached")
 	}
-	// the token exchange strips ?t= from the URL it redirects to
-	res := s.req("GET", "/?t="+token+"&x=1", nil, nil)
-	if res.StatusCode != 303 || strings.Contains(res.Header.Get("Location"), token) {
-		t.Fatalf("%d %s", res.StatusCode, res.Header.Get("Location"))
-	}
-	if ck := res.Header.Get("Set-Cookie"); !strings.Contains(ck, "HttpOnly") || !strings.Contains(ck, "SameSite=Strict") {
-		t.Errorf("cookie flags: %s", ck)
+	// the page served signed out never carries the token
+	if b, _ := io.ReadAll(cases["page"].Body); bytes.Contains(b, []byte(token)) {
+		t.Fatal("signed-out page carries the token")
 	}
 }
 

@@ -1,6 +1,6 @@
 # The service and projects
 
-groundwork runs as one background service on your machine, like a database or a message broker. It hosts all your infrastructure repositories as **projects**, each with its own checks, runs, file watching and drift schedule, behind one console at `http://127.0.0.1:7420`.
+groundwork runs as one background service on your machine, like a database or a message broker. It hosts all your infrastructure repositories as **projects**, each with its own checks, runs, file watching and drift schedule, behind one console at `http://localhost:7420`.
 
 ![Projects](images/projects.png)
 
@@ -62,13 +62,13 @@ Each project lives at `/p/<id>/` in the console, so links to a run or a file can
 
 | What | Where |
 |---|---|
-| Project list, session token, `server.json`, `groundwork.log` | the data directory: `~/Library/Application Support/groundwork` (macOS), `~/.config/groundwork` (Linux), or `$GROUNDWORK_HOME` |
+| Project list, `auth.json` (sign-in), `token` (the CLI's), `server.json`, `groundwork.log` | the data directory: `~/Library/Application Support/groundwork` (macOS), `~/.config/groundwork` (Linux), or `$GROUNDWORK_HOME` |
 
-The service writes its own log, `groundwork.log` in the data directory, rotated at 10 MiB with three old files kept (`groundwork.log.1` to `.3`), so it stays bounded however long the machine runs. It never contains the session token. `GROUNDWORK_LOG=debug` (or `--log-level debug` on `serve`) adds a line per HTTP request; `GROUNDWORK_LOG_FORMAT=json` (`--log-format json`) makes each line a JSON object for log shippers. When `serve` runs in a terminal the same lines also go to stderr.
+The service writes its own log, `groundwork.log` in the data directory, rotated at 10 MiB with three old files kept (`groundwork.log.1` to `.3`), so it stays bounded however long the machine runs. It never contains the CLI token. `GROUNDWORK_LOG=debug` (or `--log-level debug` on `serve`) adds a line per HTTP request; `GROUNDWORK_LOG_FORMAT=json` (`--log-format json`) makes each line a JSON object for log shippers. When `serve` runs in a terminal the same lines also go to stderr.
 | Cloned repositories | `repos/` in the data directory |
 | A project's runs, plans, check caches, custom rules | `.groundwork/` in that repository (git-ignored), as before |
 
-The session token persists across restarts, so open tabs keep working when the service restarts at login. `groundwork service status` prints a URL that logs a browser in.
+Sign-ins persist across restarts, so open tabs keep working when the service restarts at login. The console asks for a password or passkey; the first visit from this machine sets them up, and the **Sign-in** button on the project list changes them. `groundwork auth status` shows what is set up, and `groundwork auth reset` removes it all if you are locked out.
 
 The CLI commands that work on a single repository (`init`, `check`, `doctor`, `drift`) don't need the service and run directly in the repository, so they still fit CI.
 

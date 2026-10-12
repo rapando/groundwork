@@ -52,16 +52,14 @@ port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); pr
 export GROUNDWORK_HOME="$work/home"
 GROUNDWORK_TIPS=off "$gw" serve --no-open --port "$port" . >"$work/server.log" 2>&1 &
 server=$!
-for _ in $(seq 100); do grep -q 'http://127.0.0.1:[0-9]*/p/' "$work/server.log" 2>/dev/null && break; sleep 0.1; done
-# the log never carries the token (stdout isn't a terminal); the CLI and this script read it from the data dir
-url=$(grep -o 'http://127.0.0.1:[0-9]*/p/[a-z0-9-]*/' "$work/server.log") || fail "service didn't start: $(cat "$work/server.log")"
+for _ in $(seq 100); do grep -q 'http://localhost:[0-9]*/p/' "$work/server.log" 2>/dev/null && break; sleep 0.1; done
+url=$(grep -o 'http://localhost:[0-9]*/p/[a-z0-9-]*/' "$work/server.log") || fail "service didn't start: $(cat "$work/server.log")"
+# like the CLI, this script uses the token from the data dir instead of a browser sign-in
 token=$(tr -d '\n' <"$GROUNDWORK_HOME/token")
 project=$(printf '%s' "$url" | sed -E 's|.*/p/([a-z0-9-]+)/.*|\1|')
-url="$url?t=$token"
 origin="http://127.0.0.1:$port"
-curl -fsS -c "$work/jar" -o /dev/null "$url"
 api() { # method path [json]: the demo project's API
-  curl -fsS -b "$work/jar" -H "X-Groundwork-Token: $token" -H "Origin: $origin" -H 'Content-Type: application/json' \
+  curl -fsS -H "X-Groundwork-Token: $token" -H "Origin: $origin" -H 'Content-Type: application/json' \
     -X "$1" "$origin/api/p/$project$2" ${3:+--data "$3"}
 }
 "$gw" projects | grep -q "$project" || fail "groundwork projects doesn't list $project"

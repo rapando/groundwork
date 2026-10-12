@@ -24,6 +24,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/rapando/groundwork/internal/auth"
 	"github.com/rapando/groundwork/internal/events"
 )
 
@@ -69,8 +70,13 @@ type Server struct {
 	log   *slog.Logger
 	bus   *events.Bus
 	info  Info
-	token string
+	token string // the CLI's credential, and the SPA's API header once signed in
+	auth  *auth.Auth
 	api   func(chi.Router)
+	// canonical is the Host pages are served on (localhost:<port>): passkeys
+	// and the session cookie are bound to one origin, so the other loopback
+	// spellings redirect there. Empty serves every allowed Host as is.
+	canonical string
 
 	mu    sync.RWMutex
 	hosts map[string]bool // allowed Host header values
@@ -89,6 +95,13 @@ func NewToken() (string, error) {
 func New(log *slog.Logger, bus *events.Bus, info Info, token string) *Server {
 	return &Server{log: log, bus: bus, info: info, token: token, hosts: map[string]bool{}}
 }
+
+// SetAuth installs browser sign-in. Without it no browser session is valid
+// and only the CLI's token header reaches the API.
+func (s *Server) SetAuth(a *auth.Auth) { s.auth = a }
+
+// SetCanonicalHost makes page loads on the other loopback names redirect to host.
+func (s *Server) SetCanonicalHost(host string) { s.canonical = host }
 
 // SetAPI installs the function that mounts /api handlers (set before Handler).
 func (s *Server) SetAPI(f func(chi.Router)) { s.api = f }
@@ -126,10 +139,13 @@ func (s *Server) Handler() http.Handler {
 
 	r.Group(func(r chi.Router) {
 		r.Use(s.originCheck)
-		r.Use(s.session)
+		r.Use(s.canonicalHost)
 
+		r.Route("/auth", s.authRoutes)
 		r.Route("/api", func(r chi.Router) {
+			r.Use(s.session)
 			r.Use(s.apiToken)
+			r.Route("/auth", s.accountRoutes)
 			if s.api != nil {
 				s.api(r)
 			}
@@ -183,7 +199,7 @@ func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
 		h.Set("X-Content-Type-Options", "nosniff")
-		h.Set("Referrer-Policy", "no-referrer") // the ?t= token must never leave in a Referer
+		h.Set("Referrer-Policy", "no-referrer")
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("Cross-Origin-Opener-Policy", "same-origin")
 		h.Set("Cross-Origin-Resource-Policy", "same-origin")
@@ -242,40 +258,52 @@ func (s *Server) tokenEq(got string) bool {
 	return subtle.ConstantTimeCompare([]byte(got), []byte(s.token)) == 1
 }
 
-// session exchanges ?t=<token> for an HttpOnly cookie, then requires the
-// cookie on everything else.
+// signedIn reports whether r carries a valid browser session cookie.
+func (s *Server) signedIn(r *http.Request) bool {
+	if s.auth == nil {
+		return false
+	}
+	c, err := r.Cookie(cookieName)
+	return err == nil && s.auth.ValidSession(c.Value)
+}
+
+// session guards the API: a signed-in browser (its cookie), or the CLI (the
+// token header, read from the 0600 token file).
 func (s *Server) session(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if t := r.URL.Query().Get("t"); t != "" && r.Method == http.MethodGet && !isAPI(r) {
-			if !s.tokenEq(t) {
-				writeError(w, http.StatusUnauthorized, "unauthorized", "invalid token")
-				return
-			}
-			http.SetCookie(w, &http.Cookie{
-				Name: cookieName, Value: s.token, Path: "/",
-				HttpOnly: true, SameSite: http.SameSiteStrictMode,
-			})
-			q := r.URL.Query()
-			q.Del("t")
-			dest := r.URL.Path
-			if enc := q.Encode(); enc != "" {
-				dest += "?" + enc
-			}
-			http.Redirect(w, r, dest, http.StatusSeeOther)
-			return
-		}
-		c, err := r.Cookie(cookieName)
-		if err != nil || !s.tokenEq(c.Value) {
-			writeError(w, http.StatusUnauthorized, "unauthorized", "missing or invalid session")
+		if !s.signedIn(r) && !s.tokenEq(r.Header.Get(TokenHeader)) {
+			writeError(w, http.StatusUnauthorized, "unauthorized", "sign in to groundwork first")
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
 }
 
-// apiToken additionally requires the header (read by the SPA from its <meta>
-// tag). EventSource cannot set headers, so the SSE stream relies on the
-// SameSite=Strict cookie alone.
+// canonicalHost redirects page loads from 127.0.0.1 or [::1] to the
+// canonical localhost address.
+func (s *Server) canonicalHost(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.canonical != "" && r.Host != s.canonical && r.Method == http.MethodGet && !isAPI(r) && isLoopbackHost(r.Host) {
+			http.Redirect(w, r, "http://"+s.canonical+r.URL.RequestURI(), http.StatusTemporaryRedirect)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func isLoopbackHost(hostport string) bool {
+	h, _, err := net.SplitHostPort(hostport)
+	if err != nil {
+		return false
+	}
+	ip := net.ParseIP(h)
+	return ip != nil && ip.IsLoopback()
+}
+
+// apiToken additionally requires the header (read by the signed-in SPA from
+// its <meta> tag), which other origins can neither read nor set. EventSource
+// cannot set headers, so the SSE stream relies on the SameSite=Strict cookie
+// alone.
 func (s *Server) apiToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !isEventStream(r.URL.Path) && !s.tokenEq(r.Header.Get(TokenHeader)) {
@@ -357,6 +385,8 @@ func (s *Server) spa() http.Handler {
 	index, _ := fs.ReadFile(sub, "index.html")
 	meta := []byte(`<meta name="groundwork-token" content="` + s.token + `">`)
 	page := replaceOnce(index, []byte("<!--GROUNDWORK_META-->"), meta)
+	// signed out, the same app shows the sign-in (or first-run setup) screen
+	signedOut := replaceOnce(index, []byte("<!--GROUNDWORK_META-->"), nil)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := r.URL.Path
@@ -372,7 +402,11 @@ func (s *Server) spa() http.Handler {
 		}
 		// history-mode fallback
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("Cache-Control", "no-store") // it carries the session token
+		w.Header().Set("Cache-Control", "no-store") // signed in, it carries the API token
+		if !s.signedIn(r) {
+			_, _ = w.Write(signedOut)
+			return
+		}
 		_, _ = w.Write(page)
 	})
 }

@@ -63,8 +63,8 @@ func TestServeOutputAndServerInfoCarryNoToken(t *testing.T) {
 	if s := out.String(); strings.Contains(s, "?t=") || strings.Contains(s, si.Token) {
 		t.Fatalf("output leaks the token:\n%s", s)
 	}
-	if !strings.Contains(out.String(), si.Base()+"/") || !strings.Contains(out.String(), "groundwork open") {
-		t.Fatalf("output should print the plain URL and how to sign in:\n%s", out.String())
+	if !strings.Contains(out.String(), si.URL("/")) {
+		t.Fatalf("output should print the console's URL:\n%s", out.String())
 	}
 	raw, err := os.ReadFile(filepath.Join(home, "server.json"))
 	if err != nil {
@@ -98,14 +98,14 @@ func TestServeRecordsItsVersion(t *testing.T) {
 	}
 }
 
-// At a terminal the signed-in URL is what the user wants.
-func TestServeAtATerminalPrintsTheSignedInURL(t *testing.T) {
+// The printed URL is the plain localhost address; the browser signs in there.
+func TestServePrintsTheLocalhostURL(t *testing.T) {
 	home := t.TempDir()
-	out, stop := startRun(t, home, Options{ShowToken: true})
+	out, stop := startRun(t, home, Options{})
 	defer stop()
 	si, _ := Running(home)
-	if !strings.Contains(out.String(), si.URL("/")) {
-		t.Fatalf("want %s in:\n%s", si.URL("/"), out.String())
+	if want := "http://localhost:" + strconv.Itoa(si.Port) + "/"; !strings.Contains(out.String(), want) || si.URL("/") != want {
+		t.Fatalf("want %s in:\n%s", want, out.String())
 	}
 }
 
@@ -130,7 +130,7 @@ func TestSecondServeHandsOverToTheFirst(t *testing.T) {
 	case <-time.After(15 * time.Second):
 		t.Fatal("second serve did not exit")
 	}
-	if !strings.Contains(out.String(), "already running") || !strings.Contains(out.String(), first.Base()) {
+	if !strings.Contains(out.String(), "already running") || !strings.Contains(out.String(), first.URL("/")) {
 		t.Fatalf("second serve output:\n%s", out.String())
 	}
 	if si, ok := Running(home); !ok || si.PID != first.PID || si.Port != first.Port {

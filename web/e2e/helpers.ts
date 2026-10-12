@@ -1,5 +1,6 @@
+import { test as base, type BrowserContext } from '@playwright/test'
 import { spawn, ChildProcess, execFileSync } from 'node:child_process'
-import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import net from 'node:net'
@@ -7,12 +8,33 @@ import { fileURLToPath } from 'node:url'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 
+// Specs import test and expect from here: the fixture below lets start() sign
+// the test's browser in.
+export * from '@playwright/test'
+
+let context: BrowserContext | null = null
+export const test = base.extend<{ signedIn: void }>({
+  signedIn: [
+    async ({ context: c }, use) => {
+      context = c
+      await use()
+      context = null
+    },
+    { auto: true },
+  ],
+})
+
+/** The password start() sets up (or signs in with) for every instance. */
+export const PASSWORD = 'e2e-password'
+
 export const BIN = process.env.GW_BIN ?? path.resolve(here, '../../bin/groundwork')
 export const FIXTURES = path.resolve(here, '../../testdata/repos')
 
-/** url logs in and opens the project; base is the project's UI root (origin + /p/<id>). */
+/** url opens the project; base is the project's UI root (origin + /p/<id>). */
 export interface Instance {
   url: string
+  /** the browser session cookie start() got, "" with signIn: false */
+  session: string
   base: string
   dir: string
   home: string
@@ -43,6 +65,26 @@ export interface StartOpts {
   env?: Record<string, string>
   dir?: string
   home?: string
+  /** false leaves sign-in as the first visit finds it: not set up (or set up but signed out) */
+  signIn?: boolean
+}
+
+/** Sets a password up on first start (signs in with it afterwards) and returns the session cookie. */
+async function signIn(origin: string): Promise<string> {
+  const st = await (await fetch(origin + '/auth/status')).json()
+  const res = await fetch(origin + (st.configured ? '/auth/password/login' : '/auth/password/setup'), {
+    method: 'POST',
+    headers: { Origin: origin, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: PASSWORD }),
+  })
+  if (!res.ok) throw new Error('sign-in failed: ' + res.status + ' ' + (await res.text()))
+  const m = res.headers
+    .getSetCookie()
+    .join('\n')
+    .match(/groundwork_session=([^;]+)/)
+  if (!m) throw new Error('no session cookie')
+  await context?.addCookies([{ name: 'groundwork_session', value: m[1], url: origin }])
+  return m[1]
 }
 
 export async function start(fixture?: string, opts: StartOpts = {}): Promise<Instance> {
@@ -86,9 +128,8 @@ export async function start(fixture?: string, opts: StartOpts = {}): Promise<Ins
     child.stdout!.on('data', (d) => {
       all += d
       buf += d
-      // stdout isn't a terminal, so the service prints the address without the token; it's in <home>/token
-      const m = buf.match(haveDir ? /http:\/\/127\.0\.0\.1:\d+\/p\/[a-z0-9-]+\// : /http:\/\/127\.0\.0\.1:\d+\//)
-      if (m) resolve(m[0] + '?t=' + readFileSync(path.join(home, 'token'), 'utf8').trim())
+      const m = buf.match(haveDir ? /http:\/\/localhost:\d+\/p\/[a-z0-9-]+\// : /http:\/\/localhost:\d+\//)
+      if (m) resolve(m[0])
     })
     child.on('exit', (c) => reject(new Error('groundwork exited ' + c + ' ' + buf)))
     setTimeout(() => reject(new Error('timeout waiting for URL: ' + buf)), 10_000)
@@ -100,8 +141,10 @@ export async function start(fixture?: string, opts: StartOpts = {}): Promise<Ins
       child.once('exit', () => r())
       child.kill('SIGINT')
     })
+  const session = opts.signIn === false ? '' : await signIn(new URL(url).origin)
   return {
     url,
+    session,
     base: new URL(url).origin + new URL(url).pathname.replace(/\/$/, ''),
     dir,
     home,

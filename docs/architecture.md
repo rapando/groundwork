@@ -4,7 +4,7 @@ How groundwork is put together, as it is in the code today. The original pre-bui
 
 ## One service, many projects
 
-`groundwork` is a single Go binary. Run as `groundwork serve` (by hand, by the login service, or in the background by any other command) it is **the service**: one HTTP server on `127.0.0.1:7420` holding an exclusive lock on its data directory, serving the bundled Vue SPA and a JSON API. Every other command is a thin client of that API.
+`groundwork` is a single Go binary. Run as `groundwork serve` (by hand, by the login service, or in the background by any other command) it is **the service**: one HTTP server on `127.0.0.1:7420` (opened in the browser as `localhost:7420`) holding an exclusive lock on its data directory, serving the bundled Vue SPA and a JSON API. Every other command is a thin client of that API.
 
 Each imported repository is a **project**. A project is opened in-process with its own `api.API`, which owns the machinery that the per-repository server of 0.1 had: a SQLite store, an event bus, a checks service, a job runner, a drift scheduler, an issue engine and a file watcher. Projects are isolated from each other: separate stores, buses and locks, and a panic in one project's background work is recovered and reported as an issue on that project only.
 
@@ -29,7 +29,8 @@ cmd/groundwork ─► internal/cli (cobra) ─► internal/service.Run
 |---|---|
 | `cli` | The command tree. Commands that need the service find it through `service.Running` and talk HTTP; `serve` calls `service.Run`. |
 | `service` | Data directory (`Home`), the lock, the token, the rotating log, the project registry, cloning, the login units (launchd/systemd), and the top-level router that dispatches `/api/p/{id}/…` to the project's handler. |
-| `server` | The HTTP shell every request passes through: token/cookie session, Host allow-list, Origin check, security headers, request logging, panic recovery, SSE, and the embedded SPA. |
+| `auth` | Browser sign-in: the password (argon2id), passkeys (WebAuthn, via go-webauthn), and the HMAC-signed session cookie, all in `auth.json`. |
+| `server` | The HTTP shell every request passes through: sign-in endpoints and session check (cookie, or the CLI's token header), Host allow-list, Origin check, security headers, request logging, panic recovery, SSE, and the embedded SPA. |
 | `api` | One project's HTTP handlers and the glue between the packages below. |
 | `config` | `groundwork.yaml`: schema, validation (every repo-controlled value that reaches a tool), defaults, warnings for unknown top-level keys. |
 | `workspace` | Detection of Terraform roots and modules, Ansible projects and environments; the file tree with ignore rules. |
@@ -53,7 +54,7 @@ cmd/groundwork ─► internal/cli (cobra) ─► internal/service.Run
 ## Data
 
 - **Per repository** `.groundwork/` (mode 0700, self-ignored in git): `state.db` with runs, stages, approvals, diagnostics, issues, drift, host status, facts and a key/value table; `runs/<id>/` with `log.ndjson`, a masked `diff.json` and, only while a plan awaits approval, the raw `tfplan`; `rules/` for your own troubleshooting rules; `VERSION`.
-- **Service data directory** (`~/Library/Application Support/groundwork`, `~/.config/groundwork`, or `$GROUNDWORK_HOME`, mode 0700): `projects.json` (with a format number), `token`, `server.json` (pid, port, version; never the token), `lock`, `version`, `groundwork.log` (rotated), `repos/` for clones.
+- **Service data directory** (`~/Library/Application Support/groundwork`, `~/.config/groundwork`, or `$GROUNDWORK_HOME`, mode 0700): `projects.json` (with a format number), `auth.json` (sign-in methods and session key, with a format number), `token`, `server.json` (pid, port, version; never the token), `lock`, `version`, `groundwork.log` (rotated), `repos/` for clones.
 
 What is stable across releases and how data is migrated is in [compatibility](compatibility.md).
 
@@ -63,4 +64,4 @@ The UI opens one `EventSource` per project and keeps stores current from `file.c
 
 ## The security boundary
 
-Everything that comes from outside the binary is treated as input: HTTP requests (token, Host, Origin, bounded bodies, path containment), `groundwork.yaml` (validated like a request, since repositories are cloned through the UI), and tool output (parsed defensively, redacted before storage). Tools run from argument lists in their own process groups with validated values after `--`. The full model is in [security](security.md).
+Everything that comes from outside the binary is treated as input: HTTP requests (session, token, Host, Origin, bounded bodies, path containment), `groundwork.yaml` (validated like a request, since repositories are cloned through the UI), and tool output (parsed defensively, redacted before storage). Tools run from argument lists in their own process groups with validated values after `--`. The full model is in [security](security.md).

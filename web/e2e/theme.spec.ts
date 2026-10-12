@@ -1,5 +1,4 @@
-import { test, expect } from '@playwright/test'
-import { start, Instance } from './helpers'
+import { test, expect, start, Instance } from './helpers'
 
 let gw: Instance
 test.afterEach(async () => {

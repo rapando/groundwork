@@ -6,6 +6,7 @@ import BrandMark from '../components/BrandMark.vue'
 import ThemeToggle from '../components/ThemeToggle.vue'
 import { swallow } from '../api/swallow'
 import Modal from '../components/Modal.vue'
+import SignInSettings from '../components/SignInSettings.vue'
 
 const projects = ref<ProjectView[] | null>(null)
 const info = ref<ServiceInfo | null>(null)
@@ -14,6 +15,7 @@ const busy = ref(false)
 const error = ref('')
 const removing = ref<ProjectView | null>(null)
 const removeError = ref('')
+const signin = ref(false)
 
 // https://, ssh:// and git@host:path are cloned; anything else is a folder
 const isURL = computed(() => /^(https:\/\/|ssh:\/\/|[\w.-]+@[\w.-]+:)/.test(source.value.trim()))
@@ -90,6 +92,7 @@ onUnmounted(() => {
       <BrandMark />
       <span class="mono name">groundwork</span>
       <span class="mono meta">{{ info ? `${info.version} · ${info.home}` : '' }}</span>
+      <button class="btn sm" type="button" @click="signin = true">Sign-in</button>
       <ThemeToggle />
     </header>
 
@@ -150,6 +153,12 @@ onUnmounted(() => {
           <button class="btn danger" type="button" @click="confirmRemove">Remove project</button>
         </div>
       </div>
+    </Modal>
+
+    <Modal v-if="signin" labelledby="signin-title" @close="signin = false">
+      <SignInSettings>
+        <div class="row end"><button class="btn" type="button" @click="signin = false">Close</button></div>
+      </SignInSettings>
     </Modal>
   </div>
 </template>

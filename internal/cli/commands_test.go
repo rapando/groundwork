@@ -159,7 +159,7 @@ func TestProjectCommandsAgainstARunningService(t *testing.T) {
 	}
 	dir := repo(t, true)
 	out, err = runRoot(t, "", "add", dir)
-	if err != nil || !strings.Contains(out, si.Base()+"/p/") {
+	if err != nil || !strings.Contains(out, si.URL("/p/")) {
 		t.Fatalf("add: %v\n%s", err, out)
 	}
 	id := strings.Fields(out)[0]
@@ -168,11 +168,11 @@ func TestProjectCommandsAgainstARunningService(t *testing.T) {
 		t.Fatalf("list: %v\n%s", err, out)
 	}
 	out, err = runRoot(t, "", "open", "--no-open", id)
-	if err != nil || !strings.Contains(out, "/p/"+id+"/?t=") {
+	if err != nil || !strings.Contains(out, si.URL("/p/"+id+"/")) {
 		t.Fatalf("open: %v\n%s", err, out)
 	}
 	out, err = runRoot(t, "", "open", "--no-open")
-	if err != nil || !strings.Contains(out, si.Base()+"/?t=") {
+	if err != nil || !strings.Contains(out, si.URL("/")) {
 		t.Fatalf("open list: %v\n%s", err, out)
 	}
 	out, err = runRoot(t, "", "service", "status")

@@ -19,6 +19,7 @@ import (
 
 	"github.com/pkg/browser"
 
+	"github.com/rapando/groundwork/internal/auth"
 	"github.com/rapando/groundwork/internal/server"
 )
 
@@ -39,15 +40,11 @@ type Options struct {
 	LogToStderr bool
 	Add         []string  // folders to import at startup; the browser opens the first
 	Out         io.Writer // startup messages; default os.Stdout
-	// ShowToken includes the session token in the printed URL. The CLI sets
-	// it only when stdout is a terminal: a login service's stdout is a log
-	// file, and the token must never land in one.
-	ShowToken bool
 }
 
 // ServerInfo is persisted to <home>/server.json so other invocations (the
-// CLI, a second `serve`) can find the running service. The token is not part
-// of the file: Running reads it from <home>/token.
+// CLI, a second `serve`) can find the running service. The CLI's token is not
+// part of the file: Running reads it from <home>/token.
 type ServerInfo struct {
 	PID     int    `json:"pid"`
 	Port    int    `json:"port"`
@@ -57,31 +54,24 @@ type ServerInfo struct {
 
 func (si ServerInfo) Base() string { return "http://127.0.0.1:" + strconv.Itoa(si.Port) }
 
-// URL is the address that logs a browser in: path plus the session token.
-func (si ServerInfo) URL(path string) string { return URLFor("127.0.0.1", si, path) }
+// URL is the console's address for path. It carries no credentials: the
+// browser signs in with a password or passkey. It names localhost, the one
+// origin passkeys and the session cookie are bound to.
+func (si ServerInfo) URL(path string) string { return URLFor("localhost", si, path) }
 
 func URLFor(host string, si ServerInfo, path string) string {
-	if path == "" {
-		path = "/"
-	}
-	return fmt.Sprintf("http://%s%s?t=%s", net.JoinHostPort(host, strconv.Itoa(si.Port)), path, si.Token)
-}
-
-// PlainURL is the address without the token, for output that may be logged.
-func PlainURL(host string, si ServerInfo, path string) string {
 	if path == "" {
 		path = "/"
 	}
 	return fmt.Sprintf("http://%s%s", net.JoinHostPort(host, strconv.Itoa(si.Port)), path)
 }
 
-// announce is the URL line printed at startup: signed in when the output is a
-// terminal, otherwise the plain address plus how to get a signed-in one.
-func (o Options) announce(host string, si ServerInfo, path string) string {
-	if o.ShowToken {
-		return URLFor(host, si, path)
+// browserHost is the name a URL for the bound host uses.
+func browserHost(host string) string {
+	if isLoopback(host) {
+		return "localhost"
 	}
-	return PlainURL(host, si, path) + "  (run `groundwork open` for a signed-in URL)"
+	return host
 }
 
 // ProjectPath is where a project's UI lives.
@@ -180,12 +170,27 @@ func Run(ctx context.Context, o Options) error {
 		}
 	}
 
+	// passkeys need a secure context: http://localhost is one, a LAN address isn't
+	canonical := net.JoinHostPort("localhost", strconv.Itoa(port))
+	signin, err := auth.New(home, "http://"+canonical)
+	if err != nil {
+		ln.Close()
+		svc.Shutdown(context.Background())
+		return err
+	}
 	srv := server.New(o.Log, nil, server.Info{Root: home, Version: o.Version}, token)
 	srv.SetAPI(svc.Routes)
+	srv.SetAuth(signin)
 	srv.AllowPort(port)
+	if isLoopback(o.Host) {
+		srv.SetCanonicalHost(canonical)
+	}
 	if o.AllowRemote && !isLoopback(o.Host) {
 		srv.AllowHost(net.JoinHostPort(o.Host, strconv.Itoa(port)))
-		fmt.Fprintln(os.Stderr, "WARNING: groundwork is reachable beyond localhost. Anyone with the URL token can run commands on this machine.")
+		fmt.Fprintln(os.Stderr, "WARNING: groundwork is reachable beyond localhost. Anyone who knows the password can run commands on this machine; set sign-in up at http://"+canonical+" first.")
+	}
+	if !signin.Configured() {
+		o.Log.Info("browser sign-in is not set up yet; the first visit from this machine sets it up")
 	}
 
 	si := ServerInfo{PID: os.Getpid(), Port: port, Version: o.Version, Token: token}
@@ -206,9 +211,9 @@ func Run(ctx context.Context, o Options) error {
 	go func() { errc <- httpSrv.Serve(ln) }()
 
 	fmt.Fprintf(o.Out, "groundwork service (%d projects, data in %s)\n", len(svc.Reg.List()), home)
-	fmt.Fprintln(o.Out, o.announce(o.Host, si, path))
+	fmt.Fprintln(o.Out, URLFor(browserHost(o.Host), si, path))
 	if !o.NoOpen {
-		_ = browser.OpenURL(URLFor(o.Host, si, path))
+		_ = browser.OpenURL(URLFor(browserHost(o.Host), si, path))
 	}
 
 	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
@@ -266,7 +271,7 @@ func handOver(o Options, si ServerInfo) error {
 			path = ProjectPath(p.ID)
 		}
 	}
-	fmt.Fprintln(o.Out, "groundwork is already running:", o.announce("127.0.0.1", si, path))
+	fmt.Fprintln(o.Out, "groundwork is already running:", si.URL(path))
 	if !o.NoOpen {
 		_ = browser.OpenURL(si.URL(path))
 	}
@@ -306,8 +311,8 @@ func groundworkAt(port int) (int, bool) {
 	return body.PID, true
 }
 
-// loadToken keeps the session token across restarts so open tabs and
-// bookmarks survive the service restarting at login.
+// loadToken keeps the CLI's token across restarts. Signed-in browsers also
+// get it (in the page) as the API's anti-forgery header.
 func loadToken(home string) (string, error) {
 	if t := readToken(home); t != "" {
 		return t, nil

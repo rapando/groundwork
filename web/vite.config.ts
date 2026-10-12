@@ -11,8 +11,8 @@ export default defineConfig({
     assetsInlineLimit: 0,
   },
   server: {
-    // `groundwork serve --no-open --port 7420` in another terminal; open the
-    // printed URL once so the session cookie is set for the proxy origin.
+    // `groundwork serve --no-open --port 7420` in another terminal; sign in at
+    // the printed localhost URL once (cookies are per host, not per port).
     proxy: { '/api': 'http://127.0.0.1:7420', '/healthz': 'http://127.0.0.1:7420' },
   },
   test: { environment: 'jsdom', include: ['src/**/*.test.ts'] },
