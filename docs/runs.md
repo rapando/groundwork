@@ -8,6 +8,15 @@ init → [workspace] → validate → plan → summary → approve → apply
 
 `workspace` appears for roots that use workspaces per environment. `summary` (reading the plan back with `show -json`) is plumbing and is only shown if it fails.
 
+## The run page
+
+Under the stage pipeline are two tabs. **Changes** opens first (except for `init`, which opens on its log):
+
+- **Terraform:** one tile per planned change, grouped by module. The tile's left edge is the action (create, update, replace, destroy). Tiles are faded until they start, pulse while running, and turn solid when done or red when failed, with a progress bar above.
+- **Ansible:** a grid with a row per task and a column per host, each cell coloured ok, changed, failed or skipped. Selecting a cell shows the task's output and diff; the approval gate for a dry run sits above the grid.
+
+Selecting a tile or a host name opens **Log** searched for it. The Log tab shows the warning and error counts. The tab is kept in the URL (`?tab=log`).
+
 ## Plan, review, approval, apply
 
 - A plan is written to `.groundwork/runs/<id>/tfplan`. If it has changes the run stops at **needs approval** and releases its lock; if not, the run succeeds and `approve`/`apply` are skipped.

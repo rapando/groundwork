@@ -1,1 +1,0 @@
-import{O as e,V as t}from"./index-BnbdvL9p.js";function n(n=1e3){let r=t(Date.now()),i=window.setInterval(()=>r.value=Date.now(),n);return e(()=>window.clearInterval(i)),r}export{n as t};

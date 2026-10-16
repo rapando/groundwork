@@ -39,24 +39,34 @@ test('plan from the overview, review, approve, watch the apply stream live', asy
   await expect(page.getByRole('heading', { name: /terraform plan/ })).toBeVisible()
   await waitForApproval(page)
   const changes = page.getByRole('region', { name: 'Planned changes' })
-  await expect(changes.getByText('module.service.terraform_data.service[0]')).toBeVisible()
-  await expect(changes.getByText('will be created')).toHaveCount(3)
+  // the Changes tab opens first: one tile per resource, grouped by module
+  await expect(page.getByRole('tab', { name: /Changes/ })).toHaveAttribute('aria-selected', 'true')
+  await expect(changes.getByText('module.service', { exact: true })).toBeVisible()
+  await expect(changes.getByRole('button', { name: /terraform_data service\[0\]/ })).toBeVisible()
+  await expect(changes.getByText('planned', { exact: true })).toHaveCount(3)
   await page.screenshot({ path: path.join(SHOTS, 'run-plan.png'), fullPage: true })
 
   // dev needs no typed confirmation
   await approveVia(page)
 
   // resources go running → done while the log streams in
-  await expect(changes.getByText('running').first()).toBeVisible({ timeout: 10_000 })
+  await expect(changes.getByText(/^running/).first()).toBeVisible({ timeout: 10_000 })
+  await page.screenshot({ path: path.join(SHOTS, 'run-applying.png'), fullPage: true })
+  // a tile opens the log searched for that resource
+  await changes.getByRole('button', { name: /terraform_data service\[0\]/ }).click()
+  await expect(page.getByRole('tab', { name: /Log/ })).toHaveAttribute('aria-selected', 'true')
+  await expect(page).toHaveURL(/tab=log/)
+  await expect(page.getByLabel('Search log')).toHaveValue('module.service.terraform_data.service[0]')
   await expect(
     page
       .getByRole('log')
       .getByText(/Creating\.\.\./)
       .first(),
   ).toBeVisible()
-  await page.screenshot({ path: path.join(SHOTS, 'run-applying.png'), fullPage: true })
+  await page.getByLabel('Search log').fill('')
+  await page.getByRole('tab', { name: /Changes/ }).click()
   await expect(page.getByText('Applied: 3 added, 0 changed, 0 destroyed')).toBeVisible({ timeout: 20_000 })
-  await expect(changes.getByText('done')).toHaveCount(3)
+  await expect(changes.getByText('done', { exact: true })).toHaveCount(3)
   await page.screenshot({ path: path.join(SHOTS, 'run-done.png'), fullPage: true })
 
   // the overview reflects it
@@ -102,6 +112,7 @@ test('log search and level filter narrow what is shown', async ({ page }) => {
   await overview(page, gw.url)
   await card(page, 'dev').getByRole('button', { name: 'Plan' }).click()
   await waitForApproval(page)
+  await page.getByRole('tab', { name: /Log/ }).click()
   const log = page.getByRole('log')
   await expect(log.getByText('Terraform has been successfully initialized!')).toBeVisible()
 
@@ -163,6 +174,7 @@ test('a streaming log follows the newest line; scrolling up pauses, the bottom r
   await page.getByRole('button', { name: 'Run playbook' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Start' }).click()
   await page.waitForURL(/\/runs\/\d+/)
+  await page.getByRole('tab', { name: /Log/ }).click()
   const log = page.getByRole('log', { name: 'Log output' })
   const follow = page.getByRole('checkbox', { name: 'Follow' })
   const gap = () => log.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight)

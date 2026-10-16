@@ -242,3 +242,30 @@ func TestInstallCallback(t *testing.T) {
 		t.Fatal("callback not written")
 	}
 }
+
+func TestDirectGroupsAndParentPath(t *testing.T) {
+	inv, err := ParseInventoryList([]byte(`{
+		"_meta": {"hostvars": {"web-1": {}, "db-1": {}, "lone": {}}},
+		"all": {"children": ["prod", "monitoring", "ungrouped"]},
+		"prod": {"children": ["web", "db"]},
+		"web": {"hosts": ["web-1"]},
+		"db": {"hosts": ["db-1"]},
+		"monitoring": {"hosts": ["web-1", "db-1"]},
+		"ungrouped": {"hosts": ["lone"]}
+	}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g := strings.Join(inv.DirectGroups("web-1"), ","); g != "monitoring,web" {
+		t.Fatalf("web-1 groups %q", g)
+	}
+	if g := inv.DirectGroups("lone"); len(g) != 0 {
+		t.Fatalf("ungrouped host: %v", g)
+	}
+	if p := strings.Join(inv.ParentPath("web"), "/"); p != "prod" {
+		t.Fatalf("web path %q", p)
+	}
+	if p := inv.ParentPath("monitoring"); len(p) != 0 {
+		t.Fatalf("top-level path %v", p)
+	}
+}

@@ -11,3 +11,6 @@ all:
       hosts:
         stray:
           ansible_host: 192.0.2.50
+    monitoring:
+      hosts:
+        app-1:

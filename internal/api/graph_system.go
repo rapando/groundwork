@@ -160,7 +160,10 @@ func (a *API) systemHosts(ctx context.Context, env string) ([]graph.SystemHost, 
 		roles := hostRoles(dir, inv, ansible.Plays(dir, playbooks[s.Project]))
 		facts, _ := a.Store.AllFacts(s.Project + "#" + s.Env)
 		for _, h := range inv.Hosts {
-			sh := graph.SystemHost{Project: s.Project, Env: s.Env, Name: h, Address: inv.Address(h), Roles: []graph.RoleUse{}}
+			sh := graph.SystemHost{Project: s.Project, Env: s.Env, Name: h, Address: inv.Address(h), Roles: []graph.RoleUse{}, Groups: []graph.HostGroup{}}
+			for _, g := range inv.DirectGroups(h) {
+				sh.Groups = append(sh.Groups, graph.HostGroup{Name: g, Path: inv.ParentPath(g)})
+			}
 			var refs []ansible.RoleRef
 			for _, ru := range roles[h] {
 				sh.Roles = append(sh.Roles, graph.RoleUse{Name: ru.name, Playbooks: ru.playbooks})

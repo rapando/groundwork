@@ -16,9 +16,17 @@ type SystemHost struct {
 	Address   string         `json:"address"`
 	OS        string         `json:"os,omitempty"`
 	Roles     []RoleUse      `json:"roles"`
+	Groups    []HostGroup    `json:"groups"` // inventory groups that list the host directly
 	Declared  []DeclaredPort `json:"-"`
 	Listening []ListenPort   `json:"-"`
 	ListenAt  *time.Time     `json:"listen_at,omitempty"` // when listening ports were last gathered (nil = never)
+}
+
+// HostGroup is an inventory group a host is listed in, with the groups above
+// it (outermost first, "all" left out).
+type HostGroup struct {
+	Name string   `json:"name"`
+	Path []string `json:"path,omitempty"`
 }
 
 // RoleUse is a role applied to a host and the playbooks that apply it.
@@ -33,6 +41,18 @@ type DeclaredPort struct {
 	Proto string `json:"proto"`
 	Var   string `json:"var"`
 	Role  string `json:"role,omitempty"` // the role whose defaults/vars set it
+}
+
+// service names what uses a declared port: its role, else the variable
+// without the _port suffix ("ssh" for ansible_port).
+func (d DeclaredPort) service() string {
+	switch {
+	case d.Role != "":
+		return d.Role
+	case strings.HasPrefix(d.Var, "ssh "):
+		return "ssh"
+	}
+	return strings.TrimSuffix(strings.TrimSuffix(d.Var, "_ports"), "_port")
 }
 
 // ListenPort is a socket found listening on the host.
@@ -55,6 +75,7 @@ type PortRow struct {
 	Declared  []string `json:"declared"`  // "app_port (role app)"
 	Allowed   []string `json:"allowed"`   // "aws_security_group.web from 0.0.0.0/0"
 	Listening []string `json:"listening"` // "nginx on 0.0.0.0"
+	Services  []string `json:"services"`  // what uses the port: roles, processes ("app", "nginx")
 	// Flag: blocked (declared, but no attached firewall allows it),
 	// not-listening (declared, live data says nothing listens), undeclared
 	// (listening and reachable but not declared), unused (a firewall opens it
@@ -72,11 +93,17 @@ type LinkedHost struct {
 	OpenAll   bool      `json:"open_all,omitempty"` // a rule allows every port
 }
 
+// UnlinkedHost is an Ansible host no Terraform instance matched. Its ports
+// are what it declares and listens on; no firewall is known for it.
 type UnlinkedHost struct {
-	Project string `json:"project"`
-	Name    string `json:"name"`
-	Address string `json:"address"`
-	Reason  string `json:"reason"`
+	SystemHost
+	Reason string    `json:"reason"`
+	Ports  []PortRow `json:"ports"`
+}
+
+func unlinked(h SystemHost, reason string) UnlinkedHost {
+	ports, _ := reconcile(h, nil)
+	return UnlinkedHost{SystemHost: h, Reason: reason, Ports: ports}
 }
 
 // System is the architecture view with Ansible hosts placed on the servers
@@ -95,7 +122,7 @@ func BuildSystem(arch *Architecture, st *State, hosts []SystemHost, rules Rules,
 	s := &System{Architecture: arch, Servers: map[string][]LinkedHost{}, Unlinked: []UnlinkedHost{}, Rules: map[string][]Rule{}}
 	if st == nil {
 		for _, h := range hosts {
-			s.Unlinked = append(s.Unlinked, UnlinkedHost{h.Project, h.Name, h.Address, noState})
+			s.Unlinked = append(s.Unlinked, unlinked(h, noState))
 		}
 		return s
 	}
@@ -187,7 +214,7 @@ func BuildSystem(arch *Architecture, st *State, hosts []SystemHost, rules Rules,
 			if ambiguous {
 				reason = "several instances match " + strings.TrimPrefix(strings.TrimPrefix(by, "ip "), "name ")
 			}
-			s.Unlinked = append(s.Unlinked, UnlinkedHost{h.Project, h.Name, h.Address, reason})
+			s.Unlinked = append(s.Unlinked, unlinked(h, reason))
 			continue
 		}
 		lh := LinkedHost{SystemHost: h, Instance: in.Address, MatchedBy: by, Firewalls: []string{}}
@@ -219,7 +246,7 @@ func reconcile(h SystemHost, fws []*Firewall) ([]PortRow, bool) {
 	row := func(port int, proto string) *PortRow {
 		k := key{port, proto}
 		if rows[k] == nil {
-			rows[k] = &PortRow{Port: port, Proto: proto, Declared: []string{}, Allowed: []string{}, Listening: []string{}}
+			rows[k] = &PortRow{Port: port, Proto: proto, Declared: []string{}, Allowed: []string{}, Listening: []string{}, Services: []string{}}
 		}
 		return rows[k]
 	}
@@ -230,6 +257,7 @@ func reconcile(h SystemHost, fws []*Firewall) ([]PortRow, bool) {
 		}
 		r := row(d.Port, d.Proto)
 		r.Declared = append(r.Declared, label)
+		r.Services = append(r.Services, d.service())
 	}
 	for _, l := range h.Listening {
 		if l.local() {
@@ -241,6 +269,9 @@ func reconcile(h SystemHost, fws []*Firewall) ([]PortRow, bool) {
 		}
 		r := row(l.Port, l.Proto)
 		r.Listening = append(r.Listening, label)
+		if l.Process != "" {
+			r.Services = append(r.Services, l.Process)
+		}
 	}
 	openAll := false
 	for _, fw := range fws {
@@ -278,6 +309,7 @@ func reconcile(h SystemHost, fws []*Firewall) ([]PortRow, bool) {
 			}
 		}
 		r.Allowed = uniq(r.Allowed)
+		r.Services = uniq(r.Services)
 		live := h.ListenAt != nil
 		switch {
 		case len(r.Declared) > 0 && len(fws) > 0 && len(r.Allowed) == 0:

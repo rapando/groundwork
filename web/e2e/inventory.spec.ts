@@ -50,8 +50,12 @@ test('playbook: dry run per host, approve, run for real; last play updates', asy
   await expect(page).toHaveURL(/\/runs\/\d+$/)
   await expect(page.locator('.dhead .pill', { hasText: 'needs approval' })).toBeVisible({ timeout: 30_000 })
   const hosts = page.getByRole('region', { name: 'Hosts' })
-  await expect(hosts.locator('.change', { hasText: 'web-1' }).locator('.pill', { hasText: 'changed' })).toBeVisible()
-  await hosts.getByRole('button', { name: /web-1/ }).click()
+  // tasks down, hosts across; a cell opens that task's output and diff
+  await expect(hosts.locator('th', { hasText: 'web-1' }).locator('.pill', { hasText: 'changed' })).toBeVisible()
+  await hosts
+    .getByRole('button', { name: /on web-1: changed/ })
+    .first()
+    .click()
   await expect(hosts.locator('.tdiff').first()).toContainText('workers=4')
   expect(existsSync(path.join(labDir, 'web-1.conf'))).toBe(false) // the dry run changed nothing
   await page.screenshot({ path: path.join(SHOTS, 'ansible-dryrun.png'), fullPage: true })
@@ -70,9 +74,9 @@ test('a full play reports changed, failed and unreachable hosts', async ({ page 
   await page.getByRole('button', { name: 'Start' }).click() // dry run only (default)
   await expect(page.locator('.dhead .pill', { hasText: 'failed' })).toBeVisible({ timeout: 30_000 })
   const hosts = page.getByRole('region', { name: 'Hosts' })
-  await expect(hosts.locator('.change', { hasText: 'down-1' }).locator('.pill', { hasText: 'unreachable' })).toBeVisible()
-  await expect(hosts.locator('.change', { hasText: 'web-2' }).locator('.pill', { hasText: 'failed' })).toBeVisible()
-  await expect(hosts.locator('.change', { hasText: 'web-1' }).locator('.pill', { hasText: 'changed' })).toBeVisible()
+  await expect(hosts.locator('th', { hasText: 'down-1' }).locator('.pill', { hasText: 'unreachable' })).toBeVisible()
+  await expect(hosts.locator('th', { hasText: 'web-2' }).locator('.pill', { hasText: 'failed' })).toBeVisible()
+  await expect(hosts.locator('th', { hasText: 'web-1' }).locator('.pill', { hasText: 'changed' })).toBeVisible()
   await expect(page.getByText(/1 host\(s\) failed: web-2; 1 unreachable: down-1/)).toBeVisible()
 })
 

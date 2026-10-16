@@ -522,21 +522,34 @@ export interface PortRow {
   declared: string[]
   allowed: string[]
   listening: string[]
+  services: string[] // what uses the port: roles, processes
   flag?: 'blocked' | 'not-listening' | 'undeclared' | 'unused'
 }
-export interface SystemHost {
+export interface HostGroup {
+  name: string
+  path?: string[] // the groups above it, outermost first
+}
+export interface SystemHostBase {
   project: string
   env: string
   name: string
   address: string
   os?: string
   roles: { name: string; playbooks: string[] }[]
+  groups: HostGroup[] // inventory groups that list the host directly
   listen_at?: string
+}
+export interface SystemHost extends SystemHostBase {
   instance: string
   matched_by: string
   ports: PortRow[]
   firewalls: string[]
   open_all?: boolean
+}
+// a host no Terraform instance matched
+export interface UnplacedHost extends SystemHostBase {
+  reason: string
+  ports: PortRow[]
 }
 export interface FirewallRule {
   proto: string
@@ -546,7 +559,7 @@ export interface FirewallRule {
 }
 export interface SystemModel extends Architecture {
   servers: Record<string, SystemHost[]>
-  unlinked: { project: string; name: string; address: string; reason: string }[]
+  unlinked: UnplacedHost[]
   rules: Record<string, FirewallRule[]>
 }
 export interface SystemScope {

@@ -64,7 +64,7 @@ func TestBuildSystemPlacesHostsAndFlagsPorts(t *testing.T) {
 			Listening: []ListenPort{{22, "tcp", "0.0.0.0", "sshd"}, {8080, "tcp", "0.0.0.0", "app"}, {443, "tcp", "0.0.0.0", "nginx"}, {5432, "tcp", "127.0.0.1", "postgres"}},
 			ListenAt:  &now},
 		{Project: "ops", Name: "web-2", Address: "web-2"}, // by tag Name
-		{Project: "ops", Name: "lost", Address: "192.0.2.1"},
+		{Project: "ops", Name: "lost", Address: "192.0.2.1", Declared: []DeclaredPort{{6379, "tcp", "redis_port", ""}}},
 	}
 	sys := BuildSystem(arch, st, hosts, LoadRules(), "")
 	got := sys.Servers["aws_instance.web"]
@@ -86,6 +86,20 @@ func TestBuildSystemPlacesHostsAndFlagsPorts(t *testing.T) {
 	}
 	if _, ok := flags[5432]; ok {
 		t.Error("loopback listeners aren't exposed")
+	}
+	// each port names what uses it: the role or variable that declares it, the process listening
+	services := map[int]string{}
+	for _, p := range got[0].Ports {
+		services[p.Port] = strings.Join(p.Services, ",")
+	}
+	for p, s := range map[int]string{22: "ssh,sshd", 443: "nginx", 8080: "app", 9100: "monitoring"} {
+		if services[p] != s {
+			t.Errorf("port %d services %q, want %q", p, services[p], s)
+		}
+	}
+	// a host that isn't placed still lists what it declares
+	if u := sys.Unlinked[0].Ports; len(u) != 1 || u[0].Port != 6379 || strings.Join(u[0].Services, ",") != "redis" || u[0].Flag != "" {
+		t.Errorf("unlinked ports %+v", u)
 	}
 	// web-2 has no live data: a declared port is never "not-listening" without it
 	for _, p := range got[1].Ports {

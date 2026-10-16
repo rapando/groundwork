@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -344,6 +345,50 @@ func (inv *Inventory) GroupsOf(host string) []*Group {
 		return out[i].Name < out[j].Name
 	})
 	return out
+}
+
+// DirectGroups returns the groups that list host themselves (not through a
+// child group), sorted. "all" and "ungrouped" are left out.
+func (inv *Inventory) DirectGroups(host string) []string {
+	var out []string
+	for _, g := range inv.Groups {
+		if g.Name == "all" || g.Name == "ungrouped" {
+			continue
+		}
+		for _, h := range g.Hosts {
+			if h == host {
+				out = append(out, g.Name)
+				break
+			}
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// ParentPath returns the groups above group, outermost first, without "all".
+// A group with several parents follows the deepest one (then by name).
+func (inv *Inventory) ParentPath(group string) []string {
+	var path []string
+	seen := map[string]bool{group: true}
+	for cur := group; ; {
+		var parent *Group
+		for _, g := range inv.Groups {
+			if g.Name == "all" || seen[g.Name] || !slices.Contains(g.Children, cur) {
+				continue
+			}
+			if parent == nil || g.Depth > parent.Depth || g.Depth == parent.Depth && g.Name < parent.Name {
+				parent = g
+			}
+		}
+		if parent == nil {
+			break
+		}
+		seen[parent.Name] = true
+		path = append([]string{parent.Name}, path...)
+		cur = parent.Name
+	}
+	return path
 }
 
 // Address is how a host is reached.

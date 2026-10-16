@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import GraphCanvas, { type GNode, type GNodeRow } from './GraphCanvas.vue'
+import GraphCanvas from './GraphCanvas.vue'
 import { api } from '../api/client'
-import type { FirewallRule, PortRow, SystemHost, SystemModel, SystemScope } from '../api/types'
+import type { PortRow, SystemModel, SystemScope } from '../api/types'
 import { ago, useRuns } from '../stores/runs'
 import { onEvent } from '../composables/events'
 import { useNow } from '../composables/now'
+import { buildSystemMap, portLabel, type MapHost } from '../composables/systemMap'
 
 const props = defineProps<{ root: string; env: string }>()
 const runs = useRuns()
@@ -80,58 +81,30 @@ const flagText: Record<string, string> = {
   undeclared: 'listening and open, but no variable declares it',
   unused: 'open, but nothing declares or listens on it',
 }
-const uniq = <T,>(l: T[]) => [...new Set(l)]
-const portLabel = (p: { port: number; proto: string }) => (p.proto === 'tcp' ? String(p.port) : `${p.port}/${p.proto}`)
-const ruleLabel = (r: FirewallRule) => {
-  const ports = r.from <= 1 && r.to >= 65535 ? 'all ports' : r.from === r.to ? String(r.from) : `${r.from}-${r.to}`
-  return `${r.proto === 'all' ? '' : r.proto + ' '}${ports}${r.sources?.length ? ' ← ' + r.sources.join(', ') : ''}`
-}
-function serverRows(hosts: SystemHost[]): GNodeRow[] {
-  const rows: GNodeRow[] = [{ text: (hosts.length === 1 ? 'host ' : `${hosts.length} hosts `) + hosts.map((h) => h.name).join(', '), tone: 'muted' }]
-  const roles = uniq(hosts.flatMap((h) => h.roles.map((r) => r.name)))
-  rows.push({ text: roles.length ? 'roles ' + roles.join(', ') : 'no roles', tone: roles.length ? undefined : 'muted' })
-  const used = hosts.flatMap((h) => h.ports).filter((p) => p.declared.length || p.listening.length)
-  const ports = uniq(used.map(portLabel)).sort((a, b) => parseInt(a) - parseInt(b))
-  if (ports.length) rows.push({ text: 'ports ' + ports.join(' ') })
-  const open = uniq(hosts.flatMap((h) => h.ports).filter((p) => p.flag === 'unused').map(portLabel)).filter((p) => !ports.includes(p))
-  if (open.length) rows.push({ text: 'open ' + open.join(' '), tone: 'muted' })
-  const flagged = new Map<string, string[]>()
-  for (const p of hosts.flatMap((h) => h.ports)) if (p.flag === 'blocked' || p.flag === 'not-listening') flagged.set(p.flag, uniq([...(flagged.get(p.flag) ?? []), portLabel(p)]))
-  for (const [f, l] of flagged) rows.push({ text: `⚠ ${f === 'blocked' ? 'blocked' : 'not listening'} ${l.join(' ')}`, tone: 'warn' })
-  return rows
-}
-const nodes = computed<GNode[]>(() => (sys.value?.nodes ?? []).map((n) => {
-  const hosts = sys.value!.servers[n.id]
-  const rules = sys.value!.rules[n.id]
-  let rows: GNodeRow[] | undefined
-  if (hosts?.length) rows = serverRows(hosts)
-  else if (rules?.length) rows = [...rules.slice(0, 3).map((r) => ({ text: ruleLabel(r) })), ...(rules.length > 3 ? [{ text: `+${rules.length - 3} more`, tone: 'muted' as const }] : [])]
-  return {
-    id: n.id, title: (n.kind === 'data' ? 'data.' : '') + n.type, label: n.name, count: n.count,
-    state: n.drift ? 'drift' : n.action ?? '', errors: n.errors, rows, dim: !!Object.keys(sys.value!.servers).length && !hosts && !rules,
-  }
-}))
+const map = computed(() => buildSystemMap(sys.value))
 const canvas = ref<InstanceType<typeof GraphCanvas>>()
 defineExpose({ canvas })
 
-const linked = computed(() => Object.values(sys.value?.servers ?? {}).reduce((n, l) => n + l.length, 0))
+const placed = computed(() => map.value.hosts.filter((h) => h.linked).length)
 const noHosts = computed(() => !scopes.value.length)
 
 // ---- inspector ----
+// selecting a box selects the host: its copies in other groups light up too
 const selected = ref('')
-const node = computed(() => sys.value?.nodes.find((n) => n.id === selected.value))
-const hosts = computed(() => sys.value?.servers[selected.value] ?? [])
-const rules = computed(() => sys.value?.rules[selected.value] ?? [])
-const codeHref = (f: string, l: number) => `/code/${f.split('/').map(encodeURIComponent).join('/')}?line=${l}`
-const inventoryHref = (h: SystemHost) => ({ path: '/inventory', query: { project: h.project, env: h.env, host: h.name } })
+const selectedHost = computed(() => map.value.hostOf.get(selected.value) ?? '')
+const copies = computed(() => [...map.value.hostOf].filter(([id, k]) => k === selectedHost.value && id !== selected.value).map(([id]) => id))
+const picked = computed(() => map.value.hosts.find((h) => h.key === selectedHost.value))
+function select(id: string) { selected.value = map.value.hostOf.has(id) && id !== selected.value ? id : '' }
+const inventoryHref = (h: { project: string; env: string; name: string }) => ({ path: '/inventory', query: { project: h.project, env: h.env, host: h.name } })
+const groupNames = (h: MapHost['host']) => h.groups?.map((g) => [...(g.path ?? []), g.name].join(' / ')).join(', ') || 'none'
 const flagged = (l: PortRow[]) => l.filter((p) => p.flag === 'blocked' || p.flag === 'not-listening').length
 </script>
 
 <template>
   <section class="gpanel" aria-label="System architecture">
     <div class="gbar">
-      <span class="mono small muted">{{ Object.keys(sys?.servers ?? {}).length }} servers · {{ linked }} hosts placed<template v-if="sys?.unlinked.length"> · {{ sys.unlinked.length }} not placed</template>
-        · from <span class="hl">{{ stateError ? 'code only' : 'terraform state' }}</span><template v-if="scopes.length"> + {{ scopes.map((s) => s.project === '.' ? 'inventory' : s.project).join(', ') }}</template></span>
+      <span class="mono small muted">{{ map.hosts.length }} host{{ map.hosts.length === 1 ? '' : 's' }} · {{ map.groups }} group{{ map.groups === 1 ? '' : 's' }} · {{ placed }} on Terraform servers
+        · from <template v-if="scopes.length"><span class="hl">{{ scopes.map((s) => s.project === '.' ? 'inventory' : s.project).join(', ') }}</span> + </template><span class="hl">{{ stateError ? 'code only' : 'terraform state' }}</span></span>
       <div class="zoom">
         <button class="btn sm" type="button" :disabled="!!checking.length || !scopes.some((s) => s.hosts)" title="Runs community.general.listen_ports_facts on every host (read-only)" @click="checkPorts">
           {{ checking.length ? 'Checking ports…' : 'Check listening ports' }}</button>
@@ -147,66 +120,53 @@ const flagged = (l: PortRow[]) => l.filter((p) => p.flag === 'blocked' || p.flag
     <p v-for="(p, i) in portIssues" :key="i" class="small warnbar" role="status">
       Ports check (<RouterLink :to="`/runs/${p.run}`">run #{{ p.run }}</RouterLink>) failed<template v-if="p.hosts.length"> on {{ p.hosts.join(', ') }}</template>: {{ p.msg }}<template v-if="/netstat|\bss\b/.test(p.msg)"> — install <span class="mono">iproute2</span> (ss) or <span class="mono">net-tools</span> on those hosts.</template>
     </p>
-    <p v-if="stateError" class="small warnbar" role="status">Hosts can't be placed on servers: {{ stateError }}.</p>
-    <p v-if="noHosts" class="small muted pad0">No Ansible inventory is configured for <span class="mono">{{ env }}</span>; servers are shown without software. Inventories pair with a stack by environment name.</p>
+    <p v-if="stateError" class="small warnbar" role="status">Hosts can't be matched to Terraform servers: {{ stateError }}.</p>
+    <p v-if="noHosts" class="small muted pad0">No Ansible inventory is configured for <span class="mono">{{ env }}</span>, so there are no hosts to draw. Inventories pair with a stack by environment name; the Resources view shows the Terraform resources.</p>
     <p v-for="s in scopes.filter((x) => x.error)" :key="s.project" class="small err pad0">Inventory {{ s.project }} / {{ s.env }}: {{ s.error }}</p>
-    <div class="cwrap"><GraphCanvas ref="canvas" :nodes="nodes" :edges="sys?.edges ?? []" :containers="sys?.containers ?? []" :selected="selected" direction="DOWN" aria-label="System architecture" @select="selected = $event" /></div>
-    <div v-if="sys?.unlinked.length" class="tray small">
-      <span class="lbl">Hosts not placed</span>
-      <ul>
-        <li v-for="u in sys.unlinked" :key="u.project + u.name"><span class="mono">{{ u.name }}</span> <span class="muted mono">{{ u.address }}</span> — {{ u.reason }}</li>
-      </ul>
+    <div class="cwrap"><GraphCanvas ref="canvas" :nodes="map.nodes" :edges="[]" :containers="map.containers" :selected="selected" :highlight="copies" packed :node-width="236" aria-label="System architecture" @select="select" /></div>
+    <div class="legend small">
+      <span><b class="star">*</b> listed in more than one group, drawn in each</span>
+      <span><span class="chip">443</span> port the service declares or listens on</span>
+      <span><span class="chip warn">8080</span> declared, but no firewall rule allows it or nothing listens</span>
+      <span><span class="chip off">9000</span> open, but nothing uses it</span>
     </div>
   </section>
 
-  <section v-if="node" class="inspector" aria-label="Selected resource">
-    <div class="meta">
-      <span class="lbl">Selected</span>
-      <span class="mono addr">{{ node.id }}</span>
+  <section v-if="picked" class="inspector" aria-label="Selected host">
+    <article class="host">
+      <header class="hhead">
+        <RouterLink class="mono hname" :to="inventoryHref(picked.host)">{{ picked.host.name }}</RouterLink>
+        <span class="mono small muted">{{ picked.host.address }}<template v-if="picked.linked"> · {{ picked.linked.instance }} · matched by {{ picked.linked.matched_by }}</template></span>
+        <span v-if="picked.host.os" class="small muted">{{ picked.host.os }}</span>
+        <span v-if="flagged(picked.host.ports)" class="pill st-warn">{{ flagged(picked.host.ports) }} port issue{{ flagged(picked.host.ports) === 1 ? '' : 's' }}</span>
+      </header>
       <div class="kv mono">
-        <span>defined</span><RouterLink :to="codeHref(node.file, node.line)">{{ node.file }}:{{ node.line }}</RouterLink>
-        <template v-if="node.count"><span>instances</span><span class="v">{{ node.count }}</span></template>
-        <template v-if="hosts.length"><span>hosts</span><span class="v">{{ hosts.length }}</span></template>
+        <span>groups</span><span class="v">{{ groupNames(picked.host) }}</span>
+        <span>roles</span>
+        <span class="v"><template v-if="picked.host.roles.length"><span v-for="(r, i) in picked.host.roles" :key="r.name" :title="'from ' + r.playbooks.join(', ')">{{ r.name }}{{ i < picked.host.roles.length - 1 ? ', ' : '' }}</span></template><template v-else>— (no playbook targets this host)</template></span>
+        <template v-if="picked.linked"><span>firewalls</span><span class="v">{{ picked.linked.firewalls.join(', ') || '— (none found in state)' }}<template v-if="picked.linked.open_all"> · a rule opens every port</template></span></template>
+        <template v-else><span>server</span><span class="v warn">not placed: {{ picked.reason }}</span></template>
+        <span>listening</span><span class="v">{{ picked.host.listen_at ? `checked ${ago(picked.host.listen_at, now)} ago` : 'not checked yet' }}</span>
       </div>
-      <template v-if="rules.length">
-        <span class="lbl">Inbound rules</span>
-        <ul class="mono small rules"><li v-for="(r, i) in rules" :key="i">{{ ruleLabel(r) }}</li></ul>
-      </template>
-      <p v-if="!hosts.length && !rules.length" class="small muted">No Ansible host runs on this resource.</p>
-    </div>
-    <div v-if="hosts.length" class="hostpane">
-      <article v-for="h in hosts" :key="h.project + h.name" class="host">
-        <header class="hhead">
-          <RouterLink class="mono hname" :to="inventoryHref(h)">{{ h.name }}</RouterLink>
-          <span class="mono small muted">{{ h.instance }} · matched by {{ h.matched_by }}</span>
-          <span v-if="h.os" class="small muted">{{ h.os }}</span>
-          <span v-if="flagged(h.ports)" class="pill st-warn">{{ flagged(h.ports) }} port issue{{ flagged(h.ports) === 1 ? '' : 's' }}</span>
-        </header>
-        <div class="kv mono">
-          <span>roles</span>
-          <span class="v"><template v-if="h.roles.length"><span v-for="(r, i) in h.roles" :key="r.name" :title="'from ' + r.playbooks.join(', ')">{{ r.name }}{{ i < h.roles.length - 1 ? ', ' : '' }}</span></template><template v-else>— (no playbook targets this host)</template></span>
-          <span>firewalls</span><span class="v">{{ h.firewalls.join(', ') || '— (none found in state)' }}<template v-if="h.open_all"> · a rule opens every port</template></span>
-          <span>listening</span><span class="v">{{ h.listen_at ? `checked ${ago(h.listen_at, now)} ago` : 'not checked yet' }}</span>
-        </div>
-        <div class="scroll">
-          <table class="mono dt">
-            <thead><tr><th>port</th><th>declared by</th><th>allowed by</th><th>listening</th><th></th></tr></thead>
-            <tbody>
-              <tr v-for="p in h.ports" :key="p.port + p.proto" :class="{ flag: p.flag === 'blocked' || p.flag === 'not-listening' }">
-                <td>{{ portLabel(p) }}</td>
-                <td>{{ p.declared.join(', ') || '—' }}</td>
-                <td>{{ p.allowed.join(', ') || (h.open_all ? 'every port is open' : '—') }}</td>
-                <td>{{ p.listening.join(', ') || (h.listen_at ? 'no' : '?') }}</td>
-                <td :class="p.flag === 'blocked' || p.flag === 'not-listening' ? 'warn' : 'muted'">{{ p.flag ? flagText[p.flag] : '' }}</td>
-              </tr>
-              <tr v-if="!h.ports.length"><td colspan="5" class="muted">No ports declared, allowed or seen listening.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </article>
-    </div>
+      <div class="scroll">
+        <table class="mono dt">
+          <thead><tr><th>port</th><th>used by</th><th>declared by</th><th>allowed by</th><th>listening</th><th></th></tr></thead>
+          <tbody>
+            <tr v-for="p in picked.host.ports" :key="p.port + p.proto" :class="{ flag: p.flag === 'blocked' || p.flag === 'not-listening' }">
+              <td>{{ portLabel(p) }}</td>
+              <td>{{ p.services?.join(', ') || '—' }}</td>
+              <td>{{ p.declared.join(', ') || '—' }}</td>
+              <td>{{ p.allowed.join(', ') || (picked.linked?.open_all ? 'every port is open' : picked.linked ? '—' : 'unknown (not placed)') }}</td>
+              <td>{{ p.listening.join(', ') || (picked.host.listen_at ? 'no' : '?') }}</td>
+              <td :class="p.flag === 'blocked' || p.flag === 'not-listening' ? 'warn' : 'muted'">{{ p.flag ? flagText[p.flag] : '' }}</td>
+            </tr>
+            <tr v-if="!picked.host.ports.length"><td colspan="6" class="muted">No ports declared, allowed or seen listening.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
   </section>
-  <p v-else class="muted small pad0">Select a server to see the hosts on it, their roles and ports.</p>
+  <p v-else class="muted small pad0">Select a host to see its groups, roles and ports.</p>
 </template>
 
 <style scoped>
@@ -218,17 +178,17 @@ const flagged = (l: PortRow[]) => l.filter((p) => p.flag === 'blocked' || p.flag
 .cwrap { height: 520px; }
 .small { font-size: 13px; } .pad0 { margin: 0; padding: 8px 14px; }
 .warnbar { margin: 0; padding: 6px 14px; background: var(--warn-bg); color: var(--warn-strong); border-bottom: 1px solid var(--line); }
-.tray { padding: 8px 14px; border-top: 1px solid var(--line); color: var(--text-muted); }
-.tray ul { margin: 4px 0 0; padding-left: 18px; }
-.inspector { border: 1px solid var(--line); border-radius: 10px; background: var(--bg-panel); display: flex; flex-wrap: wrap; }
-.meta { flex: 1 1 260px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; border-right: 1px solid var(--line); }
-.addr { font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 8px 14px; border-top: 1px solid var(--line); color: var(--text-muted); background: var(--bg-panel); }
+.legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.star { color: var(--accent); font-family: var(--font-mono); }
+.chip { font: 500 11px var(--font-mono); padding: 0 5px; border-radius: 3px; border: 1px solid var(--line-strong); background: var(--bg-card); color: var(--text); }
+.chip.warn { color: var(--warn); border-color: var(--warn-line); background: var(--warn-bg); }
+.chip.off { color: var(--text-label); border-style: dashed; }
+.v.warn { color: var(--warn); }
+.inspector { border: 1px solid var(--line); border-radius: 10px; background: var(--bg-panel); padding: 18px 20px; }
 .kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: 13px; color: var(--text-muted); }
 .kv .v { color: var(--text); overflow-wrap: anywhere; }
-.rules { margin: 0; padding-left: 16px; }
-.hostpane { flex: 3 1 480px; min-width: 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 18px; }
 .host { display: flex; flex-direction: column; gap: 10px; }
-.host + .host { border-top: 1px solid var(--line); padding-top: 16px; }
 .hhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
 .hname { font-size: 14px; font-weight: 700; }
 .scroll { overflow-x: auto; }

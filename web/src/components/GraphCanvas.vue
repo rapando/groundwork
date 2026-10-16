@@ -2,20 +2,26 @@
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { accent, theme, token } from '../composables/theme'
 
-// rows: extra lines under the label (the system view lists roles and ports)
-export interface GNodeRow { text: string; tone?: 'warn' | 'muted' }
-export interface GNode { id: string; title: string; label: string; count?: string; state?: string; errors?: number; dim?: boolean; rows?: GNodeRow[] }
+// rows: extra lines under the label (the system view lists services, with
+// their ports as chips at the right); star marks a node drawn more than once
+export interface GChip { text: string; tone?: 'warn' | 'muted' }
+export interface GNodeRow { text: string; tone?: 'warn' | 'muted'; chips?: GChip[] }
+export interface GNode { id: string; title: string; label: string; count?: string; state?: string; errors?: number; dim?: boolean; star?: boolean; rows?: GNodeRow[] }
 export interface GEdge { from: string; to: string; label?: string }
-export interface GContainer { id: string; label: string; children: string[] }
+// group: a dashed frame with its label above it (an inventory group)
+export interface GContainer { id: string; label: string; children: string[]; group?: boolean }
 
 const props = withDefaults(defineProps<{
   nodes: GNode[]; edges: GEdge[]; containers?: GContainer[]
   selected?: string; focus?: string; direction?: 'RIGHT' | 'DOWN'; ariaLabel?: string
-}>(), { containers: () => [], selected: '', focus: '', direction: 'RIGHT', ariaLabel: 'Graph' })
+  // packed: boxes are packed into rows (no edges to route), groups included
+  packed?: boolean; nodeWidth?: number; highlight?: string[]
+}>(), { containers: () => [], selected: '', focus: '', direction: 'RIGHT', ariaLabel: 'Graph', packed: false, nodeWidth: 210, highlight: () => [] })
 const emit = defineEmits<{ (e: 'select', id: string): void }>()
 
-const NW = 210, NH = 60, ROW = 17
-const height = (n: GNode) => (n.rows?.length ? NH + 8 + n.rows.length * ROW : NH)
+const NH = 60, ROW = 17, CHIP_ROW = 22, CH = 6.6 // monospace 11px advance
+const rowH = (n: GNode) => (n.rows?.some((r) => r.chips?.length) ? CHIP_ROW : ROW)
+const height = (n: GNode) => (n.rows?.length ? NH + 8 + n.rows.length * rowH(n) : NH)
 interface Box { id: string; x: number; y: number; w: number; h: number; node?: GNode; container?: GContainer }
 interface Path { d: string; label?: string; lx?: number; ly?: number; key: string }
 const boxes = shallowRef<Box[]>([])
@@ -40,12 +46,13 @@ async function layout() {
   for (const c of props.containers) for (const ch of c.children) containerOf.set(ch, c.id)
   const containerIds = new Set(props.containers.map((c) => c.id))
   const visible = new Set(props.nodes.map((n) => n.id))
-  const leaf = (n: GNode) => ({ id: n.id, width: NW, height: height(n) })
+  const leaf = (n: GNode) => ({ id: n.id, width: props.nodeWidth, height: height(n) })
   const children: any[] = []
+  const pack = props.packed ? { 'elk.algorithm': 'rectpacking', 'elk.spacing.nodeNode': '16' } : {}
   for (const c of props.containers) {
     children.push({
       id: c.id,
-      layoutOptions: { 'elk.padding': '[top=44,left=20,bottom=20,right=20]' },
+      layoutOptions: { ...pack, 'elk.padding': c.group ? '[top=46,left=16,bottom=16,right=16]' : '[top=44,left=20,bottom=20,right=20]' },
       children: props.nodes.filter((n) => containerOf.get(n.id) === c.id).map(leaf),
     })
   }
@@ -61,13 +68,18 @@ async function layout() {
   try {
     const res = await (await getElk()).layout({
       id: 'root',
-      layoutOptions: {
-        'elk.algorithm': 'layered', 'elk.direction': props.direction,
-        'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
-        'elk.layered.spacing.nodeNodeBetweenLayers': '70', 'elk.spacing.nodeNode': '28',
-        'elk.edgeRouting': 'ORTHOGONAL', 'elk.json.edgeCoords': 'ROOT', 'elk.json.shapeCoords': 'ROOT',
-        'elk.padding': '[top=24,left=24,bottom=24,right=24]',
-      },
+      layoutOptions: props.packed
+        ? {
+          'elk.algorithm': 'rectpacking', 'elk.aspectRatio': '1.8', 'elk.spacing.nodeNode': '28',
+          'elk.json.shapeCoords': 'ROOT', 'elk.padding': '[top=24,left=24,bottom=24,right=24]',
+        }
+        : {
+          'elk.algorithm': 'layered', 'elk.direction': props.direction,
+          'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
+          'elk.layered.spacing.nodeNodeBetweenLayers': '70', 'elk.spacing.nodeNode': '28',
+          'elk.edgeRouting': 'ORTHOGONAL', 'elk.json.edgeCoords': 'ROOT', 'elk.json.shapeCoords': 'ROOT',
+          'elk.padding': '[top=24,left=24,bottom=24,right=24]',
+        },
       children, edges,
     })
     if (mine !== seq) return
@@ -176,6 +188,7 @@ const pal = computed(() => {
   return {
     canvas: c('bg-inset'), dot: c('line-strong'), edge: c('text-faint'), label: c('text-muted'), text: c('text'),
     box: c('line-hover'), selected: c('text'), focus: c('accent'), tint: c('hover-tint'), fail: c('fail'), warn: c('warn'),
+    chip: { fill: c('bg-card'), stroke: c('line-strong'), warnFill: c('warn-bg'), warnStroke: c('warn-line'), well: c('bg-inset') },
     style: {
       '': { stroke: c('line-hover'), fill: c('bg-panel') },
       create: { stroke: c('ok'), fill: c('ok-bg'), tag: '+ create', tagColor: c('ok') },
@@ -191,6 +204,24 @@ const look = (n: GNode) => {
   return n.errors ? { ...s, stroke: pal.value.fail, dash: '5 3' } : s
 }
 const trunc = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + '…' : s)
+const chars = (px: number) => Math.max(4, Math.floor(px / CH))
+// characters that fit a 210px-wide node, scaled to this node's width
+const fitW = (b: Box, at210: number) => Math.floor((at210 * b.w) / 210)
+// chips right-aligned on a row; the row's text gets the room that's left
+interface PlacedChip extends GChip { x: number; w: number }
+function placeChips(b: Box, r: GNodeRow): { chips: PlacedChip[]; textChars: number } {
+  let x = b.x + b.w - 14
+  const chips: PlacedChip[] = []
+  for (const c of [...(r.chips ?? [])].reverse()) {
+    const w = c.text.length * CH + 10
+    if (x - w < b.x + 14 + 4 * CH) break // no room: drop the rest (the inspector lists them)
+    x -= w
+    chips.unshift({ ...c, x, w })
+    x -= 4
+  }
+  return { chips, textChars: chars(x - (b.x + 20)) }
+}
+const hl = computed(() => new Set(props.highlight))
 const summary = computed(() => `${props.nodes.length} nodes, ${props.edges.length} edges`)
 </script>
 
@@ -209,9 +240,9 @@ const summary = computed(() => `${props.nodes.length} nodes, ${props.edges.lengt
         <template v-for="b in boxes" :key="'c' + b.id">
           <g v-if="b.container" data-node class="node" role="button" tabindex="0" :aria-label="`${b.container.label} (contains ${b.container.children.length})`"
             @click="emit('select', b.id)" @keydown.enter="emit('select', b.id)">
-            <rect :x="b.x" :y="b.y" :width="b.w" :height="b.h" rx="12" :fill="pal.tint" :data-focus="b.id === focus || undefined"
-              :stroke="b.id === focus ? pal.focus : b.id === selected ? pal.selected : pal.box" stroke-dasharray="6 5" />
-            <text :x="b.x + 16" :y="b.y + 24" font-size="12" :fill="pal.label">{{ b.container.label }}</text>
+            <rect :x="b.x" :y="b.container.group ? b.y + 24 : b.y" :width="b.w" :height="b.container.group ? b.h - 24 : b.h" rx="12" :fill="pal.tint" :data-focus="b.id === focus || undefined"
+              :stroke="b.id === focus ? pal.focus : b.id === selected ? pal.selected : pal.box" :stroke-dasharray="b.container.group ? '3 4' : '6 5'" :stroke-width="b.container.group ? 1.5 : 1" />
+            <text :x="b.x + (b.container.group ? 4 : 16)" :y="b.y + (b.container.group ? 15 : 24)" font-size="12" :font-weight="b.container.group ? 600 : 400" :fill="pal.label">{{ b.container.label }}</text>
           </g>
         </template>
         <g v-for="p in paths" :key="p.key">
@@ -223,15 +254,29 @@ const summary = computed(() => `${props.nodes.length} nodes, ${props.edges.lengt
             :opacity="b.node.dim ? 0.45 : 1" @click="emit('select', b.id)" @keydown.enter="emit('select', b.id)">
             <rect :x="b.x" :y="b.y" :width="b.w" :height="b.h" rx="8" :fill="look(b.node).fill" :stroke="look(b.node).stroke"
               :stroke-dasharray="look(b.node).dash" stroke-width="1.2" />
-            <rect v-if="b.id === selected || b.id === focus" :x="b.x - 4" :y="b.y - 4" :width="b.w + 8" :height="b.h + 8" rx="11"
+            <rect v-if="b.id === selected || b.id === focus || hl.has(b.id)" :x="b.x - 4" :y="b.y - 4" :width="b.w + 8" :height="b.h + 8" rx="11"
               fill="none" :data-focus="b.id === focus || undefined" :stroke="b.id === focus ? pal.focus : pal.selected" stroke-opacity="0.8" stroke-width="2" />
-            <text :x="b.x + 14" :y="b.y + 24" font-size="11" :fill="look(b.node).tagColor ?? pal.label">{{ trunc(b.node.title + (look(b.node).tag ? ' · ' + look(b.node).tag : ''), 30) }}</text>
-            <text :x="b.x + 14" :y="b.y + 44" font-size="13" font-weight="700" :fill="pal.text">{{ trunc(b.node.label, 22) }}<tspan v-if="b.node.count" :fill="pal.label" font-weight="400"> {{ b.node.count }}</tspan></text>
+            <text :x="b.x + 14" :y="b.y + 24" font-size="11" :fill="look(b.node).tagColor ?? pal.label">{{ trunc(b.node.title + (look(b.node).tag ? ' · ' + look(b.node).tag : ''), fitW(b, 30)) }}</text>
+            <text :x="b.x + 14" :y="b.y + 44" font-size="13" font-weight="700" :fill="pal.text">{{ trunc(b.node.label, fitW(b, 22) - (b.node.star ? 2 : 0)) }}<tspan v-if="b.node.star" :fill="pal.focus"> *</tspan><tspan v-if="b.node.count" :fill="pal.label" font-weight="400"> {{ b.node.count }}</tspan></text>
             <text v-if="b.node.errors" :x="b.x + b.w - 12" :y="b.y + 20" font-size="11" text-anchor="end" :fill="pal.fail">! {{ b.node.errors }}</text>
             <template v-if="b.node.rows?.length">
               <line :x1="b.x + 10" :x2="b.x + b.w - 10" :y1="b.y + NH - 2" :y2="b.y + NH - 2" :stroke="look(b.node).stroke" stroke-opacity="0.5" />
-              <text v-for="(r, i) in b.node.rows" :key="i" :x="b.x + 14" :y="b.y + NH + 13 + i * ROW" font-size="11"
-                :fill="r.tone === 'warn' ? pal.warn : r.tone === 'muted' ? pal.label : pal.text">{{ trunc(r.text, 30) }}</text>
+              <template v-if="rowH(b.node) === CHIP_ROW">
+                <g v-for="(r, i) in b.node.rows" :key="i">
+                  <rect :x="b.x + 8" :y="b.y + NH + 3 + i * CHIP_ROW" :width="b.w - 16" :height="CHIP_ROW - 3" rx="5" :fill="pal.chip.well" />
+                  <text :x="b.x + 14" :y="b.y + NH + 16 + i * CHIP_ROW" font-size="11"
+                    :fill="r.tone === 'warn' ? pal.warn : r.tone === 'muted' ? pal.label : pal.text">{{ trunc(r.text, placeChips(b, r).textChars) }}</text>
+                  <g v-for="(c, j) in placeChips(b, r).chips" :key="j">
+                    <rect :x="c.x" :y="b.y + NH + 5 + i * CHIP_ROW" :width="c.w" :height="CHIP_ROW - 7" rx="3"
+                      :fill="c.tone === 'warn' ? pal.chip.warnFill : pal.chip.fill" :stroke="c.tone === 'warn' ? pal.chip.warnStroke : pal.chip.stroke" :stroke-dasharray="c.tone === 'muted' ? '2 2' : undefined" />
+                    <text :x="c.x + 5" :y="b.y + NH + 16 + i * CHIP_ROW" font-size="11" :fill="c.tone === 'warn' ? pal.warn : c.tone === 'muted' ? pal.label : pal.text">{{ c.text }}</text>
+                  </g>
+                </g>
+              </template>
+              <template v-else>
+                <text v-for="(r, i) in b.node.rows" :key="i" :x="b.x + 14" :y="b.y + NH + 13 + i * ROW" font-size="11"
+                  :fill="r.tone === 'warn' ? pal.warn : r.tone === 'muted' ? pal.label : pal.text">{{ trunc(r.text, fitW(b, 30)) }}</text>
+              </template>
             </template>
           </g>
         </template>

@@ -187,6 +187,14 @@ func TestSystemViewOverHTTP(t *testing.T) {
 	if strings.Join(roles, ",") != "base,app" {
 		t.Fatalf("%v", roles)
 	}
+	// the groups that list the host, for the boxes the view draws
+	var groups []string
+	for _, g := range h1["groups"].([]any) {
+		groups = append(groups, g.(map[string]any)["name"].(string))
+	}
+	if strings.Join(groups, ",") != "app,monitoring" {
+		t.Fatalf("groups %v", groups)
+	}
 	flags := map[float64]string{}
 	for _, p := range h1["ports"].([]any) {
 		p := p.(map[string]any)
