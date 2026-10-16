@@ -383,7 +383,8 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .vis { flex: 1; min-height: 0; overflow: auto; background-color: var(--bg-panel); background-image: radial-gradient(var(--line) 1px, transparent 1px); background-size: 18px 18px; }
 .changes { padding: 18px 24px 24px; display: flex; flex-direction: column; gap: 14px; }
 .self { align-self: flex-start; }
-.logpane { flex: 1; min-width: 0; min-height: 320px; display: flex; flex-direction: column; background: var(--bg-inset); }
+/* min-height 0, like .vis: a floor here would push the page past the viewport on short windows */
+.logpane { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--bg-inset); }
 .ltools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
 .search { flex: 1 1 200px; display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--text-label); }
 .search input { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: var(--text); font-size: 13px; }
@@ -396,5 +397,5 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .phase { display: flex; gap: 4px; }
 .agate { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--warn-line); border-radius: 8px; background: var(--warn-bg); }
 .gt { font-weight: 600; }
-@media (max-width: 900px) { .split { flex-wrap: wrap; } .runs { max-width: 100%; border-right: 0; } }
+@media (max-width: 900px) { .split { flex-wrap: wrap; } .runs { max-width: 100%; border-right: 0; } .logpane { min-height: 320px; } }
 </style>

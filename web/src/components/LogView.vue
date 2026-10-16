@@ -77,7 +77,8 @@ onBeforeUnmount(() => ro?.disconnect())
 </template>
 
 <style scoped>
-.log { height: 100%; overflow: auto; padding: 10px 0; background: var(--bg-inset); }
+/* contain: following keeps the box at its bottom, so a wheel down would otherwise scroll the page */
+.log { height: 100%; overflow: auto; overscroll-behavior: contain; padding: 10px 0; background: var(--bg-inset); }
 .spacer { position: relative; min-width: 560px; }
 .lg { display: grid; grid-template-columns: 78px 68px minmax(0, 1fr); gap: 12px; padding: 0 16px; font: 13.5px/21px var(--font-mono); font-variant-ligatures: none; min-height: 21px; }
 .lg:hover { background: var(--bg-raised); }

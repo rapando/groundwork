@@ -1,0 +1,1 @@
+import{H as e,k as t}from"./index-BNHs3EDA.js";function n(n=1e3){let r=e(Date.now()),i=window.setInterval(()=>r.value=Date.now(),n);return t(()=>window.clearInterval(i)),r}export{n as t};

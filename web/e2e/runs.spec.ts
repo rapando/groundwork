@@ -169,6 +169,8 @@ test('a streaming log follows the newest line; scrolling up pauses, the bottom r
       'site.yml': `- hosts: web\n  gather_facts: false\n  tasks:\n${tasks}`,
     },
   })
+  // short enough that the header and a fixed log floor would overflow the window
+  await page.setViewportSize({ width: 1280, height: 560 })
   await page.goto(gw.url)
   await page.getByRole('link', { name: 'Inventory', exact: true }).click()
   await page.getByRole('button', { name: 'Run playbook' }).click()
@@ -176,6 +178,7 @@ test('a streaming log follows the newest line; scrolling up pauses, the bottom r
   await page.waitForURL(/\/runs\/\d+/)
   await page.getByRole('tab', { name: /Log/ }).click()
   const log = page.getByRole('log', { name: 'Log output' })
+  const pageTop = () => page.evaluate(() => document.scrollingElement!.scrollTop)
   const follow = page.getByRole('checkbox', { name: 'Follow' })
   const gap = () => log.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight)
   const height = () => log.evaluate((el) => el.scrollHeight)
@@ -184,7 +187,12 @@ test('a streaming log follows the newest line; scrolling up pauses, the bottom r
   await expect.poll(height, { timeout: 30_000 }).toBeGreaterThan(900)
   expect(await gap()).toBeLessThan(8)
 
+  // scrolling down a following log moves neither it nor the page around it
   await log.hover()
+  await page.mouse.wheel(0, 600)
+  await expect(follow).toBeChecked()
+  expect(await pageTop()).toBe(0)
+
   await page.mouse.wheel(0, -600)
   await expect(follow).not.toBeChecked()
   const h = await height()
