@@ -36,7 +36,7 @@ The `pr-title` check enforces the prefix; reviewers enforce the wording. The PR 
 - Fuzz targets live next to their parsers; add one when you add a parser or validator and register it in the `fuzz` target of the Makefile.
 - Coverage: `make coverage` prints per-package coverage and fails below the floors CI enforces (60% per package, 75% overall). A new package needs tests from its first PR.
 - Integration tests run against both `terraform` and `tofu` in CI (`GW_TF_BINARY=tofu go test -tags integration ./...` locally).
-- The nightly perf run compares each step with the previous passing run's timings (carried in the Actions cache) and fails on a regression of more than 20%, besides its absolute budgets.
+- Perf: `make perf` checks each step against its absolute budget. With `GW_PERF_BASELINE` naming a JSON file of earlier timings, it also fails on a regression of more than 20%; `GW_PERF_WRITE_BASELINE` saves a passing run's timings for the next comparison.
 
 ## Review
 

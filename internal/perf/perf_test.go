@@ -90,8 +90,8 @@ func (okExec) Run(_ context.Context, c checks.Cmd) (checks.Output, error) {
 
 // Two budgets: an absolute one per step, and, when GW_PERF_BASELINE names a
 // JSON file of earlier timings (milliseconds by step), 1.2× that baseline.
-// GW_PERF_WRITE_BASELINE writes this run's timings there when it passes, so
-// the nightly job can carry the baseline forward in its cache.
+// GW_PERF_WRITE_BASELINE writes this run's timings there when it passes, so a
+// later run can compare against them.
 var (
 	baseline  = loadBaseline()
 	measured  = map[string]int64{}
