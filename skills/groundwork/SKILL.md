@@ -1,6 +1,6 @@
 ---
 name: groundwork
-description: Drive groundwork, the local console for Terraform and Ansible, from the command line. It can validate infrastructure code (groundwork check --json), diagnose tools, credentials and state backends (groundwork doctor --json), detect drift, scaffold a new Terraform + Ansible repository for AWS, GCP, Vultr, DigitalOcean, Hetzner, Linode, Docker or on-prem, and hand plans and applies to a human for approval. Use this skill whenever a repository has a groundwork.yaml, whenever the user mentions groundwork, and whenever you are editing, validating, linting or troubleshooting Terraform/OpenTofu or Ansible code on a machine where the `groundwork` CLI is installed, even if the user doesn't name it. Also use it when asked to set up or scaffold an infrastructure repo, check for drift, or figure out why terraform/ansible "doesn't work here".
+description: Drive groundwork, the local console for Terraform and Ansible, from the command line. It can validate infrastructure code (groundwork check --json), diagnose tools, credentials and state backends (groundwork doctor --json), detect drift, scaffold a new Terraform + Ansible repository for AWS, GCP, Vultr, DigitalOcean, Hetzner, Linode, Docker or on-prem, and hand plans, applies and ansible-vault secrets to a human in the console. Use this skill whenever a repository has a groundwork.yaml, whenever the user mentions groundwork, and whenever you are editing, validating, linting or troubleshooting Terraform/OpenTofu or Ansible code on a machine where the `groundwork` CLI is installed, even if the user doesn't name it. Also use it when asked to set up or scaffold an infrastructure repo, check for drift, add or change an ansible-vault secret, or figure out why terraform/ansible "doesn't work here".
 ---
 
 # groundwork
@@ -120,6 +120,18 @@ Some keys protect the user. Don't change these unless the user asks, and say wha
 - `approval` (`none` removes the approval step, even for prod);
 - `terraform.danger` (resources whose destruction needs an explicit acknowledgement);
 - `ansible.allow_vault_script`.
+
+## Secrets and ansible-vault
+
+`check` includes a `secrets` scanner that flags credentials committed in plain text. Don't silence a finding by moving the value somewhere else in plain text. For an Ansible vars file, the value belongs in ansible-vault. For Terraform, mark the variable `sensitive = true`, remove it from the tfvars file, and have the user pass it as `TF_VAR_<name>` in the service's environment. Either way the old value is in git history, so tell the user to rotate it.
+
+Creating, editing, encrypting and rekeying ansible-vault data happens in the console, on **Variables → Secrets** (the project URL plus `variables?tab=secrets`). There the plaintext never touches the disk and opening a value is audited. So that a secret never passes through you:
+- Don't decrypt vault data yourself (`ansible-vault view`, `decrypt`, `edit`), and never decrypt a file in place: that leaves the secret unencrypted in the working tree.
+- Don't ask the user to paste a secret into the chat. Send them to the console: **New secret** adds an encrypted variable or file, **Edit** changes one, and **Move to vault** (on a scan finding) encrypts a plaintext value in place.
+- Leave **Rekey** to the user: it changes the password everyone uses.
+- You can write the code that *uses* a secret: reference `{{ db_password }}` in a template or task, and tell the user which variable to add, in which vars file, as an encrypted value.
+
+The project's `vault_password_file` in `groundwork.yaml` (or `vault_identity_list` in `ansible.cfg`) tells groundwork how to open the vault. `doctor` reports whether it's set up.
 
 ## Passing data from Terraform to Ansible
 
