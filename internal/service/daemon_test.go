@@ -2,10 +2,12 @@ package service
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 var update = flag.Bool("update", false, "rewrite golden unit files")
@@ -200,22 +202,81 @@ func TestInstallReportsAFailingServiceManager(t *testing.T) {
 	}
 }
 
-// When launchctl can neither load nor kickstart the unit, the error keeps
-// both reasons: the bootstrap one is usually the useful one.
-func TestLaunchdStartReportsBothFailures(t *testing.T) {
+// fakeLaunchctl behaves like launchd tearing a job down: bootstrap fails
+// with "Input/output error" for its first failBootstraps calls, and print
+// says the job is loaded for its first loadedPrints calls (-1: always).
+func fakeLaunchctl(t *testing.T, failBootstraps, loadedPrints int) (log string) {
+	t.Helper()
 	bin := t.TempDir()
-	log := filepath.Join(bin, "calls.log")
-	fakeTool(t, bin, "launchctl", log, "Bootstrap failed: 5: Input/output error")
+	log = filepath.Join(bin, "calls.log")
+	script := fmt.Sprintf(`#!/bin/sh
+echo "$1" >> %[1]s
+n=$(grep -c "^$1$" %[1]s)
+case "$1" in
+  bootstrap) [ "$n" -le %[2]d ] && { echo 'Bootstrap failed: 5: Input/output error' >&2; exit 5; } ;;
+  print) [ %[3]d -lt 0 ] || [ "$n" -le %[3]d ] || { echo 'Could not find service' >&2; exit 113; } ;;
+esac
+exit 0
+`, log, failBootstraps, loadedPrints)
+	if err := os.WriteFile(filepath.Join(bin, "launchctl"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-	err := launchd{}.start()
-	if err == nil {
-		t.Fatal("start succeeded")
+	oldPoll, oldTries := launchdPoll, launchdTries
+	launchdPoll, launchdTries = time.Millisecond, 10
+	t.Cleanup(func() { launchdPoll, launchdTries = oldPoll, oldTries })
+	return log
+}
+
+func launchctlCalls(t *testing.T, log string) string {
+	t.Helper()
+	b, _ := os.ReadFile(log)
+	return strings.Join(strings.Fields(string(b)), " ")
+}
+
+// Right after a bootout, launchd refuses to bootstrap the job for a moment:
+// start retries instead of giving up (and falling back to a background service).
+func TestLaunchdStartRetriesWhileTheJobIsTornDown(t *testing.T) {
+	log := fakeLaunchctl(t, 3, 0)
+	if err := (launchd{}).start(); err != nil {
+		t.Fatal(err)
 	}
-	calls, _ := os.ReadFile(log)
-	if !strings.Contains(string(calls), "bootstrap gui/") || !strings.Contains(string(calls), "kickstart gui/") {
-		t.Fatalf("launchctl calls: %s", calls)
+	if got := launchctlCalls(t, log); got != "bootstrap print bootstrap print bootstrap print bootstrap" {
+		t.Fatalf("calls: %s", got)
 	}
-	if msg := err.Error(); !strings.Contains(msg, "launchctl bootstrap") || !strings.Contains(msg, "launchctl kickstart") || strings.Contains(msg, "\n") {
-		t.Fatalf("error should name both calls on one line: %q", msg)
+}
+
+// A job that's loaded but not running is kickstarted.
+func TestLaunchdStartKickstartsALoadedJob(t *testing.T) {
+	log := fakeLaunchctl(t, 99, -1)
+	if err := (launchd{}).start(); err != nil {
+		t.Fatal(err)
+	}
+	if got := launchctlCalls(t, log); got != "bootstrap print kickstart" {
+		t.Fatalf("calls: %s", got)
+	}
+}
+
+// When launchd never takes the job, start says why.
+func TestLaunchdStartGivesUpWithTheReason(t *testing.T) {
+	fakeLaunchctl(t, 99, 0)
+	err := (launchd{}).start()
+	if err == nil || !strings.Contains(err.Error(), "Input/output error") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+// stop returns once launchd has removed the job, so a start right after it works.
+func TestLaunchdStopWaitsForTheJobToGo(t *testing.T) {
+	log := fakeLaunchctl(t, 0, 2)
+	if err := (launchd{}).stop(); err != nil {
+		t.Fatal(err)
+	}
+	if got := launchctlCalls(t, log); got != "bootout print print print" {
+		t.Fatalf("calls: %s", got)
+	}
+	fakeLaunchctl(t, 0, -1)
+	if err := (launchd{}).stop(); err == nil {
+		t.Fatal("stop returned while the job was still loaded")
 	}
 }

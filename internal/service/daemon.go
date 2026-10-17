@@ -231,22 +231,46 @@ func (l launchd) uninstall() error {
 	return os.Remove(l.path())
 }
 
+// launchd needs a moment after `bootout` before the same job can be
+// bootstrapped again ("Bootstrap failed: 5: Input/output error" meanwhile):
+// stop waits for the job to be gone, and start retries for a while.
+var (
+	launchdPoll  = 250 * time.Millisecond
+	launchdTries = 40 // 10s
+)
+
+func (l launchd) target() string { return l.domain() + "/" + launchdLabel }
+
+func (l launchd) loaded() bool { return run("launchctl", "print", l.target()) == nil }
+
 func (l launchd) start() error {
-	err := run("launchctl", "bootstrap", l.domain(), l.path())
-	if err == nil || strings.Contains(err.Error(), "already") {
-		return nil
+	var err error
+	for range launchdTries {
+		if err = run("launchctl", "bootstrap", l.domain(), l.path()); err == nil {
+			return nil
+		}
+		if l.loaded() { // already loaded (stopped, or never started): start it
+			return run("launchctl", "kickstart", l.target())
+		}
+		time.Sleep(launchdPoll)
 	}
-	// not loadable, but perhaps loaded under another state: kickstart it.
-	// When that fails too, both errors say why.
-	if kerr := run("launchctl", "kickstart", l.domain()+"/"+launchdLabel); kerr != nil {
-		return fmt.Errorf("%w; %w", err, kerr)
-	}
-	return nil
+	return err
 }
 
 // stop unloads the job: with KeepAlive, a plain kill would be restarted.
 // It loads again at next login, or with `groundwork service start`.
-func (l launchd) stop() error { return run("launchctl", "bootout", l.domain()+"/"+launchdLabel) }
+func (l launchd) stop() error {
+	if err := run("launchctl", "bootout", l.target()); err != nil {
+		return err
+	}
+	for range launchdTries {
+		if !l.loaded() {
+			return nil
+		}
+		time.Sleep(launchdPoll)
+	}
+	return errors.New("launchd is still unloading the groundwork job")
+}
 
 func xmlEscape(s string) string {
 	return strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;").Replace(s)
