@@ -211,3 +211,40 @@ func TestToolVersionFloors(t *testing.T) {
 		}
 	}
 }
+
+func TestTokenProviderCredentials(t *testing.T) {
+	t.Setenv("HCLOUD_TOKEN", "")
+	t.Setenv("DIGITALOCEAN_TOKEN", "")
+	t.Setenv("DIGITALOCEAN_ACCESS_TOKEN", "x")
+	cs := checkTokens(context.Background(), Input{Providers: []string{"hcloud", "digitalocean"}})
+	m := map[string]Check{}
+	for _, c := range cs {
+		m[c.ID] = c
+	}
+	if c := m["cred:hcloud"]; c.Status != "fail" || c.Hint != "export HCLOUD_TOKEN=<API token>" {
+		t.Errorf("%+v", c)
+	}
+	if c := m["cred:digitalocean"]; c.Status != "ok" {
+		t.Errorf("%+v", c)
+	}
+	if _, ok := m["cred:vultr"]; ok {
+		t.Error("vultr checked although it isn't used")
+	}
+}
+
+func TestDockerDaemon(t *testing.T) {
+	t.Setenv("DOCKER_HOST", "")
+	up := fakeExec{have: map[string]bool{"docker": true}, run: func([]string) (string, string, int) { return "29.0.0\n", "", 0 }}
+	if c := checkDocker(context.Background(), Input{Providers: []string{"docker"}, Exec: up}); len(c) != 1 || c[0].Status != "ok" || c[0].Detail != "daemon 29.0.0" {
+		t.Errorf("%+v", c)
+	}
+	down := fakeExec{have: map[string]bool{"docker": true}, run: func([]string) (string, string, int) {
+		return "", "Cannot connect to the Docker daemon at unix:///var/run/docker.sock.", 1
+	}}
+	if c := checkDocker(context.Background(), Input{Providers: []string{"docker"}, Exec: down}); len(c) != 1 || c[0].Status != "fail" {
+		t.Errorf("%+v", c)
+	}
+	if c := checkDocker(context.Background(), Input{Providers: []string{"aws"}, Exec: up}); c != nil {
+		t.Errorf("checked without the docker provider: %+v", c)
+	}
+}

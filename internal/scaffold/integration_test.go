@@ -21,9 +21,9 @@ import (
 // scaffold must be completely clean: a starter that ships warnings teaches
 // people to ignore the checks. Tools that are not installed are skipped.
 func TestScaffoldIsCleanUnderRealTools(t *testing.T) {
-	network := os.Getenv("GW_TEST_NETWORK") == "1" // aws variants download the aws provider
+	network := os.Getenv("GW_TEST_NETWORK") == "1" // cloud variants download their provider
 	for name, f := range variants() {
-		if f.Preset == "aws-envs" && !network {
+		if f.Preset != "onprem" && !network {
 			continue
 		}
 		t.Run(name, func(t *testing.T) {

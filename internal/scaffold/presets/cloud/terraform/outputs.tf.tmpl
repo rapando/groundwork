@@ -1,0 +1,11 @@
+output "network_id" {
+  value = module.network.network_id
+}
+
+# Hosts for Ansible. Populate with your servers; fields besides name and ip
+# become host variables, e.g.
+#   { web = [{ name = "web-1", ip = {{ .Cloud.HostExample }}, ansible_user = "root" }] }
+output "ansible_hosts" {
+  description = "Map of Ansible group to list of {name, ip, ...any host variables}."
+  value       = {}
+}

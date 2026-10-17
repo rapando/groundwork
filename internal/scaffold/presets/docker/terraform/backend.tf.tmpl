@@ -1,0 +1,11 @@
+terraform {
+{{- if eq .Backend "http" }}
+  backend "http" {
+    # Configure with -backend-config or TF_HTTP_* environment variables.
+  }
+{{- else }}
+  backend "local" {
+    path = "{{ if eq .Layout "workspaces" }}terraform.tfstate{{ else }}{{ .Env }}.tfstate{{ end }}"
+  }
+{{- end }}
+}

@@ -9,22 +9,23 @@ import (
 
 // Form is the setup form from the Scaffold screen.
 type Form struct {
-	Preset    string   `json:"preset"`    // aws-envs | onprem
-	Project   string   `json:"project"`   // used in names and README
-	Backend   string   `json:"backend"`   // s3 | local | http
-	Bucket    string   `json:"bucket"`    // s3 only
-	Region    string   `json:"region"`    // aws only
-	Envs      []string `json:"envs"`      // ordered
-	Layout    string   `json:"layout"`    // dirs | workspaces
-	Inventory string   `json:"inventory"` // terraform | static
-	Roles     []string `json:"roles"`
-	Vault     bool     `json:"vault"`
-	Checks    []string `json:"checks"` // config check names (fmt, validate, tflint, ...)
-	PreCommit bool     `json:"pre_commit"`
-	CI        bool     `json:"ci"`
+	Preset     string   `json:"preset"`      // aws-envs | gcp-envs | a key of Clouds | docker | onprem
+	Project    string   `json:"project"`     // used in names and README
+	Backend    string   `json:"backend"`     // s3 | gcs | local | http
+	Bucket     string   `json:"bucket"`      // s3 and gcs only
+	Region     string   `json:"region"`      // cloud presets only (not docker or onprem)
+	GCPProject string   `json:"gcp_project"` // gcp only: the Google Cloud project ID
+	Envs       []string `json:"envs"`        // ordered
+	Layout     string   `json:"layout"`      // dirs | workspaces
+	Inventory  string   `json:"inventory"`   // terraform | static
+	Roles      []string `json:"roles"`
+	Vault      bool     `json:"vault"`
+	Checks     []string `json:"checks"` // config check names (fmt, validate, tflint, ...)
+	PreCommit  bool     `json:"pre_commit"`
+	CI         bool     `json:"ci"`
 }
 
-var Presets = []string{"aws-envs", "onprem"}
+var Presets = []string{"aws-envs", "gcp-envs", "vultr", "digitalocean", "hetzner", "linode", "docker", "onprem"}
 
 type FieldError struct {
 	Field   string `json:"field"`
@@ -34,11 +35,13 @@ type FieldError struct {
 func (e FieldError) Error() string { return e.Field + ": " + e.Message }
 
 var (
-	envRe    = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
-	roleRe   = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
-	bucketRe = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$`)
-	regionRe = regexp.MustCompile(`^[a-z]{2}(-[a-z]+)+-\d$`)
-	projRe   = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
+	envRe     = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
+	roleRe    = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
+	bucketRe  = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$`)
+	regionRe  = regexp.MustCompile(`^[a-z]{2}(-[a-z]+)+-\d$`)
+	gcpRegRe  = regexp.MustCompile(`^[a-z]+-[a-z]+\d+$`)
+	gcpProjRe = regexp.MustCompile(`^[a-z][a-z0-9-]{4,28}[a-z0-9]$`)
+	projRe    = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
 )
 
 // Normalize fills defaults; call before Validate.
@@ -53,9 +56,12 @@ func (f *Form) Normalize() {
 		f.Inventory = "terraform"
 	}
 	if f.Backend == "" {
-		if f.Preset == "aws-envs" {
+		switch f.Preset {
+		case "aws-envs":
 			f.Backend = "s3"
-		} else {
+		case "gcp-envs":
+			f.Backend = "gcs"
+		default:
 			f.Backend = "local"
 		}
 	}
@@ -82,11 +88,14 @@ func (f *Form) Validate() []FieldError {
 	if !in(f.Inventory, []string{"terraform", "static"}) {
 		add("inventory", "must be terraform or static")
 	}
-	if !in(f.Backend, []string{"s3", "local", "http"}) {
-		add("backend", "must be s3, local or http")
+	if !in(f.Backend, []string{"s3", "gcs", "local", "http"}) {
+		add("backend", "must be s3, gcs, local or http")
 	}
-	if f.Preset == "onprem" && f.Backend == "s3" {
+	if f.Preset != "aws-envs" && f.Backend == "s3" {
 		add("backend", "s3 needs the aws-envs preset")
+	}
+	if f.Preset != "gcp-envs" && f.Backend == "gcs" {
+		add("backend", "gcs needs the gcp-envs preset")
 	}
 	if f.Preset == "aws-envs" {
 		if !regionRe.MatchString(f.Region) {
@@ -95,6 +104,20 @@ func (f *Form) Validate() []FieldError {
 		if f.Backend == "s3" && !bucketRe.MatchString(f.Bucket) {
 			add("bucket", "enter a valid S3 bucket name")
 		}
+	}
+	if f.Preset == "gcp-envs" {
+		if !gcpRegRe.MatchString(f.Region) {
+			add("region", "enter a Google Cloud region such as europe-west1")
+		}
+		if !gcpProjRe.MatchString(f.GCPProject) {
+			add("gcp_project", "enter a Google Cloud project ID such as acme-prod-123")
+		}
+		if f.Backend == "gcs" && !bucketRe.MatchString(f.Bucket) {
+			add("bucket", "enter a valid GCS bucket name")
+		}
+	}
+	if c, ok := Clouds[f.Preset]; ok && !c.region.MatchString(f.Region) {
+		add("region", "enter a %s %s such as %s", c.Label, c.RegionTerm, c.RegionHint)
 	}
 	if len(f.Envs) == 0 {
 		add("envs", "choose at least one environment")

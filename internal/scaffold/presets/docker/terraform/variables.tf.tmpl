@@ -1,0 +1,26 @@
+variable "project" {
+  description = "Project name used as a prefix."
+  type        = string
+}
+
+variable "network_cidr" {
+  description = "Subnet of the Docker network."
+  type        = string
+}
+
+variable "web_image" {
+  description = "Image of the web container."
+  type        = string
+  default     = "nginx:stable-alpine"
+}
+
+variable "web_ports" {
+  description = "Ports the web container publishes. external = null lets Docker pick a free host port."
+  type = list(object({
+    internal = number
+    external = optional(number)
+    ip       = optional(string, "0.0.0.0")
+    protocol = optional(string, "tcp")
+  }))
+  default = []
+}

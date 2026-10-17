@@ -1,0 +1,27 @@
+terraform {
+  required_version = ">= 1.5"
+
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 6.0"
+    }
+  }
+}
+
+locals {
+  environment = {{ if eq .Layout "workspaces" }}terraform.workspace{{ else }}"{{ .Env }}"{{ end }}
+}
+
+provider "google" {
+  project = var.gcp_project
+  region  = var.region
+}
+
+module "network" {
+  source = "{{ .ModuleSource }}"
+
+  name   = "${var.project}-${local.environment}"
+  region = var.region
+  cidr   = var.subnet_cidr
+}

@@ -139,7 +139,7 @@ func Run(ctx context.Context, in Input) Report {
 	if in.Home == "" {
 		in.Home, _ = os.UserHomeDir()
 	}
-	fns := []checkFn{checkTools, checkAWS, checkGCP, checkAzure, checkBackends, checkSSHAgent, checkInventory, checkVault, checkDisk, checkGit}
+	fns := []checkFn{checkTools, checkAWS, checkGCP, checkAzure, checkTokens, checkDocker, checkBackends, checkSSHAgent, checkInventory, checkVault, checkDisk, checkGit}
 	results := make([][]Check, len(fns))
 	var wg sync.WaitGroup
 	for i, fn := range fns {
@@ -401,6 +401,58 @@ func checkAzure(ctx context.Context, in Input) []Check {
 	var acct struct{ Name string }
 	_ = json.Unmarshal([]byte(o), &acct)
 	c.Status, c.Detail = "ok", "subscription "+acct.Name
+	return []Check{c}
+}
+
+// tokenProviders authenticate with an API token from the environment only;
+// there is no CLI login to fall back on.
+var tokenProviders = []struct {
+	provider, label string
+	envs            []string
+}{
+	{"vultr", "Vultr", []string{"VULTR_API_KEY"}},
+	{"digitalocean", "DigitalOcean", []string{"DIGITALOCEAN_TOKEN", "DIGITALOCEAN_ACCESS_TOKEN"}},
+	{"hcloud", "Hetzner Cloud", []string{"HCLOUD_TOKEN"}},
+	{"linode", "Linode", []string{"LINODE_TOKEN"}},
+}
+
+func checkTokens(_ context.Context, in Input) []Check {
+	var out []Check
+	for _, tp := range tokenProviders {
+		if !has(in.Providers, tp.provider) {
+			continue
+		}
+		c := Check{ID: "cred:" + tp.provider, Name: tp.label + " credentials", Status: "fail",
+			Detail: tp.envs[0] + " isn't set", Hint: "export " + tp.envs[0] + "=<API token>"}
+		for _, e := range tp.envs {
+			if os.Getenv(e) != "" {
+				c.Status, c.Detail, c.Hint = "ok", e+" is set", ""
+				break
+			}
+		}
+		out = append(out, c)
+	}
+	return out
+}
+
+func checkDocker(ctx context.Context, in Input) []Check {
+	if !has(in.Providers, "docker") {
+		return nil
+	}
+	c := Check{ID: "cred:docker", Name: "Docker daemon"}
+	if _, err := in.Exec.LookPath("docker"); err != nil {
+		c.Status, c.Detail, c.Hint = "warn", "can't check the daemon without the docker CLI", "install Docker Desktop or Docker Engine"
+		return []Check{c}
+	}
+	o, e, code, err := in.Exec.Run(ctx, in.Root, "docker", "info", "--format", "{{.ServerVersion}}")
+	if err != nil || code != 0 || strings.TrimSpace(o) == "" {
+		c.Status, c.Detail, c.Hint = "fail", firstLine(e), "start Docker, or set DOCKER_HOST to a reachable daemon"
+		return []Check{c}
+	}
+	c.Status, c.Detail = "ok", "daemon "+strings.TrimSpace(o)
+	if h := os.Getenv("DOCKER_HOST"); h != "" {
+		c.Detail += " at " + h
+	}
 	return []Check{c}
 }
 

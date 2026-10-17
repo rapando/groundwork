@@ -19,9 +19,9 @@ import (
 )
 
 type initFlags struct {
-	preset, project, backend, bucket, region, layout, inventory string
-	envs, roles, checks                                         []string
-	vault, noPreCommit, noCI, detect, dryRun, yes, gitCommit    bool
+	preset, project, backend, bucket, region, gcpProject, layout, inventory string
+	envs, roles, checks                                                     []string
+	vault, noPreCommit, noCI, detect, dryRun, yes, gitCommit                bool
 }
 
 func newInit() *cobra.Command {
@@ -55,9 +55,10 @@ Nothing is written until you confirm (or pass --yes); --dry-run writes nothing.`
 	fl.BoolVar(&f.dryRun, "dry-run", false, "show what would be written, write nothing")
 	fl.BoolVarP(&f.yes, "yes", "y", false, "do not ask for confirmation")
 	fl.StringVar(&f.project, "project", "", "project name (default: directory name)")
-	fl.StringVar(&f.backend, "backend", "", "state backend: s3|local|http")
-	fl.StringVar(&f.bucket, "bucket", "", "S3 state bucket (default: <project>-tfstate)")
-	fl.StringVar(&f.region, "region", "", "AWS region, e.g. eu-west-1")
+	fl.StringVar(&f.backend, "backend", "", "state backend: s3|gcs|local|http")
+	fl.StringVar(&f.bucket, "bucket", "", "S3 or GCS state bucket (default: <project>-tfstate)")
+	fl.StringVar(&f.region, "region", "", "cloud region, e.g. eu-west-1 (AWS), europe-west1 (GCP), ams (Vultr), fra1 (DigitalOcean), eu-central (Hetzner network zone, Linode); not used by docker or onprem")
+	fl.StringVar(&f.gcpProject, "gcp-project", "", "Google Cloud project ID (gcp-envs preset)")
 	fl.StringSliceVar(&f.envs, "envs", nil, "environments (default: dev,staging,prod)")
 	fl.StringVar(&f.layout, "layout", "dirs", "dirs|workspaces")
 	fl.StringVar(&f.inventory, "inventory", "terraform", "terraform|static")
@@ -90,14 +91,14 @@ func confirm(out io.Writer, in *bufio.Reader, q string) bool {
 func runScaffold(out io.Writer, in *bufio.Reader, root string, f *initFlags) error {
 	form := scaffold.Form{
 		Preset: f.preset, Project: f.project, Backend: f.backend, Bucket: f.bucket, Region: f.region,
-		Envs: f.envs, Layout: f.layout, Inventory: f.inventory, Roles: f.roles, Vault: f.vault,
+		GCPProject: f.gcpProject, Envs: f.envs, Layout: f.layout, Inventory: f.inventory, Roles: f.roles, Vault: f.vault,
 		Checks: f.checks, PreCommit: !f.noPreCommit, CI: !f.noCI,
 	}
 	if form.Project == "" {
 		form.Project = slug(filepath.Base(root))
 	}
 	form.Normalize()
-	if form.Bucket == "" && form.Backend == "s3" {
+	if form.Bucket == "" && (form.Backend == "s3" || form.Backend == "gcs") {
 		form.Bucket = form.Project + "-tfstate"
 	}
 	if errs := form.Validate(); len(errs) > 0 {

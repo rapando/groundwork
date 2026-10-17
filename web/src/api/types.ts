@@ -74,11 +74,12 @@ export interface DetectResponse {
 }
 
 export interface ScaffoldForm {
-  preset: 'aws-envs' | 'onprem'
+  preset: 'aws-envs' | 'gcp-envs' | 'vultr' | 'digitalocean' | 'hetzner' | 'linode' | 'docker' | 'onprem'
   project: string
-  backend: 's3' | 'local' | 'http'
+  backend: 's3' | 'gcs' | 'local' | 'http'
   bucket: string
   region: string
+  gcp_project: string
   envs: string[]
   layout: 'dirs' | 'workspaces'
   inventory: 'terraform' | 'static'

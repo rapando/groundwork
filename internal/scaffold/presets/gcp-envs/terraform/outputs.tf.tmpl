@@ -1,0 +1,11 @@
+output "network_id" {
+  value = module.network.network_id
+}
+
+# Hosts for Ansible. Populate with your instances; fields besides name and ip
+# become host variables, e.g.
+#   { web = [{ name = "web-1", ip = google_compute_instance.web.network_interface[0].network_ip, ansible_user = "ubuntu" }] }
+output "ansible_hosts" {
+  description = "Map of Ansible group to list of {name, ip, ...any host variables}."
+  value       = {}
+}

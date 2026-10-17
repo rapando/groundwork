@@ -32,6 +32,7 @@ type tplData struct {
 	Role         string
 	FirstEnv     string
 	ModuleSource string
+	Cloud        Cloud // set for the token-authenticated presets
 }
 
 type entry struct {
@@ -48,7 +49,16 @@ func manifest(f *Form) []entry {
 		{src: sh + "README.md.tmpl", dst: "README.md"},
 		{src: sh + "gitignore.tmpl", dst: ".gitignore", merge: true},
 	}
-	if f.Preset == "aws-envs" {
+	if _, ok := Clouds[f.Preset]; ok {
+		tf = "presets/cloud/terraform/"
+		own := "presets/cloud/" + f.Preset + "/"
+		for _, n := range []string{"main", "outputs"} {
+			m = append(m, entry{src: own + "network_" + n + ".tf.tmpl", dst: "terraform/modules/network/" + n + ".tf"})
+		}
+		for _, n := range []string{"variables", "versions"} {
+			m = append(m, entry{src: tf + "network_" + n + ".tf.tmpl", dst: "terraform/modules/network/" + n + ".tf"})
+		}
+	} else if f.Preset != "onprem" {
 		for _, n := range []string{"main", "variables", "outputs", "versions"} {
 			m = append(m, entry{src: tf + "network_" + n + ".tf.tmpl", dst: "terraform/modules/network/" + n + ".tf"})
 		}
@@ -105,7 +115,7 @@ func Render(f *Form) ([]File, error) {
 	if errs := f.Validate(); len(errs) > 0 {
 		return nil, errs[0]
 	}
-	base := tplData{Form: f, FirstEnv: f.Envs[0]}
+	base := tplData{Form: f, FirstEnv: f.Envs[0], Cloud: Clouds[f.Preset]}
 	if f.Layout == "workspaces" {
 		base.ModuleSource = "./modules/network"
 	} else {
@@ -118,7 +128,7 @@ func Render(f *Form) ([]File, error) {
 		if err != nil {
 			return nil, fmt.Errorf("preset file %s: %w", e.src, err)
 		}
-		tpl, err := template.New(e.src).Funcs(template.FuncMap{}).Option("missingkey=error").Parse(string(raw))
+		tpl, err := template.New(e.src).Funcs(template.FuncMap{"add": func(a, b int) int { return a + b }}).Option("missingkey=error").Parse(string(raw))
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", e.src, err)
 		}

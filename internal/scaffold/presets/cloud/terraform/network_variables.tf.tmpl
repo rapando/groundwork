@@ -1,0 +1,14 @@
+variable "name" {
+  description = "Name prefix for network resources."
+  type        = string
+}
+
+variable "region" {
+  description = "{{ .Cloud.Label }} {{ .Cloud.RegionTerm }} of the network."
+  type        = string
+}
+
+variable "cidr" {
+  description = "CIDR range of the private network."
+  type        = string
+}

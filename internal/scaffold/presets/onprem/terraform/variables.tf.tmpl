@@ -1,8 +1,10 @@
 variable "hosts" {
-  description = "Map of Ansible group to list of {name, ip}."
-  type = map(list(object({
-    name = string
-    ip   = string
-  })))
-  default = {}
+  description = "Map of Ansible group to list of {name, ip, ...any host variables}."
+  type        = map(list(map(string)))
+  default     = {}
+
+  validation {
+    condition     = alltrue(flatten([for hosts in values(var.hosts) : [for h in hosts : contains(keys(h), "name")]]))
+    error_message = "Every host needs a name."
+  }
 }

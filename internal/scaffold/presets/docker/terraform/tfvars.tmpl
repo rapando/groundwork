@@ -1,0 +1,5 @@
+project      = "{{ .Project }}"
+network_cidr = "172.30.{{ .Index }}.0/24"
+web_ports = [
+  { internal = 80, external = {{ add 8080 .Index }}, ip = "127.0.0.1" },
+]

@@ -9,13 +9,21 @@ import { useWorkspace } from '../stores/workspace'
 const router = useRouter()
 const store = useWorkspace()
 
+// region: what the provider calls a location, with an example; null = no region field
 const providers = [
-  { id: 'aws-envs', label: 'AWS' },
-  { id: 'onprem', label: 'None / on-prem' },
+  { id: 'aws-envs', label: 'AWS', backend: 's3', region: ['Default region', 'eu-west-1'] },
+  { id: 'gcp-envs', label: 'Google Cloud', backend: 'gcs', region: ['Default region', 'europe-west1'] },
+  { id: 'vultr', label: 'Vultr', backend: 'local', region: ['Region', 'ams'] },
+  { id: 'digitalocean', label: 'DigitalOcean', backend: 'local', region: ['Region', 'fra1'] },
+  { id: 'hetzner', label: 'Hetzner Cloud', backend: 'local', region: ['Network zone', 'eu-central'] },
+  { id: 'linode', label: 'Linode (Akamai)', backend: 'local', region: ['Region', 'eu-central'] },
+  { id: 'docker', label: 'Docker', backend: 'local', region: null },
+  { id: 'onprem', label: 'None / on-prem', backend: 'local', region: null },
 ] as const
+const provider = computed(() => providers.find((p) => p.id === form.preset) ?? providers[0])
 
 const form = reactive<ScaffoldForm>({
-  preset: 'aws-envs', project: '', backend: 's3', bucket: '', region: '',
+  preset: 'aws-envs', project: '', backend: 's3', bucket: '', region: '', gcp_project: '',
   envs: ['dev', 'staging', 'prod'], layout: 'dirs', inventory: 'terraform',
   roles: ['common', 'nginx'], vault: true,
   checks: ['fmt', 'validate', 'tflint', 'ansible-lint', 'yamllint'], pre_commit: true, ci: true,
@@ -49,9 +57,9 @@ onMounted(async () => {
 })
 
 watch(() => form.project, (p) => { if (!bucketTouched.value) form.bucket = p ? `${p}-tfstate` : '' })
-watch(() => form.preset, (p) => {
-  if (p === 'onprem' && form.backend === 's3') form.backend = 'local'
-  if (p === 'aws-envs' && form.backend === 'local') form.backend = 's3'
+watch(() => form.preset, () => {
+  // a cloud backend only fits its own provider; http is kept when switching
+  if (form.backend !== 'http') form.backend = provider.value.backend
 })
 watch(rolesText, (t) => { form.roles = t.split(',').map((s) => s.trim()).filter(Boolean) })
 
@@ -189,17 +197,22 @@ No groundwork.yaml in {{ store.ws?.root }} — starting setup</pre>
             <label class="field">State backend
               <select v-model="form.backend" class="inp">
                 <option v-if="form.preset === 'aws-envs'" value="s3">S3 + DynamoDB lock</option>
+                <option v-if="form.preset === 'gcp-envs'" value="gcs">Cloud Storage (GCS)</option>
                 <option value="local">Local file</option>
                 <option value="http">HTTP backend</option>
               </select>
               <span v-if="err('backend')" class="err">{{ err('backend') }}</span>
             </label>
-            <label v-if="form.backend === 's3'" class="field">Bucket name
+            <label v-if="form.backend === 's3' || form.backend === 'gcs'" class="field">Bucket name
               <input v-model="form.bucket" class="inp" :class="{ bad: err('bucket') }" type="text" @input="bucketTouched = true" />
               <span v-if="err('bucket')" class="err">{{ err('bucket') }}</span>
             </label>
-            <label v-if="form.preset === 'aws-envs'" class="field">Default region
-              <input v-model="form.region" class="inp" :class="{ bad: err('region') }" type="text" placeholder="e.g. eu-west-1" />
+            <label v-if="form.preset === 'gcp-envs'" class="field">Google Cloud project ID
+              <input v-model="form.gcp_project" class="inp" :class="{ bad: err('gcp_project') }" type="text" placeholder="e.g. acme-prod-123" />
+              <span v-if="err('gcp_project')" class="err">{{ err('gcp_project') }}</span>
+            </label>
+            <label v-if="provider.region" class="field">{{ provider.region[0] }}
+              <input v-model="form.region" class="inp" :class="{ bad: err('region') }" type="text" :placeholder="'e.g. ' + provider.region[1]" />
               <span v-if="err('region')" class="err">{{ err('region') }}</span>
             </label>
           </div>

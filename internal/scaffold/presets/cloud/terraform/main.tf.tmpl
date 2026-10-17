@@ -1,0 +1,25 @@
+terraform {
+  required_version = ">= 1.5"
+
+  required_providers {
+    {{ .Cloud.Name }} = {
+      source  = "{{ .Cloud.Source }}"
+      version = "{{ .Cloud.Version }}"
+    }
+  }
+}
+
+locals {
+  environment = {{ if eq .Layout "workspaces" }}terraform.workspace{{ else }}"{{ .Env }}"{{ end }}
+}
+
+# Credentials come from the {{ .Cloud.TokenEnv }} environment variable.
+provider "{{ .Cloud.Name }}" {}
+
+module "network" {
+  source = "{{ .ModuleSource }}"
+
+  name   = "${var.project}-${local.environment}"
+  region = var.region
+  cidr   = var.network_cidr
+}

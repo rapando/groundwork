@@ -3,7 +3,9 @@ package scaffold
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -35,8 +37,15 @@ func variants() map[string]Form {
 			for _, inv := range []string{"terraform", "static"} {
 				f := baseForm()
 				f.Preset, f.Layout, f.Inventory = preset, layout, inv
-				if preset == "onprem" {
+				switch preset {
+				case "gcp-envs":
+					f.Backend, f.Region, f.GCPProject = "gcs", "europe-west1", "acme-infra"
+				case "docker", "onprem":
 					f.Backend, f.Bucket, f.Region = "local", "", ""
+				default:
+					if c, ok := Clouds[preset]; ok {
+						f.Backend, f.Bucket, f.Region = "local", "", c.RegionHint
+					}
 				}
 				v[preset+"/"+layout+"/"+inv] = f
 			}
@@ -116,7 +125,7 @@ func TestScaffoldRoundTripsThroughDetection(t *testing.T) {
 			if !reflect.DeepEqual(got.Terraform.Roots, written.Terraform.Roots) {
 				t.Errorf("roots differ\n detected %+v\n written  %+v", got.Terraform.Roots, written.Terraform.Roots)
 			}
-			if f.Layout == "dirs" && f.Preset == "aws-envs" && len(rep.TerraformModules) != 1 {
+			if f.Layout == "dirs" && f.Preset != "onprem" && len(rep.TerraformModules) != 1 {
 				t.Errorf("modules %+v", rep.TerraformModules)
 			}
 			if f.Inventory == "static" {
@@ -147,6 +156,52 @@ func TestValidation(t *testing.T) {
 	}
 	if _, err := Render(&f); err == nil {
 		t.Fatal("render should refuse invalid form")
+	}
+}
+
+func TestCloudsAreListedAsPresets(t *testing.T) {
+	for preset := range Clouds {
+		if !in(preset, Presets) {
+			t.Errorf("%s is in Clouds but not in Presets", preset)
+		}
+	}
+}
+
+func TestCloudPresetValidation(t *testing.T) {
+	f := baseForm()
+	f.Preset, f.Backend, f.Bucket, f.Region = "vultr", "s3", "", "eu-west-1"
+	fields := map[string]bool{}
+	for _, e := range f.Validate() {
+		fields[e.Field] = true
+	}
+	if !fields["region"] || !fields["backend"] {
+		t.Errorf("want region and backend errors, got %v", f.Validate())
+	}
+	f.Backend, f.Region = "local", "ams"
+	if errs := f.Validate(); len(errs) > 0 {
+		t.Fatalf("valid vultr form rejected: %v", errs)
+	}
+}
+
+func TestGCPValidation(t *testing.T) {
+	f := baseForm()
+	f.Preset, f.Backend, f.Region, f.GCPProject = "gcp-envs", "gcs", "eu-west-1", "X"
+	fields := map[string]bool{}
+	for _, e := range f.Validate() {
+		fields[e.Field] = true
+	}
+	for _, want := range []string{"region", "gcp_project"} {
+		if !fields[want] {
+			t.Errorf("missing error for %s", want)
+		}
+	}
+	f.Region, f.GCPProject = "europe-west1", "acme-infra"
+	if errs := f.Validate(); len(errs) > 0 {
+		t.Fatalf("valid gcp form rejected: %v", errs)
+	}
+	f.Backend = "s3"
+	if errs := f.Validate(); len(errs) == 0 {
+		t.Fatal("s3 backend accepted for gcp-envs")
 	}
 }
 
@@ -252,5 +307,47 @@ func TestTerraformOutputsInventoryIsDetected(t *testing.T) {
 		if e.Name == "tf_outputs" {
 			t.Fatal("script mistaken for an environment")
 		}
+	}
+}
+
+// The inventory script turns ip into ansible_host and passes every other
+// field through as a host variable.
+func TestInventoryScriptPassesExtraFields(t *testing.T) {
+	py, err := exec.LookPath("python3")
+	if err != nil {
+		t.Skip("python3 not installed")
+	}
+	f := baseForm()
+	dir := t.TempDir()
+	fs, _ := Render(&f)
+	if _, err := Apply(dir, fs, nil); err != nil {
+		t.Fatal(err)
+	}
+	bin := t.TempDir()
+	out := `{"web":[{"name":"web-1","ip":"10.0.0.1","ansible_user":"ubuntu","ansible_port":2222}],` +
+		`"app":[{"name":"c1","ansible_host":"demo-web","ansible_connection":"community.docker.docker","ip":null}]}`
+	if err := os.WriteFile(filepath.Join(bin, "terraform"), []byte("#!/bin/sh\ncat <<'JSON'\n"+out+"\nJSON\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(py, filepath.Join(dir, "ansible/inventory/tf_outputs.py"), "--list")
+	cmd.Env = append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	b, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("%v: %s", err, b)
+	}
+	var inv struct {
+		Meta struct {
+			Hostvars map[string]map[string]any `json:"hostvars"`
+		} `json:"_meta"`
+	}
+	if err := json.Unmarshal(b, &inv); err != nil {
+		t.Fatalf("%v: %s", err, b)
+	}
+	want := map[string]map[string]any{
+		"web-1": {"ansible_host": "10.0.0.1", "ansible_user": "ubuntu", "ansible_port": float64(2222)},
+		"c1":    {"ansible_host": "demo-web", "ansible_connection": "community.docker.docker"},
+	}
+	if !reflect.DeepEqual(inv.Meta.Hostvars, want) {
+		t.Errorf("hostvars %v", inv.Meta.Hostvars)
 	}
 }

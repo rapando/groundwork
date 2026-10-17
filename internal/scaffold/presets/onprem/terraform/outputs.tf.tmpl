@@ -3,6 +3,6 @@ output "environment" {
 }
 
 output "ansible_hosts" {
-  description = "Map of Ansible group to list of {name, ip}."
+  description = "Map of Ansible group to list of {name, ip, ...any host variables}."
   value       = var.hosts
 }

@@ -1,5 +1,6 @@
 hosts = {
   web = [
-    { name = "web-{{ .Env }}-1", ip = "10.{{ .Index }}.0.10" },
+    # Any field besides name and ip becomes an Ansible host variable.
+    { name = "web-{{ .Env }}-1", ip = "10.{{ .Index }}.0.10", ansible_user = "deploy" },
   ]
 }
