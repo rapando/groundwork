@@ -355,3 +355,32 @@ func TestServiceStatusEndpoint(t *testing.T) {
 		t.Fatalf("status without credentials: %d", resp.StatusCode)
 	}
 }
+
+// A project whose state.db can't be opened keeps the VERSION of the release
+// that last opened it, so a downgrade doesn't erase the evidence.
+func TestRefusedStoreKeepsVersionMarker(t *testing.T) {
+	e := newEnv(t)
+	dir := repo(t)
+	e.call(t, "POST", "/api/projects", map[string]string{"path": dir}, true)
+	e.svc.Shutdown(context.Background())
+
+	state := filepath.Join(dir, ".groundwork")
+	if err := os.WriteFile(filepath.Join(state, "VERSION"), []byte("9.9.9\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(state, "state.db"), []byte("not a database"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	svc, err := New(context.Background(), e.svc.Home, "test", quiet())
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc.OpenAll()
+	defer svc.Shutdown(context.Background())
+	if v := svc.views(); len(v) != 1 || v[0].Status != "unavailable" {
+		t.Fatalf("views = %+v", v)
+	}
+	if b, _ := os.ReadFile(filepath.Join(state, "VERSION")); string(b) != "9.9.9\n" {
+		t.Fatalf("VERSION overwritten: %q", b)
+	}
+}

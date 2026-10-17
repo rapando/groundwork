@@ -97,13 +97,14 @@ func (in *instance) start(ctx context.Context, version string, log *slog.Logger)
 	if err != nil {
 		return fmt.Errorf("bootstrap %s: %w", app.StateDir, err)
 	}
-	// the release that last opened this project (its state.db carries the
-	// schema version separately; see store.Open)
-	_ = os.WriteFile(filepath.Join(stateDir, "VERSION"), []byte(version+"\n"), 0o600)
 	st, err := store.Open(filepath.Join(stateDir, "state.db"))
 	if err != nil {
 		return fmt.Errorf("open store: %w", err)
 	}
+	// the release that last opened this project (its state.db carries the
+	// schema version separately). Written only once the store has opened, so
+	// an older release that refuses a newer database doesn't overwrite it.
+	_ = os.WriteFile(filepath.Join(stateDir, "VERSION"), []byte(version+"\n"), 0o600)
 	bus := events.NewBus()
 	a := api.New(in.p.Path, version, bus, st)
 	var ret config.Retention
