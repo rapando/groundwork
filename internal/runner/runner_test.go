@@ -478,6 +478,31 @@ func TestCancelWaitingPlanDiscardsIt(t *testing.T) {
 	}
 }
 
+// A run is finished once its status says so, even while its job is still
+// registered (it is dropped a moment later): cancelling it then is refused
+// and doesn't touch the job.
+func TestCancelFinishedRunWhileItsJobWindsDown(t *testing.T) {
+	g := newRig(t)
+	run, _ := g.r.Submit(SubmitRequest{Kind: KindPlan, Root: "terraform/envs/dev", Env: "dev"})
+	g.wait(t, run.ID, store.StatusWaitingApproval)
+	if err := g.r.Approve(run.ID, ApproveRequest{}); err != nil {
+		t.Fatal(err)
+	}
+	g.wait(t, run.ID, store.StatusSucceeded)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	g.r.mu.Lock()
+	g.r.jobs[run.ID] = &job{id: run.ID, ctx: ctx, cancel: cancel} // as between end() and finish()
+	g.r.mu.Unlock()
+	defer func() { g.r.mu.Lock(); delete(g.r.jobs, run.ID); g.r.mu.Unlock() }()
+	if err := g.r.Cancel(run.ID); err != ErrNotCancelable {
+		t.Fatalf("cancel finished run: %v", err)
+	}
+	if ctx.Err() != nil {
+		t.Fatal("the finished run's job was cancelled")
+	}
+}
+
 func TestTamperedPlanFileCannotBeApproved(t *testing.T) {
 	g := newRig(t)
 	run, _ := g.r.Submit(SubmitRequest{Kind: KindPlan, Root: "terraform/envs/dev", Env: "dev"})

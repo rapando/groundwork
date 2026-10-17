@@ -405,6 +405,11 @@ func (r *Runner) Cancel(id int64) error {
 	if err != nil {
 		return err
 	}
+	switch run.Status {
+	case store.StatusSucceeded, store.StatusFailed, store.StatusCancelled:
+		// over, even if its job is still winding down (closing the log)
+		return ErrNotCancelable
+	}
 	r.mu.Lock()
 	j := r.jobs[id]
 	if j != nil && j.parked { // the plan is done; cancelling means discarding it, below
