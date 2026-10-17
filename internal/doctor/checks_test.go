@@ -248,3 +248,36 @@ func TestDockerDaemon(t *testing.T) {
 		t.Errorf("checked without the docker provider: %+v", c)
 	}
 }
+
+// An S3-compatible backend is checked at its own endpoint, not at AWS.
+func TestS3CompatibleBackend(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "tf/backend.tf", `terraform {
+  backend "s3" {
+    bucket    = "demo-tfstate"
+    key       = "dev/terraform.tfstate"
+    region    = "fsn1"
+    endpoints = { s3 = "https://fsn1.your-objectstorage.com" }
+  }
+}
+`, 0o644)
+	var argv []string
+	ex := fakeExec{have: map[string]bool{"aws": true}, run: func(a []string) (string, string, int) {
+		argv = a
+		return "", "", 0
+	}}
+	cfg := &config.Config{Terraform: config.Terraform{Roots: []config.TFRoot{{Path: "tf", Env: "dev"}}}}
+	m := map[string]Check{}
+	for _, c := range checkBackends(context.Background(), Input{Root: root, Cfg: cfg, Exec: ex}) {
+		m[c.ID] = c
+	}
+	if got := strings.Join(argv, " "); got != "aws s3api head-bucket --bucket demo-tfstate --endpoint-url https://fsn1.your-objectstorage.com" {
+		t.Errorf("ran %q", got)
+	}
+	if c := m["backend:s3:demo-tfstate"]; c.Status != "ok" || !strings.Contains(c.Detail, "your-objectstorage.com") {
+		t.Errorf("%+v", c)
+	}
+	if c := m["lock:s3:demo-tfstate"]; c.Status != "warn" || !strings.Contains(c.Hint, "conditional writes") {
+		t.Errorf("%+v", c)
+	}
+}

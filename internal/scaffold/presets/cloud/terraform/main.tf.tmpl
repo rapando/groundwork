@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.5"
+  required_version = "{{ if and (eq .Backend "s3") .Cloud.S3Lock }}>= 1.10{{ else if eq .Backend "s3" }}>= 1.6{{ else }}>= 1.5{{ end }}"
 
   required_providers {
     {{ .Cloud.Name }} = {

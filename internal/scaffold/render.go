@@ -32,7 +32,8 @@ type tplData struct {
 	Role         string
 	FirstEnv     string
 	ModuleSource string
-	Cloud        Cloud // set for the token-authenticated presets
+	Cloud        Cloud  // set for the token-authenticated presets
+	S3Region     string // signing region for an S3-compatible endpoint
 }
 
 type entry struct {
@@ -115,7 +116,7 @@ func Render(f *Form) ([]File, error) {
 	if errs := f.Validate(); len(errs) > 0 {
 		return nil, errs[0]
 	}
-	base := tplData{Form: f, FirstEnv: f.Envs[0], Cloud: Clouds[f.Preset]}
+	base := tplData{Form: f, FirstEnv: f.Envs[0], Cloud: Clouds[f.Preset], S3Region: S3Region(f.S3Endpoint)}
 	if f.Layout == "workspaces" {
 		base.ModuleSource = "./modules/network"
 	} else {

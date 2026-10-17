@@ -1,5 +1,35 @@
 terraform {
-{{- if eq .Backend "http" }}
+{{- if eq .Backend "s3" }}
+  # {{ .Cloud.Storage }}. Credentials are its access keys, read from
+  # AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.
+  backend "s3" {
+    bucket = "{{ .Bucket }}"
+    key    = "{{ if eq .Layout "workspaces" }}terraform.tfstate{{ else }}{{ .Env }}/terraform.tfstate{{ end }}"
+    region = "{{ .S3Region }}"
+    endpoints = {
+      s3 = "{{ .S3Endpoint }}"
+    }
+{{- if .Cloud.S3PathStyle }}
+    use_path_style = true
+{{- end }}
+
+    # {{ .Cloud.Storage }} isn't AWS: skip the AWS-only lookups.
+    skip_credentials_validation = true
+    skip_requesting_account_id  = true
+    skip_metadata_api_check     = true
+    skip_region_validation      = true
+    skip_s3_checksum            = true
+{{- if .Cloud.S3Lock }}
+
+    use_lockfile = true
+{{- else }}
+
+    # {{ .Cloud.Storage }} may not support the conditional writes Terraform's
+    # lock file needs; until you've checked, don't run two applies at once.
+    # use_lockfile = true
+{{- end }}
+  }
+{{- else if eq .Backend "http" }}
   backend "http" {
     # Configure with -backend-config or TF_HTTP_* environment variables.
   }

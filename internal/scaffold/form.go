@@ -15,6 +15,7 @@ type Form struct {
 	Bucket     string   `json:"bucket"`      // s3 and gcs only
 	Region     string   `json:"region"`      // cloud presets only (not docker or onprem)
 	GCPProject string   `json:"gcp_project"` // gcp only: the Google Cloud project ID
+	S3Endpoint string   `json:"s3_endpoint"` // s3 backend on a token provider: its object storage endpoint
 	Envs       []string `json:"envs"`        // ordered
 	Layout     string   `json:"layout"`      // dirs | workspaces
 	Inventory  string   `json:"inventory"`   // terraform | static
@@ -35,13 +36,14 @@ type FieldError struct {
 func (e FieldError) Error() string { return e.Field + ": " + e.Message }
 
 var (
-	envRe     = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
-	roleRe    = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
-	bucketRe  = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$`)
-	regionRe  = regexp.MustCompile(`^[a-z]{2}(-[a-z]+)+-\d$`)
-	gcpRegRe  = regexp.MustCompile(`^[a-z]+-[a-z]+\d+$`)
-	gcpProjRe = regexp.MustCompile(`^[a-z][a-z0-9-]{4,28}[a-z0-9]$`)
-	projRe    = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
+	envRe      = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
+	roleRe     = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
+	bucketRe   = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$`)
+	regionRe   = regexp.MustCompile(`^[a-z]{2}(-[a-z]+)+-\d$`)
+	gcpRegRe   = regexp.MustCompile(`^[a-z]+-[a-z]+\d+$`)
+	endpointRe = regexp.MustCompile(`^https://[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+(:\d{1,5})?/?$`)
+	gcpProjRe  = regexp.MustCompile(`^[a-z][a-z0-9-]{4,28}[a-z0-9]$`)
+	projRe     = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
 )
 
 // Normalize fills defaults; call before Validate.
@@ -91,8 +93,8 @@ func (f *Form) Validate() []FieldError {
 	if !in(f.Backend, []string{"s3", "gcs", "local", "http"}) {
 		add("backend", "must be s3, gcs, local or http")
 	}
-	if f.Preset != "aws-envs" && f.Backend == "s3" {
-		add("backend", "s3 needs the aws-envs preset")
+	if _, s3ok := Clouds[f.Preset]; f.Backend == "s3" && f.Preset != "aws-envs" && !s3ok {
+		add("backend", "s3 needs the aws-envs preset or a provider with S3-compatible object storage")
 	}
 	if f.Preset != "gcp-envs" && f.Backend == "gcs" {
 		add("backend", "gcs needs the gcp-envs preset")
@@ -116,8 +118,18 @@ func (f *Form) Validate() []FieldError {
 			add("bucket", "enter a valid GCS bucket name")
 		}
 	}
-	if c, ok := Clouds[f.Preset]; ok && !c.region.MatchString(f.Region) {
-		add("region", "enter a %s %s such as %s", c.Label, c.RegionTerm, c.RegionHint)
+	if c, ok := Clouds[f.Preset]; ok {
+		if !c.region.MatchString(f.Region) {
+			add("region", "enter a %s %s such as %s", c.Label, c.RegionTerm, c.RegionHint)
+		}
+		if f.Backend == "s3" {
+			if !bucketRe.MatchString(f.Bucket) {
+				add("bucket", "enter a valid %s bucket name", c.Storage)
+			}
+			if !endpointRe.MatchString(f.S3Endpoint) {
+				add("s3_endpoint", "enter the %s endpoint, such as %s", c.Storage, c.S3Hint)
+			}
+		}
 	}
 	if len(f.Envs) == 0 {
 		add("envs", "choose at least one environment")

@@ -10,20 +10,21 @@ const router = useRouter()
 const store = useWorkspace()
 
 // region: what the provider calls a location, with an example; null = no region field
+// storage: S3-compatible object storage the state can live in, with an example endpoint
 const providers = [
-  { id: 'aws-envs', label: 'AWS', backend: 's3', region: ['Default region', 'eu-west-1'] },
-  { id: 'gcp-envs', label: 'Google Cloud', backend: 'gcs', region: ['Default region', 'europe-west1'] },
-  { id: 'vultr', label: 'Vultr', backend: 'local', region: ['Region', 'ams'] },
-  { id: 'digitalocean', label: 'DigitalOcean', backend: 'local', region: ['Region', 'fra1'] },
-  { id: 'hetzner', label: 'Hetzner Cloud', backend: 'local', region: ['Network zone', 'eu-central'] },
-  { id: 'linode', label: 'Linode (Akamai)', backend: 'local', region: ['Region', 'eu-central'] },
-  { id: 'docker', label: 'Docker', backend: 'local', region: null },
-  { id: 'onprem', label: 'None / on-prem', backend: 'local', region: null },
+  { id: 'aws-envs', label: 'AWS', backend: 's3', region: ['Default region', 'eu-west-1'], storage: null },
+  { id: 'gcp-envs', label: 'Google Cloud', backend: 'gcs', region: ['Default region', 'europe-west1'], storage: null },
+  { id: 'vultr', label: 'Vultr', backend: 'local', region: ['Region', 'ams'], storage: ['Vultr Object Storage', 'https://ams1.vultrobjects.com'] },
+  { id: 'digitalocean', label: 'DigitalOcean', backend: 'local', region: ['Region', 'fra1'], storage: ['DigitalOcean Spaces', 'https://fra1.digitaloceanspaces.com'] },
+  { id: 'hetzner', label: 'Hetzner Cloud', backend: 'local', region: ['Network zone', 'eu-central'], storage: ['Hetzner Object Storage', 'https://fsn1.your-objectstorage.com'] },
+  { id: 'linode', label: 'Linode (Akamai)', backend: 'local', region: ['Region', 'eu-central'], storage: ['Linode Object Storage', 'https://eu-central-1.linodeobjects.com'] },
+  { id: 'docker', label: 'Docker', backend: 'local', region: null, storage: null },
+  { id: 'onprem', label: 'None / on-prem', backend: 'local', region: null, storage: null },
 ] as const
 const provider = computed(() => providers.find((p) => p.id === form.preset) ?? providers[0])
 
 const form = reactive<ScaffoldForm>({
-  preset: 'aws-envs', project: '', backend: 's3', bucket: '', region: '', gcp_project: '',
+  preset: 'aws-envs', project: '', backend: 's3', bucket: '', region: '', gcp_project: '', s3_endpoint: '',
   envs: ['dev', 'staging', 'prod'], layout: 'dirs', inventory: 'terraform',
   roles: ['common', 'nginx'], vault: true,
   checks: ['fmt', 'validate', 'tflint', 'ansible-lint', 'yamllint'], pre_commit: true, ci: true,
@@ -60,6 +61,7 @@ watch(() => form.project, (p) => { if (!bucketTouched.value) form.bucket = p ? `
 watch(() => form.preset, () => {
   // a cloud backend only fits its own provider; http is kept when switching
   if (form.backend !== 'http') form.backend = provider.value.backend
+  form.s3_endpoint = ''
 })
 watch(rolesText, (t) => { form.roles = t.split(',').map((s) => s.trim()).filter(Boolean) })
 
@@ -197,6 +199,7 @@ No groundwork.yaml in {{ store.ws?.root }} — starting setup</pre>
             <label class="field">State backend
               <select v-model="form.backend" class="inp">
                 <option v-if="form.preset === 'aws-envs'" value="s3">S3 + DynamoDB lock</option>
+                <option v-if="provider.storage" value="s3">{{ provider.storage[0] }} (S3-compatible)</option>
                 <option v-if="form.preset === 'gcp-envs'" value="gcs">Cloud Storage (GCS)</option>
                 <option value="local">Local file</option>
                 <option value="http">HTTP backend</option>
@@ -206,6 +209,11 @@ No groundwork.yaml in {{ store.ws?.root }} — starting setup</pre>
             <label v-if="form.backend === 's3' || form.backend === 'gcs'" class="field">Bucket name
               <input v-model="form.bucket" class="inp" :class="{ bad: err('bucket') }" type="text" @input="bucketTouched = true" />
               <span v-if="err('bucket')" class="err">{{ err('bucket') }}</span>
+            </label>
+            <label v-if="form.backend === 's3' && provider.storage" class="field">{{ provider.storage[0] }} endpoint
+              <input v-model="form.s3_endpoint" class="inp" :class="{ bad: err('s3_endpoint') }" type="url" :placeholder="'e.g. ' + provider.storage[1]" />
+              <span v-if="err('s3_endpoint')" class="err">{{ err('s3_endpoint') }}</span>
+              <span v-else class="small muted">Terraform reads its access keys from AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.</span>
             </label>
             <label v-if="form.preset === 'gcp-envs'" class="field">Google Cloud project ID
               <input v-model="form.gcp_project" class="inp" :class="{ bad: err('gcp_project') }" type="text" placeholder="e.g. acme-prod-123" />

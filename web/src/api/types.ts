@@ -80,6 +80,7 @@ export interface ScaffoldForm {
   bucket: string
   region: string
   gcp_project: string
+  s3_endpoint: string
   envs: string[]
   layout: 'dirs' | 'workspaces'
   inventory: 'terraform' | 'static'

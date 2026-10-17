@@ -18,6 +18,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/rapando/groundwork/internal/config"
 	"github.com/rapando/groundwork/internal/proc"
@@ -108,6 +109,14 @@ func Backends(repoRoot string, roots []string) []Backend {
 								b.Attrs[name] = v.AsString()
 							case "bool":
 								b.Attrs[name] = fmt.Sprint(v.True())
+							default: // endpoints = { s3 = "..." } is kept as endpoints.s3
+								if v.Type().IsObjectType() || v.Type().IsMapType() {
+									for k, ev := range v.AsValueMap() {
+										if ev.IsKnown() && !ev.IsNull() && ev.Type() == cty.String {
+											b.Attrs[name+"."+k] = ev.AsString()
+										}
+									}
+								}
 							}
 						}
 					}
@@ -475,13 +484,24 @@ func checkBackends(ctx context.Context, in Input) []Check {
 				continue
 			}
 			seen["s3:"+bucket] = true
+			// an S3-compatible store (Spaces, Hetzner, ...) names its endpoint
+			endpoint := b.Attrs["endpoints.s3"]
+			if endpoint == "" {
+				endpoint = b.Attrs["endpoint"] // before Terraform 1.6
+			}
+			where, argv, hint := "s3://"+bucket, []string{"aws", "s3api", "head-bucket", "--bucket", bucket}, "check the bucket name and that your role can s3:ListBucket"
+			if endpoint != "" {
+				where += " at " + endpoint
+				argv = append(argv, "--endpoint-url", endpoint)
+				hint = "check the bucket name, and that AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY hold this object storage's access keys"
+			}
 			c := Check{ID: "backend:s3:" + bucket, Name: "State backend"}
 			if awsErr != nil {
-				c.Status, c.Detail = "warn", "s3://"+bucket+" (not checked: aws CLI not installed)"
-			} else if _, e, code, err := in.Exec.Run(ctx, in.Root, "aws", "s3api", "head-bucket", "--bucket", bucket); err != nil || code != 0 {
-				c.Status, c.Detail, c.Hint = "fail", "s3://"+bucket+": "+firstLine(e), "check the bucket name and that your role can s3:ListBucket"
+				c.Status, c.Detail = "warn", where+" (not checked: aws CLI not installed)"
+			} else if _, e, code, err := in.Exec.Run(ctx, in.Root, argv...); err != nil || code != 0 {
+				c.Status, c.Detail, c.Hint = "fail", where+": "+firstLine(e), hint
 			} else {
-				c.Status, c.Detail = "ok", "s3://"+bucket+" reachable"
+				c.Status, c.Detail = "ok", where+" reachable"
 			}
 			out = append(out, c)
 			lc := Check{ID: "lock:s3:" + bucket, Name: "State locking"}
@@ -497,6 +517,8 @@ func checkBackends(ctx context.Context, in Input) []Check {
 				} else {
 					lc.Status, lc.Detail = "ok", "dynamodb "+t+" exists"
 				}
+			case endpoint != "":
+				lc.Status, lc.Detail, lc.Hint = "warn", "no locking configured for s3://"+bucket, "set use_lockfile = true (Terraform 1.10+) if the object storage supports conditional writes; otherwise don't run two applies at once"
 			default:
 				lc.Status, lc.Detail, lc.Hint = "warn", "no locking configured for s3://"+bucket, "set use_lockfile = true in the backend block"
 			}

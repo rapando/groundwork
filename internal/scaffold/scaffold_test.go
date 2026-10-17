@@ -48,6 +48,11 @@ func variants() map[string]Form {
 					}
 				}
 				v[preset+"/"+layout+"/"+inv] = f
+				if c, ok := Clouds[preset]; ok { // and on the provider's object storage
+					g := f
+					g.Backend, g.Bucket, g.S3Endpoint = "s3", "acme-tfstate", c.S3Hint
+					v[preset+"/s3/"+layout+"/"+inv] = g
+				}
 			}
 		}
 	}
@@ -174,12 +179,36 @@ func TestCloudPresetValidation(t *testing.T) {
 	for _, e := range f.Validate() {
 		fields[e.Field] = true
 	}
-	if !fields["region"] || !fields["backend"] {
-		t.Errorf("want region and backend errors, got %v", f.Validate())
+	if !fields["region"] || !fields["bucket"] || !fields["s3_endpoint"] || fields["backend"] {
+		t.Errorf("want region, bucket and s3_endpoint errors, got %v", f.Validate())
 	}
 	f.Backend, f.Region = "local", "ams"
 	if errs := f.Validate(); len(errs) > 0 {
 		t.Fatalf("valid vultr form rejected: %v", errs)
+	}
+	f.Backend, f.Bucket, f.S3Endpoint = "s3", "acme-tfstate", "http://ams1.vultrobjects.com"
+	if errs := f.Validate(); len(errs) != 1 || errs[0].Field != "s3_endpoint" {
+		t.Fatalf("want an s3_endpoint error for a plain-http endpoint, got %v", errs)
+	}
+	f.S3Endpoint = "https://ams1.vultrobjects.com"
+	if errs := f.Validate(); len(errs) > 0 {
+		t.Fatalf("valid vultr s3 form rejected: %v", errs)
+	}
+	f.Preset, f.Region, f.S3Endpoint = "docker", "", ""
+	if errs := f.Validate(); len(errs) != 1 || errs[0].Field != "backend" {
+		t.Fatalf("want s3 rejected for docker, got %v", errs)
+	}
+}
+
+func TestS3Region(t *testing.T) {
+	for in, want := range map[string]string{
+		"https://fsn1.your-objectstorage.com":     "fsn1",
+		"https://eu-central-1.linodeobjects.com/": "eu-central-1",
+		"https://s3.example.com:9000":             "s3",
+	} {
+		if got := S3Region(in); got != want {
+			t.Errorf("S3Region(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
 
