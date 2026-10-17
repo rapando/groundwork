@@ -199,3 +199,23 @@ func TestInstallReportsAFailingServiceManager(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
+
+// When launchctl can neither load nor kickstart the unit, the error keeps
+// both reasons: the bootstrap one is usually the useful one.
+func TestLaunchdStartReportsBothFailures(t *testing.T) {
+	bin := t.TempDir()
+	log := filepath.Join(bin, "calls.log")
+	fakeTool(t, bin, "launchctl", log, "Bootstrap failed: 5: Input/output error")
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	err := launchd{}.start()
+	if err == nil {
+		t.Fatal("start succeeded")
+	}
+	calls, _ := os.ReadFile(log)
+	if !strings.Contains(string(calls), "bootstrap gui/") || !strings.Contains(string(calls), "kickstart gui/") {
+		t.Fatalf("launchctl calls: %s", calls)
+	}
+	if msg := err.Error(); !strings.Contains(msg, "launchctl bootstrap") || !strings.Contains(msg, "launchctl kickstart") || strings.Contains(msg, "\n") {
+		t.Fatalf("error should name both calls on one line: %q", msg)
+	}
+}

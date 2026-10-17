@@ -14,6 +14,12 @@ import (
 	"github.com/rapando/groundwork/internal/service"
 )
 
+// variables so tests can fake starting the service
+var (
+	startInstalled  = service.StartInstalled
+	startBackground = service.StartBackground
+)
+
 // ensureService returns a client for the running service, starting it first
 // (through the login service if installed, else in the background).
 func ensureService(cmd *cobra.Command, port int) (*service.Client, service.ServerInfo, error) {
@@ -25,14 +31,21 @@ func ensureService(cmd *cobra.Command, port int) (*service.Client, service.Serve
 		warnVersionMismatch(cmd, si)
 		return service.NewClient(si), si, nil
 	}
-	if ok, err := service.StartInstalled(); ok && err == nil {
-		if si, err := waitRunning(home); err == nil {
+	ok, err := startInstalled()
+	if ok && err == nil {
+		var si service.ServerInfo
+		if si, err = waitRunning(home); err == nil {
 			warnVersionMismatch(cmd, si)
 			return service.NewClient(si), si, nil
 		}
 	}
-	fmt.Fprintln(cmd.ErrOrStderr(), "starting the groundwork service in the background (`groundwork service install` starts it at login)")
-	si, err := service.StartBackground(home, port)
+	if ok {
+		// installed, so the usual hint is wrong: say why it didn't start
+		fmt.Fprintf(cmd.ErrOrStderr(), "the login service didn't start (%v); starting the groundwork service in the background instead\n", err)
+	} else {
+		fmt.Fprintln(cmd.ErrOrStderr(), "starting the groundwork service in the background (`groundwork service install` starts it at login)")
+	}
+	si, err := startBackground(home, port)
 	if err != nil {
 		return nil, si, err
 	}

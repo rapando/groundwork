@@ -232,8 +232,14 @@ func (l launchd) uninstall() error {
 }
 
 func (l launchd) start() error {
-	if err := run("launchctl", "bootstrap", l.domain(), l.path()); err != nil && !strings.Contains(err.Error(), "already") {
-		return run("launchctl", "kickstart", l.domain()+"/"+launchdLabel)
+	err := run("launchctl", "bootstrap", l.domain(), l.path())
+	if err == nil || strings.Contains(err.Error(), "already") {
+		return nil
+	}
+	// not loadable, but perhaps loaded under another state: kickstart it.
+	// When that fails too, both errors say why.
+	if kerr := run("launchctl", "kickstart", l.domain()+"/"+launchdLabel); kerr != nil {
+		return fmt.Errorf("%w; %w", err, kerr)
 	}
 	return nil
 }
