@@ -286,8 +286,9 @@ func (a *API) listSecrets(w http.ResponseWriter, r *http.Request) {
 		list = []vars.Secret{}
 	}
 	reveals, _ := a.Store.ListReveals(20)
+	cfg, _ := a.config()
 	noStore(w)
-	writeJSON(w, 200, map[string]any{"secrets": list, "reveals": reveals})
+	writeJSON(w, 200, map[string]any{"secrets": list, "reveals": reveals, "vault": a.vaultProjects(cfg)})
 }
 
 type revealReq struct {
@@ -338,7 +339,11 @@ func (a *API) revealSecret(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = a.Store.RecordReveal(sec.Kind, sec.Name, sec.File)
-	writeJSON(w, 200, map[string]any{"value": v})
+	resp := map[string]any{"value": v}
+	if c, err := files.Read(a.Root, sec.File); err == nil && strings.HasPrefix(sec.Kind, "vault-") {
+		resp["sha"] = c.SHA // an edit of this value sends it back to detect a change in between
+	}
+	writeJSON(w, 200, resp)
 }
 
 func (a *API) scanSecrets(w http.ResponseWriter, r *http.Request) {

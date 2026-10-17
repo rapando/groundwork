@@ -27,7 +27,7 @@ groundwork
 - **Plans, then applies only what you approved**: plan review with masked sensitive values and danger flags, typed confirmation for production, and the exact saved plan applied. A plan that went stale (code, state or time) can't be applied ([runs](docs/runs.md)).
 - **Ansible**: inventory with reachability and facts, variable provenance per host, dry run → approve → run, ad-hoc commands ([ansible](docs/ansible.md)).
 - **Graph and drift**: resource dependency graph, an architecture view that follows unsaved edits, refresh-only drift detection with copy / ignore / revert, optionally on a schedule with notifications ([graph](docs/graph.md)).
-- **Variables and secrets**: per-environment variable matrix with sources, SOPS and ansible-vault values revealed on request, moving plaintext secrets into the vault ([variables](docs/variables.md)).
+- **Variables and secrets**: per-environment variable matrix with sources, SOPS and ansible-vault values revealed on request, ansible-vault values and files created, edited and rekeyed without plaintext touching the disk, plaintext secrets moved into the vault ([variables](docs/variables.md)).
 - **Troubleshooting**: failures matched to known causes (stale state locks, expired credentials, unreachable hosts, …) with guided fixes, and a Doctor for your tools, cloud credentials, the Docker daemon, SSH agent and S3 state backends ([troubleshooting](docs/troubleshooting.md)).
 
 | | |

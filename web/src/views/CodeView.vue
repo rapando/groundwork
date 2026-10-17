@@ -44,6 +44,7 @@ const cursor = ref({ line: 1, col: 1 })
 const diffOpen = ref(false)
 const diffText = ref('')
 const dirty = computed(() => !!loaded.value && buffer.value !== loaded.value.content)
+const isVault = computed(() => !!loaded.value?.content.trimStart().startsWith('$ANSIBLE_VAULT;'))
 
 let noticeTimer: number | undefined
 function say(msg: string) {
@@ -277,6 +278,11 @@ function gotoFrom(file: string, line: number) {
       <button class="btn sm" type="button" @click="externalChange = false">Keep mine</button>
     </div>
 
+    <div v-if="isVault && !conflict && !externalChange" class="banner info" role="note">
+      This file is encrypted with ansible-vault.
+      <RouterLink class="btn sm" :to="{ path: '/variables', query: { tab: 'secrets', edit: path } }">Edit decrypted</RouterLink>
+    </div>
+
     <div class="work">
       <FileTree
         class="tree"
@@ -327,6 +333,7 @@ function gotoFrom(file: string, line: number) {
 .banner { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 24px; font-size: 14px; border-bottom: 1px solid var(--line); }
 .banner.fail { background: var(--fail-bg); color: var(--fail-strong); }
 .banner.warn { background: var(--warn-bg); color: var(--warn-strong); }
+.banner.info { background: var(--bg-raised); color: var(--text-soft); }
 /* one row on desktop, so the pane has a definite height and the editor scrolls inside it */
 .work { display: flex; flex: 1; min-height: 0; }
 .tree { flex: 1 1 248px; max-width: 320px; border-right: 1px solid var(--line); }

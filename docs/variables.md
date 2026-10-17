@@ -41,6 +41,26 @@ Vault commands run in the Ansible project with its `ansible.cfg`. Set the passwo
 
 **Reveal** decrypts one value on request. The value is sent in that one response (`Cache-Control: no-store`), shown for 30 seconds, and never written to groundwork's database, logs or cache. Each reveal is recorded in an audit list with the secret's name, file and time, never its value. Sensitive Terraform variables can be revealed from the detail panel the same way.
 
+### Managing ansible-vault
+
+When an Ansible project has a vault password, the Secrets tab manages its vault data. Plaintext only passes through `ansible-vault`'s standard input and output: it is never written to disk, logged or stored.
+
+| Action | What it does |
+|---|---|
+| **Edit** (on an encrypted file or `!vault` value) | Decrypts it into an editor (recorded as a reveal) and saves it re-encrypted. Saving an unchanged value leaves the file alone, so git doesn't see new ciphertext; a file that changed since you opened it is refused. |
+| **New secret → Encrypted variable** | Adds `name: !vault \|` to a YAML vars file, creating the file if needed. A name already set in the file is refused. |
+| **New secret → Encrypted file** | Writes a new file encrypted as a whole, like `ansible-vault create`. |
+| **New secret → Encrypt an existing file** | Encrypts a plaintext file in place, like `ansible-vault encrypt`. If it was committed, the plaintext is still in git history: rotate what it holds. |
+| **Rekey** | Re-encrypts every value of one project and vault ID with a new password, like `ansible-vault rekey` but for inline `!vault` values too. It lists the values first, and refuses while any of them can't be decrypted. |
+
+A file encrypted as a whole also shows an **Edit decrypted** button on the Code screen.
+
+**Rekey and the password file.** Rekey can write the new password to the password file for that vault ID. It writes only a regular, non-executable file of one line, since the path comes from the repository's `groundwork.yaml` or `ansible.cfg`. Every file is written, or, if one fails, the files already written and the password file are put back. Older commits still open with the old password.
+
+**Vault IDs.** With `vault_identity_list` in `ansible.cfg` (or `ANSIBLE_VAULT_IDENTITY_LIST`), each value shows the vault ID in its header. Edits and rekeys keep a value's ID, and new secrets ask which ID to use when there is more than one. The project's `vault_password_file` counts as the `default` ID.
+
+Decrypting a file back to plaintext on disk isn't offered: use Edit, so the secret never sits unencrypted in the working tree.
+
 ## Plaintext secret scan
 
 The built-in **secrets** check (enabled by default; listed under `checks.enabled`) looks for credentials committed in clear text:

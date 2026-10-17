@@ -666,6 +666,28 @@ export interface SecretItem {
   state: string
   message?: string
   revealable: boolean
+  vault_id?: string
+}
+export interface VaultID {
+  label: string
+  source?: string
+}
+export interface VaultProject {
+  path: string
+  ids: VaultID[]
+}
+export interface RekeyItem {
+  id: string
+  kind: 'vault-file' | 'vault-inline'
+  name: string
+  file: string
+  line: number
+  problem?: string
+}
+export interface RekeyPlan {
+  items: RekeyItem[]
+  password_file?: string
+  no_update?: string
 }
 export interface RevealAudit {
   id: number
@@ -677,6 +699,7 @@ export interface RevealAudit {
 export interface SecretsResponse {
   secrets: SecretItem[]
   reveals: RevealAudit[]
+  vault?: VaultProject[]
 }
 export interface SecretFinding {
   file: string

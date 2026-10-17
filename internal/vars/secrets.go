@@ -33,6 +33,7 @@ type Secret struct {
 	State      string `json:"state"` // can-decrypt | wrong-password | no-password | tool-missing | cannot-decrypt | names-only
 	Message    string `json:"message,omitempty"`
 	Revealable bool   `json:"revealable"`
+	VaultID    string `json:"vault_id,omitempty"` // the label in a vault header ($ANSIBLE_VAULT;1.2;AES256;<id>)
 }
 
 // VaultProject tells the decryptor how to open vault data under Dir.
@@ -178,7 +179,7 @@ func (s *Secrets) List(ctx context.Context, checks bool) []Secret {
 		rel = filepath.ToSlash(rel)
 		switch {
 		case bytes.HasPrefix(bytes.TrimSpace(b), []byte(vaultHeader)):
-			sec := Secret{ID: secretID("vault-file", rel), Kind: "vault-file", Name: filepath.Base(rel), Store: "ansible-vault (whole file)", File: rel, Line: 1}
+			sec := Secret{ID: secretID("vault-file", rel), Kind: "vault-file", Name: filepath.Base(rel), Store: "ansible-vault (whole file)", File: rel, Line: 1, VaultID: VaultLabel(string(b))}
 			s.vaultState(ctx, &sec, p, b, checks, func() (string, error) { return s.vaultView(ctx, p) })
 			out = append(out, sec)
 		case ext == ".yml" || ext == ".yaml" || ext == ".json":
@@ -194,7 +195,7 @@ func (s *Secrets) List(ctx context.Context, checks bool) []Secret {
 				return nil
 			}
 			for _, iv := range inlineVaults(b) {
-				sec := Secret{ID: secretID("vault-inline", rel, iv.key), Kind: "vault-inline", Name: iv.key, Store: "ansible-vault", File: rel, Line: iv.line}
+				sec := Secret{ID: secretID("vault-inline", rel, iv.key), Kind: "vault-inline", Name: iv.key, Store: "ansible-vault", File: rel, Line: iv.line, VaultID: VaultLabel(iv.ciphertext)}
 				ct := iv.ciphertext
 				s.vaultState(ctx, &sec, p, []byte(ct), checks, func() (string, error) { return s.vaultDecrypt(ctx, p, ct) })
 				out = append(out, sec)
@@ -217,7 +218,9 @@ func (s *Secrets) List(ctx context.Context, checks bool) []Secret {
 	return out
 }
 
-func (s *Secrets) cached(key string, check func() checkResult) checkResult {
+// cached runs check once per key. A check cut short by ctx (the request went
+// away mid-way) isn't a result: it is reported unchecked and not remembered.
+func (s *Secrets) cached(ctx context.Context, key string, check func() checkResult) checkResult {
 	s.mu.Lock()
 	r, ok := s.cache[key]
 	s.mu.Unlock()
@@ -225,6 +228,9 @@ func (s *Secrets) cached(key string, check func() checkResult) checkResult {
 		return r
 	}
 	r = check()
+	if ctx.Err() != nil {
+		return checkResult{"unchecked", ""}
+	}
 	s.mu.Lock()
 	s.cache[key] = r
 	s.mu.Unlock()
@@ -293,7 +299,7 @@ func (s *Secrets) vaultState(ctx context.Context, sec *Secret, abs string, conte
 	if !check {
 		return
 	}
-	r := s.cached(contentKey("vault", content, vp.PasswordFile), func() checkResult {
+	r := s.cached(ctx, contentKey("vault", content, vp.PasswordFile), func() checkResult {
 		if _, err := decrypt(); err != nil {
 			if strings.Contains(err.Error(), "Decryption failed") || strings.Contains(err.Error(), "no vault secrets") {
 				return checkResult{"wrong-password", "The vault password doesn't open this value"}
@@ -315,7 +321,7 @@ func (s *Secrets) sopsState(ctx context.Context, sec *Secret, abs string, conten
 	if !check {
 		return
 	}
-	r := s.cached(contentKey("sops", content, ""), func() checkResult {
+	r := s.cached(ctx, contentKey("sops", content, ""), func() checkResult {
 		if _, err := s.run(ctx, filepath.Dir(abs), nil, nil, "sops", "--decrypt", "--", abs); err != nil {
 			return checkResult{"cannot-decrypt", err.Error()}
 		}
@@ -328,6 +334,11 @@ func (s *Secrets) sopsState(ctx context.Context, sec *Secret, abs string, conten
 // run executes a decryption tool. Its stdout is the secret: it's returned and
 // never logged. Errors carry the first line of stderr only.
 func (s *Secrets) run(ctx context.Context, dir string, env []string, stdin []byte, argv ...string) (string, error) {
+	return s.runWith(ctx, dir, append(s.Environ(), env...), stdin, argv...)
+}
+
+// runWith is run with the tool's whole environment given.
+func (s *Secrets) runWith(ctx context.Context, dir string, environ []string, stdin []byte, argv ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	bin, err := s.LookPath(argv[0])
@@ -337,7 +348,7 @@ func (s *Secrets) run(ctx context.Context, dir string, env []string, stdin []byt
 	cmd := exec.CommandContext(ctx, bin, argv[1:]...)
 	proc.GroupContext(cmd) // a timeout kills the tool and its children, not just the tool
 	cmd.Dir = dir
-	cmd.Env = append(s.Environ(), env...)
+	cmd.Env = environ
 	if stdin != nil {
 		cmd.Stdin = bytes.NewReader(stdin)
 	}
@@ -351,7 +362,8 @@ func (s *Secrets) run(ctx context.Context, dir string, env []string, stdin []byt
 		if msg == "" {
 			msg = err.Error()
 		}
-		return "", errors.New(strings.TrimPrefix(msg, "ERROR! "))
+		msg = strings.TrimPrefix(strings.TrimPrefix(msg, "ERROR! "), "[ERROR]: ") // ansible-core < 2.19, and later
+		return "", errors.New(msg)
 	}
 	return stdout.String(), nil
 }
@@ -378,25 +390,6 @@ func (s *Secrets) vaultDecrypt(ctx context.Context, abs, ciphertext string) (str
 	env, args := s.vaultArgs(vp)
 	argv := append(append([]string{"ansible-vault", "decrypt"}, args...), "--output=-")
 	return s.run(ctx, vp.Dir, env, []byte(ciphertext), argv...)
-}
-
-// EncryptString encrypts value for key with the project's vault settings and
-// returns the YAML `key: !vault |` block.
-func (s *Secrets) EncryptString(ctx context.Context, abs, key, value string) (string, error) {
-	if _, err := s.LookPath("ansible-vault"); err != nil {
-		return "", errors.New("ansible-vault isn't installed")
-	}
-	vp := s.project(abs)
-	if !s.hasVaultPassword(vp) {
-		return "", errors.New("no vault password configured: set vault_password_file for this Ansible project in groundwork.yaml")
-	}
-	env, args := s.vaultArgs(vp)
-	argv := append(append([]string{"ansible-vault", "encrypt_string"}, args...), "--stdin-name="+key)
-	out, err := s.run(ctx, vp.Dir, env, []byte(value), argv...)
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimRight(out, "\n"), nil
 }
 
 // ErrNotRevealable: the secret can't be revealed (unknown, env, or locked).

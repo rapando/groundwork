@@ -234,6 +234,9 @@ func TestNoPathEscapesOrArgumentInjection(t *testing.T) {
 			{"POST", "/api/checks/fix", map[string]any{"kind": "fmt", "file": p}, true},
 			{"PUT", "/api/vars/terraform", map[string]any{"root": "terraform/envs/dev", "env": "dev", "name": "region", "value": `"x"`, "file": p, "apply": true}, true},
 			{"POST", "/api/secrets/move", map[string]any{"file": p, "line": 1, "apply": true}, true},
+			{"POST", "/api/secrets/vault/create", map[string]any{"file": p, "value": "pwned"}, true},
+			{"POST", "/api/secrets/vault/add", map[string]any{"file": p, "key": "k", "value": "pwned"}, true},
+			{"POST", "/api/secrets/vault/encrypt", map[string]any{"file": p}, true},
 		}
 	}
 	check := func(p string, mustReject func(ep) bool) {

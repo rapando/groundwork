@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../components/AppShell.vue'
 import DiffView from '../components/DiffView.vue'
 import { api, ApiError } from '../api/client'
-import type { AnsibleVarsResponse, MatrixRow, SecretFinding, SecretItem, SecretsResponse, TerraformVarsResponse, VarCell, VarRow } from '../api/types'
+import type { AnsibleVarsResponse, MatrixRow, RekeyPlan, SecretFinding, SecretItem, SecretsResponse, TerraformVarsResponse, VarCell, VarRow } from '../api/types'
 import Modal from '../components/Modal.vue'
 
 type Tab = 'terraform' | 'ansible' | 'secrets'
@@ -154,6 +154,116 @@ async function applyMove() {
   } catch (e) { move.error = msg(e) } finally { move.busy = false }
 }
 const ansRowLabel = (r: MatrixRow) => (r.group === 'all' ? r.name : `${r.group} · ${r.name}`)
+
+// ---- ansible-vault: edit, create, add, encrypt, rekey ----
+// Plaintext lives in these refs only while a dialog is open.
+const vaultProjects = computed(() => sec.value?.vault ?? [])
+const isVault = (s: SecretItem) => s.kind === 'vault-file' || s.kind === 'vault-inline'
+const vaultNote = ref('')
+const conflictMsg = (e: unknown) => (e instanceof ApiError && e.status === 409 ? 'The file changed since you opened it. Close and try again.' : msg(e))
+async function afterVaultWrite(note: string) {
+  vaultNote.value = note
+  await Promise.all([loadSecrets(), loadAns(), scan()])
+}
+// the identities of the Ansible project a repository path belongs to
+function idsFor(file: string) {
+  let best: { path: string; ids: { label: string }[] } | undefined
+  for (const p of vaultProjects.value) {
+    const inside = p.path === '.' || file === p.path || file.startsWith(p.path + '/')
+    if (inside && (!best || p.path.length > best.path.length)) best = p
+  }
+  return best?.ids ?? []
+}
+
+const ved = reactive({ s: null as SecretItem | null, value: '', sha: '', loading: false, busy: false, error: '' })
+async function openVaultEdit(s: SecretItem) {
+  Object.assign(ved, { s, value: '', sha: '', error: '', loading: true })
+  try {
+    const r = await api<{ value: string; sha: string }>('/secrets/reveal', { body: { id: s.id } })
+    Object.assign(ved, { value: r.value, sha: r.sha })
+  } catch (e) { ved.error = msg(e) } finally { ved.loading = false; loadSecrets() }
+}
+const closeVaultEdit = () => Object.assign(ved, { s: null, value: '', sha: '', error: '' })
+async function saveVaultEdit() {
+  if (!ved.s) return
+  ved.busy = true; ved.error = ''
+  try {
+    const r = await api<{ changed: boolean; file: string }>('/secrets/vault/update', { body: { id: ved.s.id, value: ved.value, sha: ved.sha } })
+    closeVaultEdit()
+    await afterVaultWrite(r.changed ? `Saved and re-encrypted ${r.file}.` : 'Nothing changed, so the file was left as it is.')
+  } catch (e) { ved.error = conflictMsg(e) } finally { ved.busy = false }
+}
+// open the editor for a vault file linked from the Code screen (?edit=<file>)
+watch(sec, (v) => {
+  const f = route.query.edit
+  if (!v || !f) return
+  const s = v.secrets.find((x) => x.kind === 'vault-file' && x.file === f)
+  router.replace({ query: { ...route.query, edit: undefined } })
+  if (s?.revealable) openVaultEdit(s)
+  else if (s) revealErr.value = `${s.file}: ${s.message || s.state}`
+})
+
+type NewMode = 'variable' | 'file' | 'encrypt'
+const NEW_MODES: [NewMode, string][] = [['variable', 'Encrypted variable'], ['file', 'Encrypted file'], ['encrypt', 'Encrypt an existing file']]
+const nv = reactive({ open: false, mode: 'variable' as NewMode, file: '', key: '', value: '', vaultId: '', busy: false, error: '' })
+const nvIds = computed(() => idsFor(nv.file))
+watch(nvIds, (ids) => { if (!ids.some((i) => i.label === nv.vaultId)) nv.vaultId = ids[0]?.label ?? '' })
+const openNew = () => Object.assign(nv, { open: true, mode: 'variable', file: '', key: '', value: '', error: '' })
+const closeNew = () => Object.assign(nv, { open: false, value: '', error: '' })
+const nvReady = computed(() => !!nv.file.trim() && (nv.mode === 'encrypt' || (nv.mode === 'variable' ? !!nv.key.trim() && nv.value !== '' : nv.value !== '')))
+async function submitNew() {
+  nv.busy = true; nv.error = ''
+  const vault_id = nvIds.value.length > 1 ? nv.vaultId : ''
+  const file = nv.file.trim().replace(/^\.\//, '')
+  try {
+    if (nv.mode === 'variable') {
+      await api('/secrets/vault/add', { body: { file, key: nv.key.trim(), value: nv.value, vault_id } })
+      closeNew(); await afterVaultWrite(`Added ${nv.key.trim()} to ${file}, encrypted.`)
+    } else if (nv.mode === 'file') {
+      await api('/secrets/vault/create', { body: { file, value: nv.value, vault_id } })
+      closeNew(); await afterVaultWrite(`Created ${file}, encrypted.`)
+    } else {
+      const r = await api<{ note: string }>('/secrets/vault/encrypt', { body: { file, vault_id } })
+      closeNew(); await afterVaultWrite(`Encrypted ${file}. ${r.note}`)
+    }
+  } catch (e) { nv.error = conflictMsg(e) } finally { nv.busy = false }
+}
+
+const rk = reactive({ open: false, project: '', vaultId: '', pw: '', pw2: '', update: true, plan: null as RekeyPlan | null, loading: false, busy: false, error: '' })
+const rkIds = computed(() => vaultProjects.value.find((p) => p.path === rk.project)?.ids ?? [])
+const rkBlocked = computed(() => rk.plan?.items.filter((i) => i.problem) ?? [])
+const rkReady = computed(() => !!rk.plan?.items.length && !rkBlocked.value.length && rk.pw !== '' && rk.pw === rk.pw2 && (!rk.update || !!rk.plan?.password_file))
+function openRekey() {
+  const p = vaultProjects.value[0]
+  Object.assign(rk, { open: true, project: p?.path ?? '', vaultId: p?.ids[0]?.label ?? '', pw: '', pw2: '', plan: null, error: '' })
+  previewRekey()
+}
+const closeRekey = () => Object.assign(rk, { open: false, pw: '', pw2: '', plan: null, error: '' })
+async function previewRekey() {
+  if (!rk.project) return
+  rk.loading = true; rk.error = ''; rk.plan = null
+  try {
+    rk.plan = await api<RekeyPlan>('/secrets/vault/rekey', { body: { project: rk.project, vault_id: rk.vaultId } })
+    rk.update = !!rk.plan.password_file
+  } catch (e) { rk.error = msg(e) } finally { rk.loading = false }
+}
+function pickRekeyProject(path: string) {
+  rk.project = path
+  rk.vaultId = rkIds.value[0]?.label ?? ''
+  previewRekey()
+}
+async function applyRekey() {
+  rk.busy = true; rk.error = ''
+  try {
+    const r = await api<{ files: string[]; values: number; password_file_updated: boolean }>('/secrets/vault/rekey', {
+      body: { project: rk.project, vault_id: rk.vaultId, password: rk.pw, update_password_file: rk.update, apply: true },
+    })
+    const where = r.password_file_updated ? `The new password is in ${rk.plan?.password_file}.` : 'Put the new password where ansible reads it before the next run.'
+    closeRekey()
+    await afterVaultWrite(`Re-encrypted ${r.values} value${r.values === 1 ? '' : 's'} in ${r.files.length} file${r.files.length === 1 ? '' : 's'}. ${where} Older commits still open with the old password.`)
+  } catch (e) { rk.error = conflictMsg(e) } finally { rk.busy = false }
+}
+onBeforeUnmount(() => { closeVaultEdit(); closeNew(); closeRekey() })
 </script>
 
 <template>
@@ -247,18 +357,25 @@ const ansRowLabel = (r: MatrixRow) => (r.group === 'all' ? r.name : `${r.group} 
           <div class="shead">
             <h2>Secrets</h2>
             <span class="small muted">decrypted only in memory, only when you ask</span>
-            <button class="btn sm" type="button" :disabled="scanning" @click="scan">{{ scanning ? 'Scanning…' : 'Scan for plaintext secrets' }}</button>
+            <span class="sact">
+              <template v-if="tab === 'secrets' && vaultProjects.length">
+                <button class="btn sm" type="button" @click="openNew">New secret</button>
+                <button class="btn sm" type="button" @click="openRekey">Rekey…</button>
+              </template>
+              <button class="btn sm" type="button" :disabled="scanning" @click="scan">{{ scanning ? 'Scanning…' : 'Scan for plaintext secrets' }}</button>
+            </span>
           </div>
           <template v-if="tab === 'secrets'">
             <p v-if="secLoading && !sec" class="pad muted">Checking which secrets can be decrypted…</p>
             <div v-for="s in secrets" :key="s.id" class="srow">
               <span class="mono">{{ s.name }}</span>
-              <span class="where"><span>{{ s.store }}</span><RouterLink v-if="s.file" class="mono small" :to="codeHref(s.file, s.line)">{{ s.file }}<template v-if="s.line && s.line > 1">:{{ s.line }}</template></RouterLink></span>
+              <span class="where"><span>{{ s.store }}<template v-if="s.vault_id"> · vault ID <span class="mono">{{ s.vault_id }}</span></template></span><RouterLink v-if="s.file" class="mono small" :to="codeHref(s.file, s.line)">{{ s.file }}<template v-if="s.line && s.line > 1">:{{ s.line }}</template></RouterLink></span>
               <span class="pill" :class="(STATE[s.state] ?? ['st-idle'])[0]" :title="s.message">{{ (STATE[s.state] ?? ['', s.state])[1] }}</span>
               <span class="act">
                 <button v-if="s.revealable && reveal?.key !== s.id" class="btn xs" type="button" @click="revealSecret(s)">Reveal</button>
                 <button v-else-if="reveal?.key === s.id" class="btn xs" type="button" @click="reveal = null">Hide</button>
                 <span v-else class="small muted">{{ s.message }}</span>
+                <button v-if="s.revealable && isVault(s)" class="btn xs" type="button" @click="openVaultEdit(s)">Edit</button>
               </span>
               <pre v-if="reveal?.key === s.id" class="revealed" aria-live="polite">{{ reveal.value }}</pre>
             </div>
@@ -274,6 +391,7 @@ const ansRowLabel = (r: MatrixRow) => (r.group === 'all' ? r.name : `${r.group} 
           </div>
           <p v-if="tab === 'secrets' && findings && !findings.length" class="pad2 small ok">No plaintext secrets found.</p>
           <p v-if="move.note" class="pad2 small warn" role="status">Moved to ansible-vault. {{ move.note }}</p>
+          <p v-if="vaultNote" class="pad2 small ok" role="status">{{ vaultNote }}</p>
           <div v-if="tab === 'secrets' && sec?.reveals.length" class="audit small muted">
             <span class="lbl">Recent reveals</span>
             <span v-for="r in sec.reveals.slice(0, 5)" :key="r.id" class="mono">{{ r.name }} · {{ r.file }} · {{ new Date(r.revealed_at).toLocaleString() }}</span>
@@ -325,6 +443,91 @@ const ansRowLabel = (r: MatrixRow) => (r.group === 'all' ? r.name : `${r.group} 
         </div>
       </aside>
     </div>
+
+    <Modal v-if="ved.s" labelledby="ved-title" wide @close="closeVaultEdit">
+      <form class="card dlg" @submit.prevent="saveVaultEdit">
+        <h2 id="ved-title">Edit {{ ved.s.name }}</h2>
+        <p class="small muted">
+          <span class="mono">{{ ved.s.file }}</span><template v-if="ved.s.vault_id"> · vault ID <span class="mono">{{ ved.s.vault_id }}</span></template>.
+          Saving re-encrypts it with the same vault ID; the decrypted text never touches the disk. Opening it is recorded as a reveal.
+        </p>
+        <p v-if="ved.loading" class="small muted">Decrypting…</p>
+        <textarea v-else v-model="ved.value" class="inp mono vtext" :rows="ved.s.kind === 'vault-file' ? 14 : 4" aria-label="Decrypted value" spellcheck="false" autocomplete="off" />
+        <p v-if="ved.error" class="err" role="alert">{{ ved.error }}</p>
+        <div class="dact">
+          <button class="btn" type="button" @click="closeVaultEdit">Cancel</button>
+          <button class="btn primary" type="submit" :disabled="ved.loading || ved.busy || !ved.sha">{{ ved.busy ? 'Encrypting…' : 'Save encrypted' }}</button>
+        </div>
+      </form>
+    </Modal>
+
+    <Modal v-if="nv.open" labelledby="nv-title" wide @close="closeNew">
+      <form class="card dlg" @submit.prevent="submitNew">
+        <h2 id="nv-title">New secret</h2>
+        <div class="seg-group" role="group" aria-label="Kind">
+          <button v-for="[m, label] in NEW_MODES" :key="m" class="seg" :class="{ on: nv.mode === m }" type="button" :aria-pressed="nv.mode === m" @click="nv.mode = m; nv.error = ''">{{ label }}</button>
+        </div>
+        <p class="small muted">
+          <template v-if="nv.mode === 'variable'">Adds <span class="mono">name: !vault |</span> to a YAML vars file, creating the file if needed.</template>
+          <template v-else-if="nv.mode === 'file'">Writes a new file encrypted as a whole, like <span class="mono">ansible-vault create</span>.</template>
+          <template v-else>Encrypts a plaintext file in place. If it was committed, the plaintext stays in git history: rotate what it holds.</template>
+        </p>
+        <label class="field">File, from the repository root
+          <input v-model="nv.file" class="inp mono" type="text" :placeholder="nv.mode === 'variable' ? 'group_vars/prod/main.yml' : 'group_vars/prod/vault.yml'" autocomplete="off" spellcheck="false" />
+        </label>
+        <label v-if="nv.mode === 'variable'" class="field">Variable name
+          <input v-model="nv.key" class="inp mono" type="text" placeholder="db_password" autocomplete="off" spellcheck="false" />
+        </label>
+        <label v-if="nv.mode !== 'encrypt'" class="field">{{ nv.mode === 'variable' ? 'Value' : 'Content' }}
+          <textarea v-model="nv.value" class="inp mono vtext" :rows="nv.mode === 'variable' ? 3 : 10" spellcheck="false" autocomplete="off" />
+        </label>
+        <label v-if="nvIds.length > 1" class="field">Vault ID
+          <select v-model="nv.vaultId" class="inp"><option v-for="i in nvIds" :key="i.label" :value="i.label">{{ i.label }}</option></select>
+        </label>
+        <p v-if="nv.error" class="err" role="alert">{{ nv.error }}</p>
+        <div class="dact">
+          <button class="btn" type="button" @click="closeNew">Cancel</button>
+          <button class="btn primary" type="submit" :disabled="nv.busy || !nvReady">{{ nv.busy ? 'Encrypting…' : 'Encrypt and save' }}</button>
+        </div>
+      </form>
+    </Modal>
+
+    <Modal v-if="rk.open" labelledby="rk-title" wide @close="closeRekey">
+      <form class="card dlg" @submit.prevent="applyRekey">
+        <h2 id="rk-title">Rekey ansible-vault</h2>
+        <p class="small muted">Re-encrypts every value below with a new password. All files are written, or none are.</p>
+        <div v-if="vaultProjects.length > 1 || rkIds.length > 1" class="rkpick">
+          <label v-if="vaultProjects.length > 1" class="field">Project
+            <select class="inp" :value="rk.project" @change="pickRekeyProject(($event.target as HTMLSelectElement).value)"><option v-for="p in vaultProjects" :key="p.path" :value="p.path">{{ p.path }}</option></select>
+          </label>
+          <label v-if="rkIds.length > 1" class="field">Vault ID
+            <select v-model="rk.vaultId" class="inp" @change="previewRekey"><option v-for="i in rkIds" :key="i.label" :value="i.label">{{ i.label }}</option></select>
+          </label>
+        </div>
+        <p v-if="rk.loading" class="small muted">Checking what can be decrypted…</p>
+        <ul v-else-if="rk.plan?.items.length" class="rklist mono small">
+          <li v-for="i in rk.plan.items" :key="i.id" :class="{ err: i.problem }">{{ i.file }}<template v-if="i.kind === 'vault-inline'"> · {{ i.name }}</template><template v-if="i.problem"> · {{ i.problem }}</template></li>
+        </ul>
+        <p v-else-if="rk.plan" class="small muted">Nothing here is encrypted with this vault ID.</p>
+        <p v-if="rkBlocked.length" class="err small">Fix the values the current password can't open first.</p>
+        <template v-if="rk.plan?.items.length && !rkBlocked.length">
+          <label class="field">New password
+            <input v-model="rk.pw" class="inp" type="password" autocomplete="new-password" />
+          </label>
+          <label class="field">Repeat it
+            <input v-model="rk.pw2" class="inp" type="password" autocomplete="new-password" />
+          </label>
+          <p v-if="rk.pw2 && rk.pw !== rk.pw2" class="err small">The passwords don't match.</p>
+          <label v-if="rk.plan.password_file" class="chk2"><input v-model="rk.update" type="checkbox" />Write the new password to <span class="mono">{{ rk.plan.password_file }}</span></label>
+          <p v-else class="small warn">groundwork can't update the password ({{ rk.plan.no_update }}). Put the new one where ansible reads it right after.</p>
+        </template>
+        <p v-if="rk.error" class="err" role="alert">{{ rk.error }}</p>
+        <div class="dact">
+          <button class="btn" type="button" @click="closeRekey">Cancel</button>
+          <button class="btn primary" type="submit" :disabled="rk.busy || !rkReady">{{ rk.busy ? 'Re-encrypting…' : 'Rekey' }}</button>
+        </div>
+      </form>
+    </Modal>
 
     <Modal v-if="move.f" labelledby="mv-title" wide @close="move.f = null">
       <div class="card dlg">
@@ -379,11 +582,16 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .srcl { display: block; font-size: 12px; color: var(--text-label); text-decoration: none; margin-top: 2px; }
 .srcl:hover { color: var(--accent); }
 .shead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
-.shead .btn { margin-left: auto; }
+.sact { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
+.vtext { width: 100%; box-sizing: border-box; resize: vertical; font-size: 13.5px; line-height: 1.5; padding: 8px 10px; }
+.rkpick { display: flex; flex-wrap: wrap; gap: 12px; }
+.rklist { margin: 0; padding: 8px 12px 8px 28px; max-height: 180px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--bg-inset); }
+.chk2 { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-soft); flex-wrap: wrap; }
+.chk2 input { accent-color: var(--accent); }
 .srow { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(200px, 1.6fr) 140px minmax(120px, auto); gap: 12px; align-items: center; padding: 11px 18px; border-top: 1px solid var(--bg-hover); font-size: 13.5px; min-width: 640px; }
 .where { display: flex; flex-direction: column; gap: 2px; }
 .where a { color: var(--text-label); text-decoration: none; }
-.act { justify-self: end; text-align: right; }
+.act { justify-self: end; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; text-align: right; }
 .pill { font: 500 12px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; justify-self: start; white-space: nowrap; align-self: flex-start; }
 .st-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); } .st-fail { color: var(--fail); background: color-mix(in srgb, var(--fail) 10%, transparent); }
 .st-warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); } .st-idle { color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 10%, transparent); }

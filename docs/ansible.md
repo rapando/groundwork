@@ -20,7 +20,7 @@ Pick an environment (one per entry in `inventories:` for the project in `groundw
 
 Both `group_vars/web.yml` and `group_vars/web/*.yml` forms are read; YAML and INI inventories are understood. The winning value is then compared with `ansible-inventory --host`. If they disagree, or Ansible reports a variable groundwork can't place (dynamic inventory plugins, scripts), the row says **can't determine source** and shows Ansible's value rather than guessing. Variables set only in role defaults are marked as such: they apply in plays that use the role.
 
-Values of secret-looking variables (names containing `pass`, `secret`, `token`, `api_key`, `private_key` or `credential`) are masked; `!vault` values show as encrypted; vault-encrypted files are listed, not opened: reveal them from the [Variables screen](variables.md#secrets).
+Values of secret-looking variables (names containing `pass`, `secret`, `token`, `api_key`, `private_key` or `credential`) are masked; `!vault` values show as encrypted; vault-encrypted files are listed, not opened: reveal or edit them from the [Variables screen](variables.md#managing-ansible-vault).
 
 ## Editing the inventory
 
@@ -32,7 +32,7 @@ When an environment's inventory is a static YAML file in the repository, the Inv
 
 Every change is shown as a diff first and written only when you press *Apply*; if the file changed in between, nothing is written and you're asked to make the change again. Edits splice only the lines they touch, so comments, blank lines, quoting and key order stay as you wrote them. Saving runs the file's checks like any other save.
 
-Not edited here: INI inventories, inventory directories and dynamic inventories (edit their files in Code), vault-encrypted files (use `ansible-vault edit`), flow-style mappings like `{a: 1}` with entries, and secret-looking variables, which are refused so they don't land in plain text: keep them in ansible-vault ([Variables → Secrets](variables.md#secrets) can move a value there).
+Not edited here: INI inventories, inventory directories and dynamic inventories (edit their files in Code), vault-encrypted files ([Variables → Secrets](variables.md#managing-ansible-vault) edits them), flow-style mappings like `{a: 1}` with entries, and secret-looking variables, which are refused so they don't land in plain text: keep them in ansible-vault ([Variables → Secrets](variables.md#managing-ansible-vault) can move a value there or add one).
 
 ## Jobs
 
