@@ -77,15 +77,26 @@ Put YAML files in `.groundwork/rules/`. A rule with a built-in's `id` replaces i
 
 ## Doctor
 
-**Run doctor** on the Troubleshoot screen, or `groundwork doctor` in a terminal (exit code 1 if anything fails; `--json` for scripts). Each check reports ok, warn or fail with a hint:
+**Run doctor** on the Troubleshoot screen, or `groundwork doctor` in a terminal (exit code 1 if anything fails, 2 if `groundwork.yaml` doesn't load; `--json` for scripts). Checks run in parallel, each with a 15-second timeout. Each reports ok, warn or fail with a hint:
 
-- **Tools**: terraform/tofu, ansible and the enabled linters, with versions.
-- **Cloud credentials**, for providers the code uses: AWS (`aws sts get-caller-identity`, plus the SSO session's expiry from `~/.aws/sso/cache`), Google (`gcloud auth application-default print-access-token`), Azure (`az account show`).
-- **State backend**: for S3, `aws s3api head-bucket`; **state locking**: S3 `use_lockfile` or the DynamoDB table (`describe-table`). Other backends are listed as not checked.
+- **Tools**: terraform or tofu, ansible, the enabled linters and git, with versions. A missing required tool fails; a missing linter or git warns. terraform below 1.4, tofu below 1.6 or ansible-core below 2.14 warns.
+- **Credentials**, for providers the code uses:
+
+  | Provider | Check |
+  |---|---|
+  | AWS | `aws sts get-caller-identity`, plus the SSO session's expiry from `~/.aws/sso/cache` |
+  | Google Cloud | `gcloud auth application-default print-access-token` |
+  | Azure | `az account show` |
+  | Vultr, DigitalOcean, Hetzner Cloud, Linode | the API token is set: `VULTR_API_KEY`, `DIGITALOCEAN_TOKEN` (or `DIGITALOCEAN_ACCESS_TOKEN`), `HCLOUD_TOKEN`, `LINODE_TOKEN`. The value isn't tested. |
+  | Docker | `docker info` reaches the daemon (`DOCKER_HOST` if set) |
+
+- **State backend**: for S3, `aws s3api head-bucket`; an S3-compatible backend (one with `endpoints.s3`, or `endpoint` before Terraform 1.6) is checked at its own endpoint with `--endpoint-url`, using the object storage's keys in `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. **State locking**: S3 `use_lockfile` or the DynamoDB table (`describe-table`); no locking warns. Local state is ok; other backends are listed as not checked.
 - **SSH agent**: `ssh-add -l`.
 - **Inventory reachability**, from the last ping of each environment.
-- **Vault password file**: present and not readable by other users, for projects that use ansible-vault.
+- **Vault password file**: set, present, not executable (unless `ansible.allow_vault_script`) and not readable by other users, for projects that use ansible-vault.
 - **Disk space** where `.groundwork/` lives, and whether the repo is a git repository.
+
+The Troubleshoot screen checks the service's environment (see [variables](variables.md#terraform)); `groundwork doctor` checks your shell's. When one passes and the other fails, the service is missing a variable your shell has.
 
 Doctor only reads: nothing it runs changes anything.
 

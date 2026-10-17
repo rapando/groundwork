@@ -1,6 +1,6 @@
 # Runs
 
-A **run** is one job against one Terraform root and environment. Start one from the Overview (the **Plan** button) or `POST /api/runs`. Nothing changes real infrastructure without an approval.
+A **run** is one job against one target: a Terraform root and environment, or an Ansible project and environment ([Ansible jobs](ansible.md#jobs)). Start a Terraform plan from the Overview (the **Plan** button). Nothing changes real infrastructure without an approval.
 
 ```
 init → [workspace] → validate → plan → summary → approve → apply
@@ -63,10 +63,11 @@ Retention prunes finished runs (and their logs and plans) when the project is op
 
 ## Locking and cancelling
 
-- One active job per Terraform root. Others queue in arrival order. Different roots run in parallel. (The original plan locked per root *and workspace*, but `terraform workspace select` rewrites `.terraform/` for the whole directory, so two workspaces of one root can't safely run together.)
+- One active job per Terraform root. Others queue in arrival order. Different roots run in parallel. The lock is per root, not per workspace: `terraform workspace select` rewrites `.terraform/` for the whole directory, so two workspaces of one root can't safely run together.
 - **Cancel** sends SIGINT to the job's process group so Terraform stops gracefully and releases its state lock. If it hasn't exited after 15 s it is killed, and an issue ("possible stale lock") is raised for that root.
-- Stopping groundwork itself (Ctrl-C) cancels running jobs the same way and waits up to 25 s.
-- On startup, runs that were in flight when the process died are marked **failed (interrupted)**. If one was applying, a stale-lock issue is raised. Runs older than 30 days, or beyond the newest 500, are pruned.
+- Stopping the service cancels running jobs the same way and waits up to 25 s ([stopping](service.md#starting-it)).
+- When a project is opened, runs that were in flight when the service died are marked **failed (interrupted)**. If one was applying, a stale-lock issue is raised; if its tool is still running, an issue names the process group. Old runs are then pruned (see `retention` above).
+- A run that passes its `run_timeout` (default 2 h) is stopped the same way and fails.
 
 ## Logs
 
@@ -77,16 +78,19 @@ Retention prunes finished runs (and their logs and plans) when the project is op
 
 ## API
 
+The HTTP API is private to the bundled UI and may change in any release ([compatibility](compatibility.md)); scripts should use the CLI. For contributors, the run endpoints, each under `/api/p/{project}`:
+
 ```
-POST /api/runs {kind: "tf.plan"|"tf.init", root, env, upgrade?}   → 202
-GET  /api/runs?status=&kind=&cursor=      GET /api/runs/{id}
-GET  /api/runs/{id}/log?from=&limit=&level=&q=    …/log/download
-GET  /api/runs/{id}/resources             per-resource progress
-GET  /api/runs/{id}/plan                  summary, danger, freshness, state serial, checks
-GET  /api/runs/{id}/plan/resource?address=   one resource's masked attribute diff + source location
-POST /api/runs/{id}/approve {confirm_text, acknowledge_danger}   409 stale_plan · 422 ack_required/confirm_mismatch
-POST /api/runs/{id}/replan                POST /api/runs/{id}/cancel
-GET  /api/envs                            per-environment status for the Overview
+POST /runs {kind: "tf.plan"|"tf.init"|…, root, env, upgrade?}   → 202
+GET  /runs?status=&kind=&cursor=      GET /runs/{id}
+GET  /runs/{id}/log?from=&limit=&level=&q=    …/log/download
+GET  /runs/{id}/resources             per-resource progress
+GET  /runs/{id}/hosts                 per-host results (Ansible)
+GET  /runs/{id}/plan                  summary, danger, freshness, state serial, checks
+GET  /runs/{id}/plan/resource?address=   one resource's masked attribute diff + source location
+POST /runs/{id}/approve {confirm_text, acknowledge_danger}   409 stale_plan · 422 ack_required/confirm_mismatch
+POST /runs/{id}/replan                POST /runs/{id}/cancel
+GET  /envs                            per-environment status for the Overview
 ```
 
 `root` and `env` are matched against `groundwork.yaml`; anything else is refused. SSE events: `run.updated`, `log.line`.

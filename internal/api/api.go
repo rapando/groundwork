@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"time"
 
@@ -471,10 +470,6 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 func writeError(w http.ResponseWriter, status int, code, msg string, details any) {
 	writeJSON(w, status, map[string]any{"error": map[string]any{"code": code, "message": msg, "details": details}})
 }
-
-func absPath(p string) (string, error) { return filepath.Abs(p) }
-
-func itoa(n int) string { return strconv.Itoa(n) }
 
 // Summary is the project card on the service's project list.
 type Summary struct {

@@ -9,10 +9,12 @@ Pick a **stack**: one configuration across its environments. A root with workspa
 Each cell shows the value a plan would use and where it came from. Terraform's documented order, lowest to highest:
 
 1. `default` in the `variable` block
-2. `TF_VAR_<name>` in groundwork's environment (shown masked, as "environment")
+2. `TF_VAR_<name>` in the service's environment (shown masked, as "environment")
 3. `terraform.tfvars`, then `terraform.tfvars.json`
 4. `*.auto.tfvars` / `*.auto.tfvars.json`, in lexical order
 5. `-var-file` files configured for the environment, in order
+
+`TF_VAR_*` and credential variables come from the service's environment: your shell's, if a command started the service in the background or you ran `groundwork --foreground` or `groundwork serve`. The login service gets only `PATH` (see [the service](service.md)), so variables exported in your shell don't reach it.
 
 Rows are flagged when the value **differs** between environments, is **missing** (required, no value anywhere: the plan will fail), or is **unused** (declared, never referenced). Values of `sensitive = true` variables are masked. Values set with `-var` on a command line aren't shown: groundwork doesn't pass any.
 
@@ -33,7 +35,7 @@ The Secrets tab lists encrypted values and credential variables. Nothing is decr
 | SOPS | YAML/JSON files with a `sops:` block (keys are listed, they're clear text in SOPS files) | `sops --decrypt --extract '["key"]'`. Needs the `sops` CLI and your key (age, KMS, PGP) as usual. |
 | ansible-vault, whole file | files starting `$ANSIBLE_VAULT;` | `ansible-vault view` |
 | ansible-vault, inline | `key: !vault \|` values | `ansible-vault decrypt` of that value |
-| Environment | known credential variables (`AWS_*`, `ARM_*`, `GOOGLE_*`, `VAULT_TOKEN`, …) set in groundwork's environment | never: names only |
+| Environment | a fixed list of credential variables (`AWS_ACCESS_KEY_ID`, `ARM_CLIENT_SECRET`, `GOOGLE_CREDENTIALS`, `HCLOUD_TOKEN`, `VAULT_TOKEN`, …) set in the service's environment | never: names only |
 
 Vault commands run in the Ansible project with its `ansible.cfg`. Set the password with `vault_password_file:` on the project in `groundwork.yaml` (relative to the project, `~/…` or absolute; never with `..`); `ANSIBLE_VAULT_PASSWORD_FILE` or `vault_password_file` in `ansible.cfg` also work. Ansible *executes* a password file that has the execute bit set, and `groundwork.yaml` is part of the repository, so groundwork refuses an executable file unless the project sets `ansible.allow_vault_script: true`. States: **can decrypt**, **wrong password**, **no password** (none configured), **tool missing**.
 
@@ -50,4 +52,4 @@ References and templates (`var.x`, `{{ x }}`, `lookup(...)`), placeholders (`cha
 
 **Move to vault.** For a finding in an Ansible YAML vars file (a top-level `key: value` line), groundwork runs `ansible-vault encrypt_string` with the project's vault settings and replaces the line with the `!vault` block. The preview shows the change with the old value masked; the write is refused if the file changed since. The old value is still in git history: rotate it.
 
-**Terraform.** groundwork doesn't rewrite plaintext tfvars secrets for you. Mark the variable `sensitive = true`, remove it from the tfvars file, and pass it as `TF_VAR_<name>` in the environment you start groundwork from, or read it from SOPS with the `carlpett/sops` provider's `sops_file` data source. Then rotate it.
+**Terraform.** groundwork doesn't rewrite plaintext tfvars secrets for you. Mark the variable `sensitive = true`, remove it from the tfvars file, and pass it as `TF_VAR_<name>` in the service's environment, or read it from SOPS with the `carlpett/sops` provider's `sops_file` data source. Then rotate it.

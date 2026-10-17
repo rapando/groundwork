@@ -36,7 +36,7 @@ perf:
 FUZZTIME ?= 30s
 fuzz:
 	@set -e; for t in files:FuzzSafePath terraform:FuzzParseLine ansible:FuzzParseEvent ansible:FuzzInventoryAndPatterns \
-		redact:FuzzRedactsRegisteredSecret vars:FuzzScan vars:FuzzLiteralRoundTrip checks:FuzzToolParsers \
+		redact:FuzzRedactsRegisteredSecret redact:FuzzLine vars:FuzzScan vars:FuzzLiteralRoundTrip checks:FuzzToolParsers \
 		config:FuzzParse graph:FuzzParseDOT diagnostics:FuzzMatchLog; do \
 		pkg=$${t%%:*}; fn=$${t##*:}; echo "== $$fn"; go test ./internal/$$pkg -run '^$$' -fuzz "^$$fn\$$" -fuzztime $(FUZZTIME); done
 # Release archives in dist/ without publishing, signing or SBOMs (needs goreleaser on PATH).

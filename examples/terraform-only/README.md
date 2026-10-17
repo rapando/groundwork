@@ -9,4 +9,8 @@ envs/dev/            root: backend + module call + tfvars
 envs/prod/
 ```
 
-Try it: `cd examples/terraform-only && groundwork`
+Try it on a copy outside this repository (inside it, groundwork would manage the whole groundwork checkout):
+
+```
+cp -R examples/terraform-only /tmp/terraform-only && cd /tmp/terraform-only && git init && groundwork
+```

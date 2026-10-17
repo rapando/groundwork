@@ -16,14 +16,16 @@ cd ~/code/your-infra-repo && groundwork
 curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | sh
 ```
 
-It downloads the release archive for your OS and CPU from GitHub, **verifies its SHA-256 against the release's `checksums.txt`** and refuses to install on a mismatch, then puts `groundwork` in `~/.local/bin` (or `/usr/local/bin` if that's writable and `~/.local/bin` isn't on your PATH). It never uses `sudo`.
+It downloads the release archive for your OS and CPU from GitHub, **verifies its SHA-256 against the release's `checksums.txt`** and refuses to install on a mismatch, then puts `groundwork` in `~/.local/bin` (or `/usr/local/bin` if that's writable and `~/.local/bin` isn't on your PATH). It never uses `sudo`. On macOS it also clears the quarantine flag, and if a groundwork service is still running it reminds you to restart it.
 
-`checksums.txt` is signed with [cosign](https://docs.sigstore.dev/cosign/installation/) (keyless: the certificate names this repository's release workflow). When `cosign` is on your PATH the script verifies the signature before trusting the checksums and says so; otherwise it prints `Signature not verified (cosign not installed)` and relies on the checksum alone. Set `GROUNDWORK_REQUIRE_SIGNATURE=1` to make a missing or failing signature fatal. Releases before 0.5.0 are not signed. Verifying needs cosign 2.4 or later (the signature is a Sigstore bundle).
+`checksums.txt` is signed with [cosign](https://docs.sigstore.dev/cosign/installation/) (keyless: the certificate names this repository's release workflow). When `cosign` is on your PATH the script verifies the signature before trusting the checksums and says so; otherwise it prints `Signature not verified (cosign not installed)` and relies on the checksum alone. A signature that is published but doesn't verify always stops the install; set `GROUNDWORK_REQUIRE_SIGNATURE=1` to also refuse when cosign or the signature is missing. Releases before 0.5.1 are not signed. Verifying needs cosign 2.4 or later (the signature is a Sigstore bundle).
 
 | Variable | |
 |---|---|
-| `GROUNDWORK_VERSION` | a release such as `v0.4.1` or `0.4.1` (default: the latest release; pre-releases like `v1.0.0-rc.1` only when named) |
+| `GROUNDWORK_VERSION` | a release such as `v1.0.0` or `1.0.0` (default: the latest release; pre-releases like `v1.1.0-rc.1` only when named) |
 | `GROUNDWORK_INSTALL_DIR` | where to put the binary |
+| `GROUNDWORK_DOWNLOAD_BASE` | a mirror of the release downloads, for air-gapped installs |
+| `GROUNDWORK_REQUIRE_SIGNATURE` | `1` to refuse to install without a verified signature |
 
 To read it first: `curl -fsSLO https://raw.githubusercontent.com/rapando/groundwork/main/install.sh && less install.sh && sh install.sh`.
 
@@ -47,10 +49,10 @@ On macOS a binary downloaded with a browser is quarantined because it isn't nota
 ## From source
 
 ```sh
-go install github.com/rapando/groundwork/cmd/groundwork@latest   # or @v0.4.1
+go install github.com/rapando/groundwork/cmd/groundwork@latest   # or @v1.0.0
 ```
 
-Versions follow [semantic versioning](https://semver.org): a major bump (or a minor bump while on `0.x`) signals a breaking change. See [releasing](releasing.md) for how versions are chosen.
+This needs Go 1.27 or later. Versions follow [semantic versioning](https://semver.org): only a major bump signals a breaking change; what counts as one is in [compatibility](compatibility.md). See [releasing](releasing.md) for how versions are chosen.
 
 ## Start the service
 
@@ -71,11 +73,12 @@ groundwork runs your tools; it doesn't bundle them. `groundwork doctor` lists wh
 
 | Tool | For |
 |---|---|
-| `terraform` ≥ 1.4 or `tofu` ≥ 1.6 | Terraform roots (set `terraform.binary: tofu` for OpenTofu). 1.4 is the floor (`workspace select -or-create`); tested with 1.16. |
+| `terraform` ≥ 1.4 or `tofu` ≥ 1.6 | Terraform roots (set `terraform.binary: tofu` for OpenTofu). 1.4 adds `workspace select -or-create`; tested with 1.16. Scaffolded roots ask for 1.5 or later (1.6, or 1.10 on Hetzner, with S3-compatible state). |
 | `ansible-core` ≥ 2.14 | Ansible projects; tested with 2.21 |
 | `git` | change tracking, commit recorded with each run |
 | tflint, checkov, yamllint, ansible-lint | optional checks; skipped with a hint when missing |
 | `sops`, `ansible-vault` | revealing encrypted values |
+| `aws`, `docker` | optional: Doctor uses them to check S3 state buckets and lock tables, and the Docker daemon |
 
 ## Upgrading
 
@@ -92,12 +95,12 @@ What an upgrade touches, and how it is protected, is in [compatibility](compatib
 
 ### From 0.1 to 0.2
 
-0.2 turns groundwork from a per-repository server into one service for all your repositories:
+If you still run groundwork the 0.1 way, one server per repository in your terminal, note what changed when 0.2 made it one service for all your repositories:
 
 - `groundwork` in a repository now starts (or reuses) the background service and returns, instead of serving in that terminal until Ctrl-C. `groundwork --foreground` keeps the old behaviour.
 - Each repository you open becomes a project, and its URL moves under `/p/<id>/`. Old bookmarks land on the project list.
-- Each repository's `.groundwork/` (run history, plans, rules) is used as-is: there's nothing to migrate. Run `groundwork` in each repository once, or `groundwork add <folder>…`, to bring them in.
-- Scripts that started `groundwork --no-open` to drive the API should run `groundwork serve --no-open <folder>` and call `/api/p/<id>/…`. The project id is in the URL it prints.
+- Each repository's `.groundwork/` (run history, plans, rules) is kept. Run `groundwork` in each repository once, or `groundwork add <folder>…`, to bring them in.
+- Scripts that drove the HTTP API should use the CLI instead (`groundwork check --json`, `groundwork doctor --json`, `groundwork projects`): the API is private to the bundled UI.
 
 ## Removing
 

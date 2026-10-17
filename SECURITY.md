@@ -4,7 +4,7 @@ groundwork runs `terraform` and `ansible` with your own credentials, so we treat
 
 ## Supported versions
 
-The latest release line receives fixes. Pre-releases (`-rc.N`) are supported until the release they lead to ships.
+Fixes are released as a new patch or minor version of the latest major release; upgrade to get them. Older releases aren't patched. Pre-releases (`-rc.N`) are supported until the release they lead to ships.
 
 ## Reporting a vulnerability
 
@@ -14,7 +14,7 @@ Include the version (`groundwork version`), the OS, and steps to reproduce. You 
 
 ## What is in scope
 
-- The security model described in [docs/security.md](docs/security.md): loopback-only binding, session token and cookie, Host and Origin checks, path containment, "no shell", redaction of logs and plans.
+- The security model described in [docs/security.md](docs/security.md): loopback-only binding, browser sign-in (password, passkeys, session cookie), the CLI token, Host and Origin checks, path containment, "no shell", redaction of logs and plans.
 - Anything in `groundwork.yaml`, a repository checked out through the UI, or a tool's output that can execute code or exfiltrate values the UI would hide.
 - The install script and the integrity of release artifacts.
 

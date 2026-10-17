@@ -12,4 +12,4 @@ Three small repos to point groundwork at. Each has its own README and validates 
 cp -R examples/app-with-infra /tmp/demo && cd /tmp/demo && git init && groundwork
 ```
 
-Copy an example out of this repo before running groundwork in it: groundwork creates `.groundwork/` and `groundwork.yaml` in the repo it manages.
+Copy an example out of this repo before running groundwork in it: groundwork manages the enclosing git repository (here, the whole groundwork checkout) and creates `.groundwork/` and `groundwork.yaml` in it.

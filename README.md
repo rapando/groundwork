@@ -22,13 +22,13 @@ groundwork
 ## What it does
 
 - **One service, many projects**: every repository you import gets its own checks, runs, file watching and drift schedule, behind one console. Import a folder in place, or a git URL that groundwork clones with your own git and SSH keys ([service and projects](docs/service.md)).
-- **Detects** Terraform roots, modules and Ansible projects, in a dedicated infrastructure repo or in an application repo that keeps them in a subfolder, and writes a `groundwork.yaml` you can review. An empty repo gets a scaffold instead ([setup](docs/setup.md)).
+- **Detects** Terraform roots, modules and Ansible projects, in a dedicated infrastructure repo or in an application repo that keeps them in a subfolder, and writes a `groundwork.yaml` you can review. An empty repo gets a scaffold instead, with presets for AWS, Google Cloud, Vultr, DigitalOcean, Hetzner, Linode, Docker and on-prem ([setup](docs/setup.md)).
 - **Checks on every save**: `fmt`, `validate`, tflint, checkov, yamllint, ansible-lint, playbook syntax and a plaintext-secret scan, with problems inline in the editor ([checks](docs/checks.md)).
 - **Plans, then applies only what you approved**: plan review with masked sensitive values and danger flags, typed confirmation for production, and the exact saved plan applied. A plan that went stale (code, state or time) can't be applied ([runs](docs/runs.md)).
 - **Ansible**: inventory with reachability and facts, variable provenance per host, dry run → approve → run, ad-hoc commands ([ansible](docs/ansible.md)).
 - **Graph and drift**: resource dependency graph, an architecture view that follows unsaved edits, refresh-only drift detection with copy / ignore / revert, optionally on a schedule with notifications ([graph](docs/graph.md)).
 - **Variables and secrets**: per-environment variable matrix with sources, SOPS and ansible-vault values revealed on request, moving plaintext secrets into the vault ([variables](docs/variables.md)).
-- **Troubleshooting**: failures matched to known causes (stale state locks, expired credentials, unreachable hosts, …) with guided fixes, and a Doctor for your tools, credentials, SSH agent and S3 state backends ([troubleshooting](docs/troubleshooting.md)).
+- **Troubleshooting**: failures matched to known causes (stale state locks, expired credentials, unreachable hosts, …) with guided fixes, and a Doctor for your tools, cloud credentials, the Docker daemon, SSH agent and S3 state backends ([troubleshooting](docs/troubleshooting.md)).
 
 | | |
 |---|---|
@@ -49,14 +49,7 @@ curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh 
 go install github.com/rapando/groundwork/cmd/groundwork@latest
 ```
 
-> To update
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | sh
-groundwork service restart
-```
-
-The script verifies the download against the release checksums and installs to `~/.local/bin` without `sudo`. Then, optionally, start the service at login:
+The script verifies the download against the release checksums (and their cosign signature, when cosign is installed) and installs to `~/.local/bin` without `sudo`. Then, optionally, start the service at login:
 
 ```sh
 groundwork service install   # launchd on macOS, systemd --user on Linux
@@ -65,7 +58,7 @@ groundwork service status
 
 Run `install` from a shell where `terraform` and `ansible` work: the login service keeps that shell's `PATH`. groundwork uses the `terraform` (or `tofu`) and `ansible` it finds there, plus any linters you have; `groundwork doctor` shows what it found. Supported floors: terraform ≥ 1.4 or tofu ≥ 1.6, and ansible-core ≥ 2.14; Doctor warns below them.
 
-**Upgrading:** install again, then `groundwork service restart` (the CLI warns while the service still runs the old version; project data is migrated on first open and backed up first). Coming from 0.1, where groundwork ran one server per repository in your terminal, see [upgrading to 0.2](docs/install.md#from-01-to-02).
+**Upgrading:** run the install script again, then `groundwork service restart`. The CLI warns while the service still runs the old version; project data is backed up, then migrated when each project is next opened. Coming from 0.1, where groundwork ran one server per repository in your terminal, see [upgrading to 0.2](docs/install.md#from-01-to-02).
 
 See [install](docs/install.md) for manual downloads, checksums, the install script's options and removal.
 
@@ -76,12 +69,13 @@ See [install](docs/install.md) for manual downloads, checksums, the install scri
 | `groundwork` | import this repository into the service (starting it if needed) and open it (`--no-open`, `--port`; `--foreground` serves in this terminal instead) |
 | `groundwork add <folder \| git URL>…` | import projects; a URL is cloned into the service's data directory |
 | `groundwork projects` · `open [project]` · `remove <project>` | list with status, open in the browser, stop managing (files stay) |
-| `groundwork service install \| uninstall \| start \| stop \| status` | run at login, or control the background service |
+| `groundwork service install \| uninstall \| start \| stop \| restart \| status \| logs` | run at login, or control the background service and read its log |
 | `groundwork serve [folder…]` | run the service in the foreground (what the login service runs) |
-| `groundwork init [--detect] [--yes]` | write `groundwork.yaml` (or scaffold an empty repo) without the UI |
-| `groundwork check [--json]` | run all checks once; non-zero exit on problems (for CI) |
-| `groundwork doctor [--json]` | tools, credentials, S3 backends and locking, SSH agent, disk |
+| `groundwork init [--detect \| --preset <name>] [--dry-run] [--yes]` | write `groundwork.yaml`, or scaffold an empty repo, without the UI |
+| `groundwork check [--json] [--unit <id>] [--fail-on error\|warning]` | run all checks once; non-zero exit on problems (for CI) |
+| `groundwork doctor [--json]` | tools, credentials, Docker daemon, S3 backends and locking, SSH agent, inventory reachability, disk |
 | `groundwork drift [--env prod]` | refresh-only drift check of every environment |
+| `groundwork auth status \| reset` | show the console's sign-in methods, or remove them if you are locked out |
 | `groundwork version` | |
 
 ## Safety
@@ -91,6 +85,10 @@ See [install](docs/install.md) for manual downloads, checksums, the install scri
 - Each project's state (runs, plans, history) lives in its own `.groundwork/` (git-ignored). The only file groundwork adds to your repo is `groundwork.yaml`.
 - The service keeps its project list, sign-in settings, CLI token, log and cloned repositories in `~/Library/Application Support/groundwork` (macOS) or `~/.config/groundwork` (Linux); set `GROUNDWORK_HOME` to move it.
 - What stays stable across releases (`groundwork.yaml`, the CLI, how data is migrated and backed up) is written down in [compatibility](docs/compatibility.md); the HTTP API is private to the bundled UI.
+
+## With coding agents
+
+[`skills/groundwork`](skills/groundwork/SKILL.md) is an agent skill for Claude Code and other skill-aware agents. It teaches them to validate changes with `groundwork check --json`, diagnose with `doctor`, check drift and scaffold repositories, and to hand plans and applies to you in the console rather than applying anything themselves. See [agents](docs/agents.md) to install it.
 
 ## Try it
 
@@ -114,4 +112,4 @@ make perf    # 5,000-file repository timings
 make fuzz    # each fuzz target for 30s
 ```
 
-The UI is Vue 3 + TypeScript in `web/`, built into `internal/server/dist` and embedded in the binary. [docs/architecture.md](docs/architecture.md) describes how the pieces fit; [design/](design/) holds the UI design (and, under `history/`, the original plan). See [CONTRIBUTING.md](CONTRIBUTING.md) for how changes land and [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
+The UI is Vue 3 + TypeScript in `web/`, built into `internal/server/dist` and embedded in the binary. [docs/architecture.md](docs/architecture.md) describes how the pieces fit. See [CONTRIBUTING.md](CONTRIBUTING.md) for how changes land and [SECURITY.md](SECURITY.md) for reporting vulnerabilities.

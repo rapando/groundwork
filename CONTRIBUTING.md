@@ -11,8 +11,12 @@ make build          # SPA (web/) + binary (bin/groundwork)
 make test           # Go + web unit tests
 make lint           # golangci-lint
 make e2e            # Playwright against the built binary; E2E_ARGS=--shard=1/3 to split
-make integration    # with real terraform/ansible/linters on PATH
+make integration    # with real terraform/ansible/linters on PATH; GW_TEST_NETWORK=1 adds provider downloads
 make fuzz           # each fuzz target for 30s (FUZZTIME=5s to go faster)
+make coverage       # per-package coverage, failing below the CI floors
+make perf           # timings on a generated 5,000-file repository
+make golden         # accept new detection output after a deliberate change
+make demo           # release archives (needs goreleaser) + scripts/demo.sh end to end
 ```
 
 The SPA in `internal/server/dist` is committed and embedded in the binary. After touching `web/`, run `make web` and commit the rebuilt `dist/`; CI fails if it is out of date.
@@ -36,6 +40,7 @@ The `pr-title` check enforces the prefix; reviewers enforce the wording. The PR 
 - Fuzz targets live next to their parsers; add one when you add a parser or validator and register it in the `fuzz` target of the Makefile.
 - Coverage: `make coverage` prints per-package coverage and fails below the floors CI enforces (60% per package, 75% overall). A new package needs tests from its first PR.
 - Integration tests run against both `terraform` and `tofu` in CI (`GW_TF_BINARY=tofu go test -tags integration ./...` locally).
+- Agent skill: `skills/groundwork` documents the CLI for coding agents. When you change a command, flag, exit code, `--json` field or scaffold preset, update the skill in the same PR (`TestSkillListsEveryPreset` catches a missing preset).
 - Perf: `make perf` checks each step against its absolute budget. With `GW_PERF_BASELINE` naming a JSON file of earlier timings, it also fails on a regression of more than 20%; `GW_PERF_WRITE_BASELINE` saves a passing run's timings for the next comparison.
 
 ## Review

@@ -2,6 +2,8 @@ package api
 
 import (
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -240,3 +242,7 @@ func TestPlanReviewOverHTTP(t *testing.T) {
 		t.Fatal("re-plan discards the old plan")
 	}
 }
+
+func absPath(p string) (string, error) { return filepath.Abs(p) }
+
+func itoa(n int) string { return strconv.Itoa(n) }

@@ -380,3 +380,16 @@ func TestInventoryScriptPassesExtraFields(t *testing.T) {
 		t.Errorf("hostvars %v", inv.Meta.Hostvars)
 	}
 }
+
+// The agent skill documents every preset; a new preset must be added there too.
+func TestSkillListsEveryPreset(t *testing.T) {
+	b, err := os.ReadFile("../../skills/groundwork/references/scaffold.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range Presets {
+		if !strings.Contains(string(b), "| `"+p+"` |") {
+			t.Errorf("skills/groundwork/references/scaffold.md has no row for preset %s", p)
+		}
+	}
+}

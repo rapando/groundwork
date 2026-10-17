@@ -13,4 +13,10 @@ Makefile               build the binary the playbook ships
 Flow: Terraform declares the hosts and exposes them as the `ansible_hosts` output, Ansible deploys the built binary to them.
 Terraform uses only the built-in `terraform_data` resource, so everything validates offline.
 
-Try it: `cd examples/app-with-infra && groundwork` (first run shows the Detect screen).
+Try it on a copy outside this repository (inside it, groundwork would manage the whole groundwork checkout):
+
+```
+cp -R examples/app-with-infra /tmp/app-with-infra && cd /tmp/app-with-infra && git init && groundwork
+```
+
+The first visit shows the Detect screen.

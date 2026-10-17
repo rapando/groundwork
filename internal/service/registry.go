@@ -103,17 +103,6 @@ func (r *Registry) Get(id string) (Project, bool) {
 	return Project{}, false
 }
 
-func (r *Registry) ByPath(path string) (Project, bool) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	for _, p := range r.projects {
-		if p.Path == path {
-			return p, true
-		}
-	}
-	return Project{}, false
-}
-
 // Add registers path (absolute) and returns the project; a path already
 // registered returns the existing entry.
 func (r *Registry) Add(path, remote string) (Project, bool, error) {

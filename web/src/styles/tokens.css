@@ -1,4 +1,4 @@
-/* Design tokens. Two themes: Paper (default) and Dark (design/README.md, Option A),
+/* Design tokens. Two themes: Paper (default) and Dark,
    each with a green (default) or orange accent.
    Components use these variables only; no colour is hard-coded outside this file
    (the graph reads them at runtime so its SVG/PNG export keeps concrete colours). */

@@ -11,10 +11,9 @@ groundwork runs on your machine with your credentials and can run `terraform app
 - **DNS rebinding.** Requests whose `Host` isn't `127.0.0.1`, `localhost` or `[::1]` with the right port are refused.
 - **CSRF.** State-changing requests need an `Origin` (or `Referer`) from the same host.
 - **Headers on every response.** A strict Content-Security-Policy (`script-src 'self'`, `frame-ancestors 'none'`), `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `nosniff`, and `Cache-Control: no-store` for the page and the API.
-- **Bounded input.** JSON bodies are capped at 1 MiB and file writes at 2 MiB.
+- **Bounded input.** JSON bodies are capped at 1 MiB (8 MiB for the unsaved editor buffers the architecture view sends) and file writes at 2 MiB.
 - **What's deliberately not there.** First-run setup goes to whoever reaches the console first from this machine; on a shared machine, set sign-in up as soon as you install. The server sets `ReadHeaderTimeout` (10s) and `IdleTimeout` (2min) but no read or write deadline, because event streams and large saves are long-lived by design; a local client that holds a connection open only costs itself.
-
-- **One service, many projects.** Every project's API sits behind the same checks; a project is only reachable once you've imported it. Importing a folder refuses `/` and your home directory. Cloning accepts only `https://`, `ssh://` and `git@host:path` URLs, runs `git` with `protocol.ext.allow=never` and with prompts disabled, and passes the URL after `--`.
+- **One service, many projects.** Every project's API sits behind the same checks; a project is only reachable once you've imported it. Importing a folder refuses `/` and your home directory. Cloning accepts only `https://`, `ssh://` and scp-style `user@host:path` URLs, runs `git` with `protocol.ext.allow=never` and with prompts disabled (`GIT_TERMINAL_PROMPT=0`, SSH in batch mode), and passes the URL after `--`.
 
 ## Files and commands
 
@@ -29,7 +28,7 @@ groundwork runs on your machine with your credentials and can run `terraform app
 - The same masking covers everything else that is stored or shown from a tool's output: linter and `terraform validate` findings in the Problems tray, and `git diff` in the Code view. Values revealed from SOPS or vault files are returned once for that response and are never stored, so there is nothing to redact later.
 - Plans show sensitive values masked, including the same values where Terraform didn't mark them.
 - Revealing a secret decrypts it for that one response only; it's never stored, logged or cached. An audit list records which secret was revealed and when, never the value.
-- groundwork never stores credentials. It uses whatever your shell provides (AWS profiles, SSO, SSH agent, vault password files).
+- groundwork never stores credentials. Tools use whatever the service's environment and your files provide (AWS profiles, SSO, SSH agent, vault password files).
 
 ## Network
 

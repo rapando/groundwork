@@ -20,7 +20,7 @@ Pick an environment (one per entry in `inventories:` for the project in `groundw
 
 Both `group_vars/web.yml` and `group_vars/web/*.yml` forms are read; YAML and INI inventories are understood. The winning value is then compared with `ansible-inventory --host`. If they disagree, or Ansible reports a variable groundwork can't place (dynamic inventory plugins, scripts), the row says **can't determine source** and shows Ansible's value rather than guessing. Variables set only in role defaults are marked as such: they apply in plays that use the role.
 
-Values of secret-looking variables (`*password*`, `*token*`, `*secret*`, `*key*`) are masked; `!vault` values show as encrypted; vault-encrypted files are listed, not opened: reveal them from the [Variables screen](variables.md#secrets).
+Values of secret-looking variables (names containing `pass`, `secret`, `token`, `api_key`, `private_key` or `credential`) are masked; `!vault` values show as encrypted; vault-encrypted files are listed, not opened: reveal them from the [Variables screen](variables.md#secrets).
 
 ## Editing the inventory
 
@@ -42,11 +42,11 @@ Not edited here: INI inventories, inventory directories and dynamic inventories 
 | gather facts | `ansible <hosts> -m setup -a gather_subset=min` | none; caches a small set of facts (OS, kernel, CPU/memory, Python, address). `ansible_env` is never kept. Listening ports from `listen_ports_facts` (the [system view](graph.md#system-graph-screen--system)'s *Check listening ports*) are cached alongside, without command lines. |
 | dry run | `ansible-playbook --syntax-check`, then `--check --diff` | none |
 | playbook | dry run, then **waits for approval**, then the real run with `--diff` | always; prod-like environments need the name typed |
-| ad-hoc | `ansible <pattern> -m <module> -a <args>` | read-only modules (`ping`, `setup`, `stat`, `debug`, `package_facts`, `service_facts`, `listen_ports_facts`) need none; anything else needs the environment name typed, recorded as an approval |
+| ad-hoc | `ansible <pattern> -m <module> -a <args>` | read-only modules (`ping`, `setup`, `gather_facts`, `stat`, `debug`, `package_facts`, `service_facts`, `listen_ports_facts`) need none; anything else needs the environment name typed, recorded as an approval |
 
 A playbook's dry run is its "plan": approving it is refused if the project's files changed since the dry run, or if the dry run is older than `terraform.plan_ttl` (default 1h); the check is repeated under the job lock right before the real run. A dry run with failed or unreachable hosts can still be approved (check mode often trips over tasks that depend on earlier changes), and the failures are shown for review.
 
-Host patterns, `--limit`, `--tags` and module names are validated (no whitespace, no leading `-`), passed as `--flag=value`, and positional arguments follow `--`, so nothing can be read as an extra option.
+Host patterns, `--limit`, `--tags` and module names are validated (no whitespace, no leading `-`), `--limit` and `--tags` are passed as `--flag=value`, and host patterns and playbooks follow `--`, so nothing can be read as an extra option.
 
 ## Live results
 

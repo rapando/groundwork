@@ -4,7 +4,7 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | sh
 #
-# GROUNDWORK_VERSION       release to install, e.g. v0.1.0 or 0.1.0 (default: latest release)
+# GROUNDWORK_VERSION       release to install, e.g. v1.0.0 or 1.0.0 (default: latest release)
 # GROUNDWORK_INSTALL_DIR   where to put the binary (default: ~/.local/bin, or
 #                          /usr/local/bin if writable and ~/.local/bin isn't on PATH)
 # GROUNDWORK_DOWNLOAD_BASE mirror of the release downloads (testing, air-gapped installs)

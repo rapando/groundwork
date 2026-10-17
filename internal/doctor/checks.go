@@ -531,7 +531,7 @@ func checkBackends(ctx context.Context, in Input) []Check {
 		default:
 			if !seen[b.Type] {
 				seen[b.Type] = true
-				out = append(out, Check{ID: "backend:" + b.Type, Name: "State backend", Status: "warn", Detail: b.Type + " backend (groundwork can't check it yet)"})
+				out = append(out, Check{ID: "backend:" + b.Type, Name: "State backend", Status: "warn", Detail: b.Type + " backend (not checked by groundwork)"})
 			}
 		}
 	}

@@ -28,7 +28,7 @@ Flags: **blocked** (declared, but no attached firewall allows it), **not listeni
 
 ## Architecture (Code screen → Split / Visualize)
 
-For `.tf` files the Code screen can show what the code builds: network resources (`aws_vpc`, `google_compute_network`, `azurerm_virtual_network`, `hcloud_network`, `digitalocean_vpc`) are drawn as containers, and resources that reference them, directly or through a subnet-like argument (`vpc_id`, `subnet_id(s)`, `subnetwork`, `network_id`, …), sit inside. The rules are data (`internal/graph/rules.yaml`); resources that relate to nothing drawn are listed as "not placed" rather than guessed.
+For `.tf` files the Code screen can show what the code builds: network resources (`aws_vpc`, `google_compute_network`, `azurerm_virtual_network`, `hcloud_network`, `digitalocean_vpc`, `docker_network`) are drawn as containers, and resources that reference them, directly or through a subnet-like argument (`vpc_id`, `subnet_id(s)`, `subnetwork`, `network_id`, …), sit inside. The rules are data (`internal/graph/rules.yaml`); resources that relate to nothing drawn are listed as "not placed" rather than guessed.
 
 It is computed from the **unsaved editor buffer** (debounced 400 ms), so it follows your typing. The block under the cursor is outlined; clicking a box jumps to its definition; blocks with diagnostics get a red dashed border; resources outside the current file's module are dimmed. "As used by" picks which root/environment's values resolve counts. A file with syntax errors still shows what parses.
 

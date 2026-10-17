@@ -8,9 +8,11 @@ A **unit** is a Terraform root, a Terraform module directory, or an Ansible proj
 
 | Unit | Tools (if enabled in `checks.enabled`) |
 |---|---|
-| Terraform root | `fmt`, `validate`, `tflint`, `checkov` |
-| Terraform module | `fmt`, `tflint`, `checkov` (`validate` runs through its roots) |
-| Ansible project | `yamllint`, `ansible-lint`, `syntax-check` |
+| Terraform root | `fmt`, `validate`, `tflint`, `checkov`, `secrets` |
+| Terraform module | `fmt`, `tflint`, `checkov`, `secrets` (`validate` runs through its roots) |
+| Ansible project | `yamllint`, `ansible-lint`, `syntax-check` (`ansible-playbook --syntax-check`), `secrets` |
+
+`secrets` is built in: it scans the unit's files for plaintext credentials (a Terraform unit's own directory, an Ansible project recursively) and needs no tool. See [the plaintext secret scan](variables.md#plaintext-secret-scan).
 
 A tool that isn't installed is reported as **skipped** with an install hint, never as a failure. A tool that is installed but can't run (for example `terraform init` can't reach the registry) is **failed**, and the previous good diagnostics are kept.
 
@@ -33,10 +35,10 @@ Exit codes: `0` clean, `1` findings at/above `--fail-on`, `2` usage or configura
 
 If the shadow tree can't be built, `validate` reports **failed** rather than running against your repo.
 
-## Differences from the original plan
+## How the tools are run
 
 - `fmt` runs per directory, not `-recursive`, since every module is its own unit; recursive would report files twice.
-- "Did you mean" fixes come from Terraform's own suggestion in the diagnostic (Terraform 1.x includes it), verified against the exact range before offering the edit. A provider-schema Levenshtein fallback is not implemented yet.
+- "Did you mean" fixes come from Terraform's own suggestion in the diagnostic (Terraform 1.x includes it), verified against the exact range before offering the edit. There is no fallback that guesses from provider schemas.
 - `tflint` runs with its working directory set to the unit, not `--chdir`: with `--chdir` it prints paths relative to its original cwd with inconsistent symlink handling.
 - `ansible-playbook --syntax-check` output is parsed in both the ansible-core ≥ 2.19 format (`[ERROR]: … Origin: file:line:col`) and the older `ERROR! … The error appears to be in` format.
 - `ansible-lint -f json` reports positions as `positions.begin.line` for some rules and `lines.begin` for others; both are handled.
@@ -49,7 +51,7 @@ Saves are atomic (temp file + rename) and require `If-Match` with the sha you lo
 
 ```
 make integration                       # real terraform / tflint / yamllint / ansible-lint if installed
-GW_TEST_NETWORK=1 make integration     # also downloads providers (aws, null) to validate the AWS scaffold
+GW_TEST_NETWORK=1 make integration     # also downloads providers, to validate every scaffold preset
 ```
 
 The parsers are tested against captured output of the real tools in `testdata/checks/`.
