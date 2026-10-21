@@ -62,7 +62,7 @@ Each project lives at `/p/<id>/` in the console, so links to a run or a file can
 
 | What | Where |
 |---|---|
-| Project list (`projects.json`), `auth.json` (sign-in), `token` (the CLI's), `server.json`, `lock`, `groundwork.log` | the data directory: `~/Library/Application Support/groundwork` (macOS), `~/.config/groundwork` (Linux), or `$GROUNDWORK_HOME` |
+| Project list (`projects.json`), `auth.json` (sign-in), `token` (the CLI's), `server.json`, `lock`, `groundwork.log`, `notify.yaml` ([notifications](notifications.md#configuration) for all projects) | the data directory: `~/Library/Application Support/groundwork` (macOS), `~/.config/groundwork` (Linux), or `$GROUNDWORK_HOME` |
 | Cloned repositories | `repos/` in the data directory |
 | A project's runs, plans, check caches, custom rules | `.groundwork/` in that repository (git-ignored) |
 

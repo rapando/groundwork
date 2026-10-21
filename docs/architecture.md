@@ -55,7 +55,7 @@ cmd/groundwork ─► internal/cli (cobra) ─► internal/service.Run
 ## Data
 
 - **Per repository** `.groundwork/` (mode 0700, self-ignored in git): `state.db` with runs, stages, approvals, diagnostics, issues, drift, host status, facts and a key/value table; `runs/<id>/` with `log.ndjson`, a masked `diff.json` and, only while a plan awaits approval, the raw `tfplan`; `rules/` for your own troubleshooting rules; `VERSION`.
-- **Service data directory** (`~/Library/Application Support/groundwork`, `~/.config/groundwork`, or `$GROUNDWORK_HOME`, mode 0700): `projects.json` (with a format number), `auth.json` (sign-in methods and session key, with a format number), `token`, `server.json` (pid, port, version; never the token), `lock`, `version`, `groundwork.log` (rotated), `repos/` for clones.
+- **Service data directory** (`~/Library/Application Support/groundwork`, `~/.config/groundwork`, or `$GROUNDWORK_HOME`, mode 0700): `projects.json` (with a format number), `auth.json` (sign-in methods and session key, with a format number), `token`, `server.json` (pid, port, version; never the token), `lock`, `version`, `groundwork.log` (rotated), `notify.yaml` (notification settings for all projects, which each project's `notify:` block overrides), `repos/` for clones.
 
 What is stable across releases and how data is migrated is in [compatibility](compatibility.md).
 

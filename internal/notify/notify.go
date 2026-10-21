@@ -60,7 +60,10 @@ type Notifier struct {
 	Store *store.Store
 	Bus   *events.Bus
 	Cfg   func() *config.Config
-	Log   *slog.Logger
+	// Base returns the settings for every project, under the project's own
+	// notify: block. Optional.
+	Base func() *config.Notify
+	Log  *slog.Logger
 	// OnPanic is told when the loop or a delivery panics.
 	OnPanic safego.Hook
 
@@ -106,7 +109,11 @@ func (n *Notifier) settings() (config.NotifySettings, *config.Config) {
 	if n.Cfg != nil {
 		c = n.Cfg()
 	}
-	return c.NotifySettings(), c
+	var base *config.Notify
+	if n.Base != nil {
+		base = n.Base()
+	}
+	return c.NotifySettingsOver(base), c
 }
 
 // Start follows run events until ctx ends. The returned channel is closed

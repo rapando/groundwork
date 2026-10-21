@@ -55,6 +55,9 @@ type Scheduler struct {
 	Runner *runner.Runner
 	Store  *store.Store
 	Cfg    func() *config.Config
+	// Base returns the settings for every project, under the project's own
+	// notify: block. Optional.
+	Base   func() *config.Notify
 	Log    *slog.Logger
 	Notify Notifier
 	URL    func() string // base URL of the UI, for links in notices
@@ -75,7 +78,7 @@ func New(rn *runner.Runner, st *store.Store, cfg func() *config.Config, log *slo
 	}
 	s := &Scheduler{Runner: rn, Store: st, Cfg: cfg, Log: log, cron: cron.New()}
 	s.Notify = func(ctx context.Context, _ config.Drift, n Notice) error {
-		return SendTo(ctx, s.Cfg().NotifySettings(), n)
+		return SendTo(ctx, s.settings(s.Cfg()), n)
 	}
 	s.cron.Start()
 	return s
@@ -118,7 +121,7 @@ func (s *Scheduler) Status() Status {
 	st := Status{Schedule: s.spec, LastRun: s.lastRun, Error: s.err}
 	if cfg := s.Cfg(); cfg != nil {
 		st.Notify = cfg.Drift.Notify
-		st.Channels = cfg.NotifySettings().Drift
+		st.Channels = s.settings(cfg).Drift
 	}
 	if s.entry != 0 {
 		n := s.cron.Entry(s.entry).Next
@@ -223,7 +226,7 @@ func (s *Scheduler) check(ctx context.Context, cfg *config.Config, t target, run
 		}
 		return
 	}
-	if prev == cur || !External(cfg.NotifySettings(), t.env) {
+	if prev == cur || !External(s.settings(cfg), t.env) {
 		return
 	}
 	n := Notice{Event: "drift", Kind: runner.KindDrift, Root: t.root, Env: t.env, Count: len(addrs), Addresses: addrs, RunID: runID}
@@ -241,6 +244,15 @@ func (s *Scheduler) check(ctx context.Context, cfg *config.Config, t target, run
 	if err := s.Store.SetKV(key, cur); err != nil {
 		s.Log.Warn("record drift notification", "err", err)
 	}
+}
+
+// settings are the effective notification settings of cfg over Base.
+func (s *Scheduler) settings(cfg *config.Config) config.NotifySettings {
+	var base *config.Notify
+	if s.Base != nil {
+		base = s.Base()
+	}
+	return cfg.NotifySettingsOver(base)
 }
 
 // Send delivers a notice by the legacy drift settings (drift.notify and

@@ -18,7 +18,7 @@ Every event is recorded in the list, whatever the settings below say, once per r
 
 ## Defaults
 
-With no `notify:` block in `groundwork.yaml`:
+With no settings saved for all projects and no `notify:` block in `groundwork.yaml`:
 
 | Event | Toast | Desktop | Webhook |
 |---|---|---|---|
@@ -30,7 +30,14 @@ With no `notify:` block in `groundwork.yaml`:
 
 ## Configuration
 
-Set it on the console's **Notifications** page (it writes the block for you and leaves the rest of the file, comments included, as it was) or edit `groundwork.yaml`:
+Settings come in two layers, both on the console's **Notifications** page:
+
+- **All projects**: kept by the service in `notify.yaml` in its [data directory](service.md#where-things-are-kept), not in any repository. Every project starts from them. The project list reaches them from the bell (**Notification settings →**).
+- **This project**: overrides in the project's `groundwork.yaml`. Change a row or a field and it becomes an override, marked *This project* with a **Reset**; everything you leave alone follows All projects, so a later change there reaches the project at once. Only the overrides are written (the rest of the file, comments included, stays as it was), and resetting the last one removes the block.
+
+Each key comes from the first of: the project's `notify:` block, its older `drift.notify`/`drift.webhook`, All projects, the default. Keep a personal webhook in All projects so a shared repository doesn't carry it.
+
+Both files use the same block:
 
 ```yaml
 notify:
@@ -43,13 +50,13 @@ notify:
   webhook: https://hooks.example.com/…
 ```
 
-- Each event lists its channels: `console` (a toast in the console), `desktop` and `webhook`. A list you leave out keeps its default; an empty list (`[]`) means record only.
+- Each event lists its channels: `console` (a toast in the console), `desktop` and `webhook`. A list you leave out follows the layer below; an empty list (`[]`) means record only.
 - `quiet_under` is a duration (`30s`, `2m`); it applies to successes only.
-- `envs` limits desktop notifications and the webhook to those environments; the console still shows the rest. Empty means every environment.
-- `webhook` must be an `http://` or `https://` URL with a host and no credentials. Listing the `webhook` channel without a URL is an error (unless `drift.webhook` is set, which is used as the fallback).
-- The older `drift.notify` and `drift.webhook` keep working: with no `notify:` block, `drift.notify: desktop` means `drift: [console, desktop]`, `webhook` means `drift: [console, webhook]`, `none` means `drift: [console]`, and `drift.webhook` is the webhook.
+- `envs` limits desktop notifications and the webhook to those environments; the console still shows the rest. Empty means every environment (in a project, `envs: []` lifts a limit set for all projects).
+- `webhook` must be an `http://` or `https://` URL with a host and no credentials. The page refuses a `webhook` channel with no URL in either layer (or `drift.webhook`); in a hand-edited `groundwork.yaml` such a channel just sends nothing until a URL is set.
+- The older `drift.notify` and `drift.webhook` keep working: with no `drift` list in the project's `notify:` block, `drift.notify: desktop` means `drift: [console, desktop]`, `webhook` means `drift: [console, webhook]`, `none` means `drift: [console]`; and `drift.webhook` is the webhook unless the block sets one.
 
-Edits apply without a restart. **Send a test** uses the saved settings: a desktop notification from the service if any event lists `desktop`, and a test POST if any event lists `webhook` and a URL is set. It reports what was sent and what failed.
+Edits to either file, by the page or by hand, apply without a restart. A broken `notify.yaml` is reported on the page and in the service log, and the defaults apply until it is fixed. **Send a test** uses the saved settings: a desktop notification from the service if any event lists `desktop`, and a test POST if any event lists `webhook` and a URL is set. It reports what was sent and what failed.
 
 ## For one run
 
@@ -57,7 +64,7 @@ While a run is going, **When it finishes ▾** on its page overrides the setting
 
 | Mode | |
 |---|---|
-| **Project default** | the settings above |
+| **Project default** | the project's settings |
 | **When it finishes** | a toast and a desktop notification whatever happens (failed, waiting for approval, or succeeded, however short); the webhook as the settings say |
 | **Only if it fails** | a failure notifies as the settings say; anything else is recorded only |
 | **Don't notify** | recorded only |

@@ -874,9 +874,28 @@ export interface NotifySettings {
   webhook: string
 }
 export interface NotifySettingsResponse {
+  /** the effective settings: the project's overrides over the settings for every project */
   settings: NotifySettings
-  /** a notify: block exists in groundwork.yaml */
+  /** a notify: block exists in groundwork.yaml (for every project: notify.yaml exists) */
   configured: boolean
+  /** the project's notify: block; null (or "") where it follows the settings for every project */
+  overrides?: NotifyOverrides
+  /** the settings for every project, resolved, that the overrides apply over */
+  base?: NotifySettings
+  /** the service keeps settings for every project (false: the base is the built-in defaults) */
+  shared?: boolean
+  /** for every project: the file they live in, and why it was ignored */
+  path?: string
+  error?: string
+}
+export interface NotifyOverrides {
+  failed: Channel[] | null
+  approval: Channel[] | null
+  success: Channel[] | null
+  drift: Channel[] | null
+  quiet_under: string
+  envs: string[] | null
+  webhook: string
 }
 export interface NotifyTestResponse {
   sent: Channel[]

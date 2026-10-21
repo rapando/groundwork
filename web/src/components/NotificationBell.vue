@@ -110,7 +110,7 @@ const markAll = () => store.markServiceAllRead().catch(swallow('mark all read'))
       </div>
       <div class="ifoot">
         <span class="muted">Kept for 30 days</span>
-        <RouterLink v-if="projectId" to="/notifications" @click="hide(false)">Notification settings →</RouterLink>
+        <RouterLink to="/notifications" @click="hide(false)">Notification settings →</RouterLink>
       </div>
     </div>
   </Teleport>

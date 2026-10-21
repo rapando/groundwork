@@ -468,7 +468,7 @@ func (c *Config) validate() []problem {
 	if s := c.Drift.Schedule; s != "" && len(strings.Fields(s)) != 5 {
 		add("schedule must be a 5-field cron expression", "drift", "schedule")
 	}
-	for _, p := range c.Notify.problems(c.Drift.Webhook) {
+	for _, p := range c.Notify.problems(c.Drift.Webhook, false) {
 		add(p.msg, append([]any{"notify"}, p.keys...)...)
 	}
 	return out
