@@ -7,10 +7,15 @@ import StagePipeline from '../components/StagePipeline.vue'
 import LogView from '../components/LogView.vue'
 import RunResourceMap from '../components/RunResourceMap.vue'
 import RunHostGrid from '../components/RunHostGrid.vue'
+import DropMenu from '../components/DropMenu.vue'
+import RunNotifyMenu from '../components/RunNotifyMenu.vue'
+import InlineConfirm from '../components/InlineConfirm.vue'
+import FailureCause from '../components/FailureCause.vue'
 import { api, ApiError } from '../api/client'
 import { apiBase } from '../project'
-import type { HostResult, PlanChange, ResEvent, RunDetail } from '../api/types'
-import { ago, duration, kindLabel, useRuns } from '../stores/runs'
+import type { HostResult, Issue, IssuesResponse, PlanChange, ResEvent, RunDetail } from '../api/types'
+import { ago, duration, finishLine, kindLabel, runPhase, typicalDuration, useRuns } from '../stores/runs'
+import { useNotifications } from '../stores/notifications'
 import { useNow } from '../composables/now'
 import { onEvent } from '../composables/events'
 import { useRunLog } from '../composables/runLog'
@@ -19,6 +24,7 @@ const route = useRoute()
 const router = useRouter()
 const runs = useRuns()
 const now = useNow()
+const { unreadRuns, markRunRead } = useNotifications()
 
 const id = computed(() => (route.params.id ? Number(route.params.id) : null))
 const detail = ref<RunDetail | null>(null)
@@ -48,12 +54,19 @@ async function loadDetail() {
     loadError.value = e instanceof ApiError && e.status === 404 ? 'No such run.' : String(e)
   }
 }
-watch(id, () => { resMap.clear(); results.value = []; follow.value = true; query.value = ''; loadResources(); loadResults(); loadDetail() }, { immediate: false })
+watch(id, () => { resMap.clear(); results.value = []; follow.value = true; query.value = ''; confirming.value = false; issue.value = null; typical.value = ''; loadResources(); loadResults(); loadDetail() }, { immediate: false })
 const offs = [
   onEvent('run.updated', (d: { id: number }) => { if (d.id === id.value) loadDetail() }),
   onEvent('reconnected', () => loadDetail()),
+  onEvent('issues.updated', () => loadIssue()),
 ]
 onBeforeUnmount(() => offs.forEach((off) => off()))
+
+// opening a run reads its notifications (and any that arrive while you look at it)
+function readCurrent() { if (id.value != null && !document.hidden && unreadRuns.value.has(id.value)) markRunRead(id.value).catch(() => {}) }
+watch([id, () => (id.value != null && unreadRuns.value.has(id.value))], readCurrent, { immediate: true })
+document.addEventListener('visibilitychange', readCurrent)
+onBeforeUnmount(() => document.removeEventListener('visibilitychange', readCurrent))
 
 onMounted(async () => {
   try {
@@ -152,6 +165,7 @@ function stateOf(c: PlanChange): { text: string; cls: string } {
   if (r?.state === 'failed') return { text: 'failed', cls: 'fail' }
   if (r?.state === 'running') return { text: r.elapsed ? `running ${r.elapsed}s` : 'running', cls: 'run' }
   if (run.value?.status === 'succeeded' && detail.value?.summary.apply) return { text: 'done', cls: 'ok' }
+  if ((run.value?.status === 'failed' || run.value?.status === 'cancelled') && applyStarted.value) return { text: 'not started', cls: 'idle' }
   return { text: 'planned', cls: 'idle' }
 }
 const states = computed(() => Object.fromEntries((plan.value?.changes ?? []).map((c) => [c.address, stateOf(c)])))
@@ -189,7 +203,48 @@ const subtitle = computed(() => {
   if (r.started_at) bits.push('started ' + new Date(r.started_at).toLocaleTimeString([], { hour12: false }))
   return bits.join(' · ')
 })
-const elapsed = computed(() => (run.value ? duration(run.value.started_at ?? run.value.created_at, run.value.ended_at, now.value) : ''))
+// a live counter while it runs; once it ends, when and after how long
+const elapsed = computed(() => {
+  const r = run.value
+  if (!r) return ''
+  return r.ended_at && !active.value ? finishLine(r) : duration(r.started_at ?? r.created_at, r.ended_at, now.value)
+})
+
+// "usually 2–3 min": from earlier runs of the same kind on the same target, in the same phase
+const typical = ref('')
+const phaseNow = computed(() => (detail.value ? runPhase(detail.value.stages) : 'all'))
+const ticking = computed(() => run.value?.status === 'running' || run.value?.status === 'queued')
+watch([() => run.value?.id, phaseNow, ticking], async () => {
+  const r = run.value
+  if (!r || !ticking.value) { typical.value = ''; return }
+  const want = r.id
+  const t = await typicalDuration(runs.list, r, phaseNow.value)
+  if (run.value?.id === want) typical.value = t
+}, { immediate: true })
+
+// ---- failure ----
+const failed = computed(() => run.value?.status === 'failed' && !!detail.value?.summary.error)
+const issue = ref<Issue | null>(null)
+async function loadIssue() {
+  const want = id.value
+  if (want == null || !failed.value) { issue.value = null; return }
+  try {
+    const r = await api<IssuesResponse>(`/issues?run=${want}`)
+    if (id.value === want) issue.value = r.open.find((i) => i.run_id === want) ?? r.resolved.find((i) => i.run_id === want) ?? r.open[0] ?? r.resolved[0] ?? null
+  } catch { issue.value = null }
+}
+watch([id, failed], loadIssue, { immediate: true })
+const stoppedAt = computed(() => {
+  const bad = isAnsible.value
+    ? hostRows.value.filter((h) => h.failed || h.unreachable).map((h) => h.host)
+    : [...resMap.values()].filter((r) => r.state === 'failed').map((r) => r.address)
+  return !bad.length ? '' : bad.length === 1 ? bad[0] : `${bad[0]} and ${bad.length - 1} more`
+})
+const isTfPlan = computed(() => run.value?.kind === 'tf.plan')
+const applied = computed(() => (isTfPlan.value && applyStarted.value && plan.value?.changes.length ? { done: doneCount.value, total: plan.value.changes.length } : null))
+const beforeApply = computed(() => isTfPlan.value && !applyStarted.value)
+// "Show in log": the errors only, from the first one
+function showErrors() { query.value = ''; level.value = 'error'; follow.value = false; tab.value = 'log' }
 
 // ---- actions ----
 function flash(m: string) { notice.value = m; setTimeout(() => (notice.value = ''), 3000) }
@@ -198,10 +253,14 @@ async function copyCommand() {
   const argv = (run.value?.argv ?? []).map((a) => quote(String(a)))
   try { await navigator.clipboard.writeText(argv.join(' ')); flash('Command copied') } catch { flash('Copy failed') }
 }
+// cancelling asks first, on the page
+const confirming = ref(false)
+const waiting = computed(() => run.value?.status === 'waiting_approval')
+const cancelMessage = computed(() => (waiting.value ? 'Discard this plan?' : 'Cancel this run? Terraform will be interrupted and asked to release its state lock.'))
+watch(active, (a) => { if (!a) confirming.value = false })
 async function cancelRun() {
   if (!run.value) return
-  const waiting = run.value.status === 'waiting_approval'
-  if (!window.confirm(waiting ? 'Discard this plan?' : 'Cancel this run? Terraform will be interrupted and asked to release its state lock.')) return
+  confirming.value = false
   try { await runs.cancel(run.value.id) } catch (e) { flash(e instanceof Error ? e.message : String(e)) }
 }
 const downloadHref = computed(() => (id.value ? `${apiBase}/runs/${id.value}/log/download` : '#'))
@@ -224,10 +283,10 @@ const downloadHref = computed(() => (id.value ? `${apiBase}/runs/${id.value}/log
             <span class="dot" :class="dotClass(r.status)" aria-hidden="true" />
             <span class="rtext">
               <span class="mono cmd">{{ kindLabel(r) }}</span>
-              <span class="small muted">#{{ r.id }} · {{ r.target.env }}</span>
+              <span class="small muted">#{{ r.id }} · {{ r.target.env }}<template v-if="unreadRuns.has(r.id)"> · {{ r.status }}</template></span>
             </span>
-            <span class="mono small muted">{{ ago(r.created_at, now) }}</span>
-            <span class="sr-only">{{ r.status }}</span>
+            <span class="when"><span v-if="unreadRuns.has(r.id)" class="unread" title="Ended while you were away" /><span class="mono small muted">{{ ago(r.created_at, now) }}</span></span>
+            <span class="sr-only">{{ r.status }}{{ unreadRuns.has(r.id) ? ', unread' : '' }}</span>
           </RouterLink>
           <p v-if="!shown.length" class="muted pad">{{ runs.list.length ? 'No runs match.' : 'No runs yet. Start a plan from the Overview.' }}</p>
         </div>
@@ -244,17 +303,26 @@ const downloadHref = computed(() => (id.value ? `${apiBase}/runs/${id.value}/log
                   <h1 class="mono">#{{ run.id }} {{ kindLabel(run) }}</h1>
                   <StatusPill :status="run.status" />
                 </div>
-                <span class="muted sub">{{ subtitle }} · <span class="mono">{{ elapsed }}</span></span>
+                <span class="muted sub">{{ subtitle }} · <span class="mono">{{ elapsed }}</span><template v-if="typical"> · <span class="typ">{{ typical }}</span></template></span>
               </div>
               <div class="actions">
-                <button class="btn sm" type="button" @click="copyCommand">Copy command</button>
+                <RunNotifyMenu v-if="active" :run-id="run.id" />
                 <a class="btn sm" :href="downloadHref" download>Download log</a>
-                <button v-if="active" class="btn sm danger" type="button" @click="cancelRun">{{ run.status === 'waiting_approval' ? 'Discard plan' : 'Cancel run' }}</button>
+                <button v-if="active" class="btn sm danger" type="button" :aria-expanded="confirming" @click="confirming = true">{{ waiting ? 'Discard plan' : 'Cancel run' }}</button>
+                <DropMenu label="More actions">
+                  <template #button><span aria-hidden="true">⋯</span></template>
+                  <button role="menuitem" type="button" @click="copyCommand">Copy command</button>
+                  <RouterLink v-if="plan?.changes.length" role="menuitem" :to="`/runs/${run.id}/plan`">View full plan diff</RouterLink>
+                  <RouterLink v-if="issue" role="menuitem" :to="'/troubleshoot/' + issue.id">Open in Troubleshoot</RouterLink>
+                </DropMenu>
               </div>
             </div>
+            <InlineConfirm v-if="confirming && active" :message="cancelMessage" :confirm-label="waiting ? 'Discard the plan' : 'Cancel the run'"
+              :cancel-label="waiting ? 'Keep the plan' : 'Keep running'" danger @confirm="cancelRun" @cancel="confirming = false" />
             <StagePipeline :stages="detail!.stages" :plan="plan" />
             <p v-if="notice" class="ok small" role="status">{{ notice }}</p>
-            <p v-if="detail!.summary.error" class="banner fail" role="alert">{{ detail!.summary.error }}</p>
+            <FailureCause v-if="failed" :run="run" :error="detail!.summary.error!" :issue="issue" :stopped-at="stoppedAt" :applied="applied" :before-apply="beforeApply" :now="now" @log="showErrors" />
+            <p v-else-if="detail!.summary.error" class="banner fail" role="alert">{{ detail!.summary.error }}</p>
             <p v-else-if="detail!.summary.apply && run.status === 'succeeded'" class="banner ok">
               Applied: {{ detail!.summary.apply.added }} added, {{ detail!.summary.apply.changed }} changed, {{ detail!.summary.apply.destroyed }} destroyed<template v-if="detail!.summary.apply.outputs?.length"> · outputs: <span class="mono">{{ detail!.summary.apply.outputs.join(', ') }}</span></template>
             </p>
@@ -359,6 +427,9 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .rtext { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .cmd { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-disabled); }
+.when { display: inline-flex; align-items: center; gap: 6px; }
+.unread { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--accent-bg); }
+.typ { color: var(--text-faint); }
 .d-ok { background: var(--ok); } .d-run { background: var(--running); } .d-fail { background: var(--fail); } .d-warn { background: var(--warn); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .detail { flex: 999 1 600px; min-width: 0; display: flex; flex-direction: column; min-height: 0; }

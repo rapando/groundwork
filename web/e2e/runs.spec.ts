@@ -1,4 +1,6 @@
 import { test, expect, Page, start, Instance } from './helpers'
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -93,18 +95,75 @@ test('prod needs the environment name typed before approval is possible', async 
 
 test('cancelling mid-apply stops terraform promptly', async ({ page }) => {
   gw = await start('iac-only', { init: true, env: { FAKE_APPLY_DELAY: '10' } })
-  page.on('dialog', (d) => d.accept())
   await overview(page, gw.url)
   await card(page, 'dev').getByRole('button', { name: 'Plan' }).click()
   await waitForApproval(page)
   await approveVia(page)
   await applyRunning(page)
 
-  const t0 = Date.now()
+  // while it runs, choose to hear back only if it fails
+  const notify = page.getByRole('button', { name: 'Notify me about this run' })
+  await notify.click()
+  await page.getByRole('menuitemradio', { name: /Only if it fails/ }).click()
+  await expect(notify).toContainText('Only if it fails')
+  await notify.click()
+  await expect(page.getByRole('menuitemradio', { name: /Only if it fails/ })).toHaveAttribute('aria-checked', 'true')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await expect(notify).toBeFocused()
+
+  // cancelling asks on the page first; keeping it running changes nothing
   await page.getByRole('button', { name: 'Cancel run' }).click()
+  const ask = page.getByRole('group', { name: /^Cancel this run\?/ })
+  await expect(ask).toBeVisible()
+  await ask.getByRole('button', { name: 'Keep running' }).click()
+  await expect(ask).toHaveCount(0)
+  await page.getByRole('button', { name: 'Cancel run' }).click()
+  const t0 = Date.now()
+  await ask.getByRole('button', { name: 'Cancel the run' }).click()
   await expect(page.locator('.dhead .pill', { hasText: 'cancelled' })).toBeVisible({ timeout: 8_000 })
   expect(Date.now() - t0).toBeLessThan(8_000)
   await expect(page.getByRole('button', { name: 'Cancel run' })).toHaveCount(0)
+})
+
+test('a failed plan explains itself: the known cause, the lock holder and the next step', async ({ page }) => {
+  const lock = path.join(mkdtempSync(path.join(tmpdir(), 'gw-lock-')), 'locked')
+  writeFileSync(lock, '')
+  gw = await start('iac-only', { init: true, env: { FAKE_LOCKED: lock } })
+  await overview(page, gw.url)
+  await card(page, 'dev').getByRole('button', { name: 'Plan' }).click()
+  await expect(page.locator('.dhead .pill', { hasText: 'failed' })).toBeVisible({ timeout: 15_000 })
+
+  // a finish time instead of a counter
+  await expect(page.locator('.dhead .sub')).toContainText(/failed \d\d:\d\d:\d\d after \d+/)
+  const cause = page.getByRole('region', { name: 'State locked on terraform/envs/dev (dev)' })
+  await expect(cause).toBeVisible({ timeout: 10_000 })
+  await expect(cause.getByText('known cause')).toBeVisible()
+  await expect(cause.getByText('dev@workstation.local', { exact: true })).toBeVisible()
+  await expect(cause.getByText('none: it stopped before applying anything')).toBeVisible()
+  await expect(cause.getByRole('button', { name: 'Plan again' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: /Log/ })).toContainText(/\d+ error/)
+
+  // the raw error stays one click away
+  await cause.getByRole('button', { name: 'Raw error' }).click()
+  await expect(cause.getByText('eb4ca245-50b1-5658-c0c3-a4c69baa2888')).toBeVisible()
+  await page.screenshot({ path: path.join(SHOTS, 'run-failed.png'), fullPage: true })
+
+  // "Show in log" opens the log on its errors
+  await cause.getByRole('button', { name: 'Show in log' }).click()
+  await expect(page.getByRole('tab', { name: /Log/ })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('button', { name: /^Error/ })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('tab', { name: /Changes/ }).click()
+
+  // releasing the lock asks on the page, with the typed environment
+  await cause.getByRole('button', { name: 'Release the lock…' }).click()
+  const ask = cause.getByRole('group', { name: 'Release the lock?' })
+  const unlock = ask.getByRole('button', { name: 'Force unlock' })
+  await expect(unlock).toBeDisabled()
+  await ask.getByLabel('Type dev to confirm').fill('dev')
+  await unlock.click()
+  await expect(page.locator('.dhead .pill', { hasText: 'succeeded' })).toBeVisible({ timeout: 15_000 })
+  expect(existsSync(lock)).toBe(false)
 })
 
 test('log search and level filter narrow what is shown', async ({ page }) => {

@@ -17,6 +17,22 @@ Under the stage pipeline are two tabs. **Changes** opens first (except for `init
 
 Selecting a tile or a host name opens **Log** searched for it. The Log tab shows the warning and error counts. The tab is kept in the URL (`?tab=log`).
 
+### The header
+
+- While a run is going, the line under the title counts its time and, once at least two earlier runs of the same kind on the same root (or playbook) and environment have finished, says how long it usually takes ("usually 2–3 min"). The estimate is for the part that is running: up to the approval for a plan, after it for an apply; time spent waiting for approval is left out. A finished run shows when it ended instead: "failed 14:30:21 after 2m 41s".
+- **When it finishes ▾** (shown while the run is going) chooses whether to hear back about this run only: **When it finishes**, **Only if it fails**, **Don't notify**, or **Project default** (the `notify:` settings, summarised in the menu). It overrides the project setting for this one run.
+- **Download log** and **Cancel run** / **Discard plan** stay on the header. Cancelling asks on the page first ("Cancel this run? Terraform will be interrupted and asked to release its state lock.", or "Discard this plan?"). **⋯** holds **Copy command**, the full plan diff and, for a failure with a known cause, its Troubleshoot entry.
+- In the Runs list, a dot marks runs that ended while you weren't looking. Opening the run clears it, and its entry under the bell.
+
+### When a run fails
+
+The red error banner becomes a card that explains the failure:
+
+- If [Troubleshoot](troubleshooting.md) matched the error to a known cause, the card leads with it (marked **known cause**) and lists the facts that decide the next step. For a state-lock error these come from Terraform's lock info: who holds the lock, since when ("since 14:21 (9 min)") and for what operation, so a stale lock can be told from a live CI job. It also says where the run stopped (the failed resource, or the failed hosts for Ansible) and what already changed: "applied 1 of 3 · nothing was rolled back" for an apply, nothing for a plan that never reached it.
+- **Plan again** (the primary action; **Dry run again** for a playbook) starts a new plan for the same target. The cause's first fix, such as **Release the lock…**, opens a confirmation on the page with Troubleshoot's pre-checks, the command it runs and, where needed, the environment name to type.
+- **Show in log** opens the Log tab filtered to errors. **Raw error** expands the original text.
+- Without a known cause, the card shows the error's first line, cleaned of exit codes and repeated "Error:" prefixes, with the same **Show in log** and **Raw error**.
+
 ## Plan, review, approval, apply
 
 - A plan is written to `.groundwork/runs/<id>/tfplan`. If it has changes the run stops at **needs approval** and releases its lock; if not, the run succeeds and `approve`/`apply` are skipped.
@@ -74,7 +90,7 @@ Retention prunes finished runs (and their logs and plans) when the project is op
 - Plan and apply use Terraform's `-json` stream, so per-resource progress (creating → done / failed, "still creating… 30s") is structured, not scraped from text. Diagnostics are formatted the way the CLI prints them.
 - Every line is **redacted** before it is stored or sent: AWS keys, bearer and provider tokens, `password=`/`secret=`/`token=` values, PEM private keys, and the values of secret-looking environment variables (`*_TOKEN`, `*_SECRET*`, `*PASSWORD*`, ...). `terraform show -json`, which can contain secrets, is never logged; it is kept in `plan.json` under `.groundwork/` and only a summary (addresses and actions, no values) is stored.
 - Logs are paged and filterable by level and text. A run keeps the first ~45 MB and the last 2,000 lines of its log; live viewers see everything.
-- The run's exact command is shown by **Copy command**. Commands are argv lists, never shell strings.
+- The run's exact command is copied by **Copy command** (under **⋯** on the run page). Commands are argv lists, never shell strings.
 
 ## API
 
@@ -90,6 +106,8 @@ GET  /runs/{id}/plan                  summary, danger, freshness, state serial, 
 GET  /runs/{id}/plan/resource?address=   one resource's masked attribute diff + source location
 POST /runs/{id}/approve {confirm_text, acknowledge_danger}   409 stale_plan · 422 ack_required/confirm_mismatch
 POST /runs/{id}/replan                POST /runs/{id}/cancel
+GET  /runs/{id}/notify                PUT /runs/{id}/notify {mode: "default"|"finish"|"fail"|"none"}
+GET  /issues?run={id}                 the Troubleshoot issues matched to a run
 GET  /envs                            per-environment status for the Overview
 ```
 
