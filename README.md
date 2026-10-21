@@ -45,7 +45,7 @@ macOS and Linux (amd64, arm64).
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | sh
-# or, from source (Go 1.27+)
+# or, from source (Go 1.27.3+)
 go install github.com/rapando/groundwork/cmd/groundwork@latest
 ```
 
