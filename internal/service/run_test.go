@@ -60,11 +60,14 @@ func TestServeOutputAndServerInfoCarryNoToken(t *testing.T) {
 	if !ok || si.Token == "" {
 		t.Fatalf("Running = %+v, %v; want a token read from <home>/token", si, ok)
 	}
+	// server.json is written just before the URL is printed: give the print a moment
+	for deadline := time.Now().Add(5 * time.Second); !strings.Contains(out.String(), si.URL("/")); time.Sleep(20 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatalf("output should print the console's URL:\n%s", out.String())
+		}
+	}
 	if s := out.String(); strings.Contains(s, "?t=") || strings.Contains(s, si.Token) {
 		t.Fatalf("output leaks the token:\n%s", s)
-	}
-	if !strings.Contains(out.String(), si.URL("/")) {
-		t.Fatalf("output should print the console's URL:\n%s", out.String())
 	}
 	raw, err := os.ReadFile(filepath.Join(home, "server.json"))
 	if err != nil {
