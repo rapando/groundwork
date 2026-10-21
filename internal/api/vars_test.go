@@ -20,9 +20,12 @@ func TestTerraformVarsMatrixEditAndReveal(t *testing.T) {
 	root := fixture(t, "vars-lab")
 	dbPath := filepath.Join(t.TempDir(), "s.db")
 	st, _ := store.Open(dbPath)
-	defer st.Close()
+	// cleanups run last in, first out: the checks each API started end before the store closes and the temp dirs go
+	t.Cleanup(func() { st.Close() })
 	h := chi.NewRouter()
-	New(root, "test", events.NewBus(), st).Routes(h)
+	a := New(root, "test", events.NewBus(), st)
+	t.Cleanup(a.Checks.Close)
+	a.Routes(h)
 	if rec := call(t, h, "POST", "/setup/apply", map[string]any{}); rec.Code != 200 {
 		t.Fatalf("%d %s", rec.Code, rec.Body)
 	}
@@ -106,9 +109,12 @@ func TestMoveToVaultAndRevealWithRealAnsible(t *testing.T) {
 	line := bytes.Count(orig, []byte("\n")) + 1
 	dbPath := filepath.Join(t.TempDir(), "s.db")
 	st, _ := store.Open(dbPath)
-	defer st.Close()
+	// cleanups run last in, first out: the checks each API started end before the store closes and the temp dirs go
+	t.Cleanup(func() { st.Close() })
 	h := chi.NewRouter()
-	New(root, "test", events.NewBus(), st).Routes(h)
+	a := New(root, "test", events.NewBus(), st)
+	t.Cleanup(a.Checks.Close)
+	a.Routes(h)
 	if rec := call(t, h, "POST", "/setup/apply", map[string]any{}); rec.Code != 200 {
 		t.Fatalf("%d %s", rec.Code, rec.Body)
 	}
@@ -119,7 +125,9 @@ func TestMoveToVaultAndRevealWithRealAnsible(t *testing.T) {
 		t.Fatal(err)
 	}
 	h = chi.NewRouter() // a fresh API loads the edited config
-	New(root, "test", events.NewBus(), st).Routes(h)
+	a = New(root, "test", events.NewBus(), st)
+	t.Cleanup(a.Checks.Close)
+	a.Routes(h)
 
 	findings := into(t, call(t, h, "POST", "/secrets/scan", nil))["findings"].([]any)
 	if len(findings) != 1 {

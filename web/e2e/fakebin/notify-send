@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Stand-in for notify-send so browser tests never show real desktop notifications
+# (groundwork sends them when no console tab is open).
+exit 0

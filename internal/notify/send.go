@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os/exec"
 	"runtime"
+	"testing"
 	"time"
 )
 
@@ -47,7 +48,12 @@ func PostWebhook(ctx context.Context, url string, payload any) error {
 
 // Desktop shows a desktop notification with osascript (macOS) or
 // notify-send (elsewhere).
+// Under go test it does nothing: tests that drive a whole project must not pop
+// notifications up on the developer's desktop.
 func Desktop(ctx context.Context, title, text string) error {
+	if testing.Testing() {
+		return nil
+	}
 	return desktopCmd(ctx, runtime.GOOS, title, text).Run()
 }
 
