@@ -7,7 +7,7 @@ import SystemPanel from '../components/SystemPanel.vue'
 import DiffView from '../components/DiffView.vue'
 import { api, ApiError } from '../api/client'
 import type { DriftAttr, DriftResource, GraphModel } from '../api/types'
-import { ago, useRuns } from '../stores/runs'
+import { since, useRuns } from '../stores/runs'
 import { useWorkspace } from '../stores/workspace'
 import { onEvent } from '../composables/events'
 import { useNow } from '../composables/now'
@@ -185,7 +185,7 @@ async function applyPreview() {
         <div class="meta">
           <span class="lbl">Selected</span>
           <span class="mono addr">{{ node.id }}</span>
-          <span v-if="node.drift && nodeDrift[0]" class="pill st-warn">drifted · detected {{ ago(nodeDrift[0].detected_at, now) }} ago</span>
+          <span v-if="node.drift && nodeDrift[0]" class="pill st-warn">drifted · detected {{ since(nodeDrift[0].detected_at, now) }}</span>
           <span v-else-if="node.action" class="pill st-run">{{ node.action }} in plan #{{ planRun }}</span>
           <div class="kv mono">
             <span>module</span><span class="v">{{ node.module || '(root)' }}</span>

@@ -99,3 +99,9 @@ export function ago(iso: string, now = Date.now()): string {
   if (s < 86400) return `${Math.floor(s / 3600)}h`
   return `${Math.floor(s / 86400)}d`
 }
+
+/** ago() as a phrase: "just now", "5m ago". */
+export function since(iso: string, now = Date.now()): string {
+  const a = ago(iso, now)
+  return a === 'now' ? 'just now' : a + ' ago'
+}

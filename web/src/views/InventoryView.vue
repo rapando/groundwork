@@ -5,7 +5,7 @@ import AppShell from '../components/AppShell.vue'
 import DiffView from '../components/DiffView.vue'
 import { api, ApiError } from '../api/client'
 import type { HostDetail, InvEditPreview, InvHost, InventoryResponse, InvVarTarget, VarRow } from '../api/types'
-import { ago, useRuns } from '../stores/runs'
+import { since, useRuns } from '../stores/runs'
 import { onEvent } from '../composables/events'
 import { useNow } from '../composables/now'
 import Modal from '../components/Modal.vue'
@@ -309,7 +309,7 @@ const levelShort = (l: string) => l.replace('inventory ', 'inv ').replace('playb
               <span class="mono hn">{{ selected }}</span>
               <span v-if="detail?.reachable" class="pill" :class="detail.reachable.reachable ? 'st-ok' : 'st-fail'">{{ detail.reachable.reachable ? `up · ${detail.reachable.latency_ms} ms` : 'unreachable' }}</span>
             </div>
-            <span class="lbl">Facts<template v-if="detail?.facts_gathered_at"> · gathered {{ ago(detail.facts_gathered_at, now) === 'now' ? 'just now' : ago(detail.facts_gathered_at, now) + ' ago' }}</template></span>
+            <span class="lbl">Facts<template v-if="detail?.facts_gathered_at"> · gathered {{ since(detail.facts_gathered_at, now) }}</template></span>
             <div v-if="facts.length" class="fgrid mono">
               <template v-for="[k, v] in facts" :key="k"><span>{{ k }}</span><span class="fv">{{ v }}</span></template>
             </div>

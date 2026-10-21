@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ago, duration, kindLabel } from './runs'
+import { ago, duration, kindLabel, since } from './runs'
 
 const T0 = Date.parse('2026-10-11T12:00:00Z')
 const at = (s: number) => new Date(T0 + s * 1000).toISOString()
@@ -22,6 +22,14 @@ describe('ago', () => {
     expect(ago(at(-90), T0)).toBe('1m')
     expect(ago(at(-7200), T0)).toBe('2h')
     expect(ago(at(-200_000), T0)).toBe('2d')
+  })
+})
+
+describe('since', () => {
+  it('reads as a phrase, never "now ago"', () => {
+    expect(since(at(-3), T0)).toBe('just now')
+    expect(since(at(-45), T0)).toBe('45s ago')
+    expect(since(at(-7200), T0)).toBe('2h ago')
   })
 })
 

@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import GraphCanvas from './GraphCanvas.vue'
 import { api } from '../api/client'
 import type { PortRow, SystemModel, SystemScope } from '../api/types'
-import { ago, useRuns } from '../stores/runs'
+import { since, useRuns } from '../stores/runs'
 import { onEvent } from '../composables/events'
 import { useNow } from '../composables/now'
 import { buildSystemMap, portLabel, type MapHost } from '../composables/systemMap'
@@ -146,7 +146,7 @@ const flagged = (l: PortRow[]) => l.filter((p) => p.flag === 'blocked' || p.flag
         <span class="v"><template v-if="picked.host.roles.length"><span v-for="(r, i) in picked.host.roles" :key="r.name" :title="'from ' + r.playbooks.join(', ')">{{ r.name }}{{ i < picked.host.roles.length - 1 ? ', ' : '' }}</span></template><template v-else>— (no playbook targets this host)</template></span>
         <template v-if="picked.linked"><span>firewalls</span><span class="v">{{ picked.linked.firewalls.join(', ') || '— (none found in state)' }}<template v-if="picked.linked.open_all"> · a rule opens every port</template></span></template>
         <template v-else><span>server</span><span class="v warn">not placed: {{ picked.reason }}</span></template>
-        <span>listening</span><span class="v">{{ picked.host.listen_at ? `checked ${ago(picked.host.listen_at, now)} ago` : 'not checked yet' }}</span>
+        <span>listening</span><span class="v">{{ picked.host.listen_at ? `checked ${since(picked.host.listen_at, now)}` : 'not checked yet' }}</span>
       </div>
       <div class="scroll">
         <table class="mono dt">

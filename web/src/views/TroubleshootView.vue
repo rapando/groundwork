@@ -5,7 +5,7 @@ import AppShell from '../components/AppShell.vue'
 import { api, apiFetch } from '../api/client'
 import type { DoctorReport, Issue } from '../api/types'
 import { useIssues } from '../stores/issues'
-import { ago } from '../stores/runs'
+import { since as sinceAt } from '../stores/runs'
 import { onEvent } from '../composables/events'
 import { useNow } from '../composables/now'
 
@@ -38,7 +38,7 @@ onMounted(async () => {
 })
 
 const PILL: Record<string, string> = { error: 'st-fail', warning: 'st-warn', info: 'st-idle' }
-const since = (t: string) => { const a = ago(t, now.value); return a === 'now' ? 'just now' : a + ' ago' }
+const since = (t: string) => sinceAt(t, now.value)
 
 // ---- actions ----
 const act = reactive({ step: -1, confirm: '', error: '', notice: '', busy: false })

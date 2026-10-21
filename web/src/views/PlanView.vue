@@ -5,7 +5,7 @@ import AppShell from '../components/AppShell.vue'
 import StatusPill from '../components/StatusPill.vue'
 import { api, ApiError } from '../api/client'
 import type { PlanChange, PlanReview, ResourceDiff } from '../api/types'
-import { ago, useRuns } from '../stores/runs'
+import { since, useRuns } from '../stores/runs'
 import { onEvent } from '../composables/events'
 import { useNow } from '../composables/now'
 import { swallow } from '../api/swallow'
@@ -163,7 +163,7 @@ const symClass = (c: PlanChange | ResourceDiff) => 'a-' + c.action
               <span class="mono">{{ review.target.root }}</span>
               <template v-if="review.commit"> · commit <span class="mono">{{ review.commit.slice(0, 7) }}</span></template>
               <template v-if="review.state"> · state serial <span class="mono">{{ review.state.exists ? review.state.serial : 'none' }}</span></template>
-              <template v-if="review.planned_at"> · planned {{ ago(review.planned_at, now) === 'now' ? 'just now' : ago(review.planned_at, now) + ' ago' }}</template>
+              <template v-if="review.planned_at"> · planned {{ since(review.planned_at, now) }}</template>
               · saved to <span class="mono">{{ review.plan_file }}</span>
             </span>
           </div>
