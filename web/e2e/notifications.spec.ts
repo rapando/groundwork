@@ -100,6 +100,8 @@ test('a plan waiting for approval asks for you without an approve button', async
 test('notification settings write the notify block and send a test', async ({ page }) => {
   gw = await start('iac-only', { init: true })
   await page.goto(gw.url)
+  // the palette's shortcut is bound once the shell has rendered
+  await expect(page.getByRole('link', { name: 'Notifications', exact: true })).toBeVisible()
   await page.keyboard.press('ControlOrMeta+k')
   await page.getByLabel('Search commands').fill('notifications')
   await page.keyboard.press('Enter')
