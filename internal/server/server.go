@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 
 	"github.com/go-chi/chi/v5"
@@ -335,6 +336,13 @@ func isEventStream(p string) bool {
 
 // --- SSE ---
 
+// openStreams counts the event streams open right now, across every bus:
+// while a console is open, it (the browser) shows desktop notifications.
+var openStreams atomic.Int64
+
+// OpenStreams is the number of console event streams currently open.
+func OpenStreams() int { return int(openStreams.Load()) }
+
 // SSE streams bus events to one client until it disconnects.
 func SSE(bus *events.Bus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) { sse(bus, w, r) }
@@ -352,6 +360,8 @@ func sse(bus *events.Bus, w http.ResponseWriter, r *http.Request) {
 	h.Set("Connection", "keep-alive")
 	ch, cancel := bus.Subscribe()
 	defer cancel()
+	openStreams.Add(1)
+	defer openStreams.Add(-1)
 	fmt.Fprint(w, "event: hello\ndata: {}\n\n")
 	fl.Flush()
 	keepalive := newTicker()

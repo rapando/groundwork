@@ -42,8 +42,17 @@ checks:
 
 drift:
   schedule: "0 7 * * 1-5"   # cron; omit for no scheduled drift checks
-  notify: desktop           # desktop | webhook | none
+  notify: desktop           # desktop | webhook | none (legacy; notify.drift below takes over when set)
   webhook: https://hooks.example.com/…
+
+notify:                     # optional; who hears about runs. Channels: console | desktop | webhook
+  failed: [console, desktop, webhook]
+  approval: [console, desktop]
+  success: [console]        # [] = record only
+  drift: [console, desktop, webhook]
+  quiet_under: 30s          # successes shorter than this aren't announced
+  envs: [prod]              # optional: desktop + webhook only for these environments
+  webhook: https://hooks.example.com/…   # http(s), no credentials; falls back to drift.webhook
 
 retention:                  # run history kept per project (defaults: 500 runs, 30 days)
   runs: 500

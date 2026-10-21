@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -156,6 +157,9 @@ func TestSystemViewOverHTTP(t *testing.T) {
 	if !strings.Contains(m["state_error"].(string), "isn't initialised") {
 		t.Fatalf("%v", m["state_error"])
 	}
+	if _, ok := m["state_pulled_at"]; ok {
+		t.Fatal("no state, no pull time")
+	}
 	s := m["system"].(map[string]any)
 	if len(s["unlinked"].([]any)) != 3 || len(s["containers"].([]any)) != 1 {
 		t.Fatalf("%v", s)
@@ -170,6 +174,9 @@ func TestSystemViewOverHTTP(t *testing.T) {
 	m = sys("&refresh=1")
 	if m["state_error"] != "" {
 		t.Fatalf("%v", m["state_error"])
+	}
+	if at, err := time.Parse(time.RFC3339, m["state_pulled_at"].(string)); err != nil || time.Since(at) > time.Minute {
+		t.Fatalf("state_pulled_at %v %v", m["state_pulled_at"], err)
 	}
 	s = m["system"].(map[string]any)
 	app := s["servers"].(map[string]any)["aws_instance.app"].([]any)

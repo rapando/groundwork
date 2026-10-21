@@ -3,16 +3,13 @@
 package drift
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
-	"os/exec"
-	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -21,6 +18,7 @@ import (
 	"github.com/robfig/cron/v3"
 
 	"github.com/rapando/groundwork/internal/config"
+	"github.com/rapando/groundwork/internal/notify"
 	"github.com/rapando/groundwork/internal/runner"
 	"github.com/rapando/groundwork/internal/safego"
 	"github.com/rapando/groundwork/internal/store"
@@ -29,9 +27,13 @@ import (
 // Notifier delivers one message. Tests replace it.
 type Notifier func(ctx context.Context, d config.Drift, n Notice) error
 
-// Notice is what gets sent when new drift appears.
+// Notice is what gets sent when new drift appears. Its fields follow the
+// run notification webhook (internal/notify.Payload) plus the addresses.
 type Notice struct {
 	Text      string   `json:"text"` // Slack/Teams-compatible summary
+	Event     string   `json:"event,omitempty"`
+	Project   string   `json:"project,omitempty"`
+	Kind      string   `json:"kind,omitempty"`
 	Root      string   `json:"root"`
 	Env       string   `json:"env"`
 	Count     int      `json:"drift_count"`
@@ -42,7 +44,8 @@ type Notice struct {
 
 type Status struct {
 	Schedule string     `json:"schedule,omitempty"`
-	Notify   string     `json:"notify,omitempty"`
+	Notify   string     `json:"notify,omitempty"`   // legacy drift.notify
+	Channels []string   `json:"channels,omitempty"` // effective notify.drift channels
 	Next     *time.Time `json:"next,omitempty"`
 	LastRun  *time.Time `json:"last_run,omitempty"`
 	Error    string     `json:"error,omitempty"`
@@ -70,7 +73,10 @@ func New(rn *runner.Runner, st *store.Store, cfg func() *config.Config, log *slo
 	if log == nil {
 		log = slog.Default()
 	}
-	s := &Scheduler{Runner: rn, Store: st, Cfg: cfg, Log: log, Notify: Send, cron: cron.New()}
+	s := &Scheduler{Runner: rn, Store: st, Cfg: cfg, Log: log, cron: cron.New()}
+	s.Notify = func(ctx context.Context, _ config.Drift, n Notice) error {
+		return SendTo(ctx, s.Cfg().NotifySettings(), n)
+	}
 	s.cron.Start()
 	return s
 }
@@ -112,6 +118,7 @@ func (s *Scheduler) Status() Status {
 	st := Status{Schedule: s.spec, LastRun: s.lastRun, Error: s.err}
 	if cfg := s.Cfg(); cfg != nil {
 		st.Notify = cfg.Drift.Notify
+		st.Channels = cfg.NotifySettings().Drift
 	}
 	if s.entry != 0 {
 		n := s.cron.Entry(s.entry).Next
@@ -216,10 +223,10 @@ func (s *Scheduler) check(ctx context.Context, cfg *config.Config, t target, run
 		}
 		return
 	}
-	if prev == cur || cfg.Drift.Notify == "none" {
+	if prev == cur || !External(cfg.NotifySettings(), t.env) {
 		return
 	}
-	n := Notice{Root: t.root, Env: t.env, Count: len(addrs), Addresses: addrs, RunID: runID}
+	n := Notice{Event: "drift", Kind: runner.KindDrift, Root: t.root, Env: t.env, Count: len(addrs), Addresses: addrs, RunID: runID}
 	n.Text = fmt.Sprintf("Drift in %s (%s): %d resource%s changed outside Terraform: %s", t.env, t.root, len(addrs), map[bool]string{true: "", false: "s"}[len(addrs) == 1], strings.Join(addrs[:min(len(addrs), 5)], ", "))
 	if len(addrs) > 5 {
 		n.Text += fmt.Sprintf(" and %d more", len(addrs)-5)
@@ -236,56 +243,39 @@ func (s *Scheduler) check(ctx context.Context, cfg *config.Config, t target, run
 	}
 }
 
-// Send delivers a notice by the configured channel.
+// Send delivers a notice by the legacy drift settings (drift.notify and
+// drift.webhook) mapped onto notification channels.
 func Send(ctx context.Context, d config.Drift, n Notice) error {
-	switch d.Notify {
-	case "webhook":
-		return webhook(ctx, d.Webhook, n)
-	case "none":
-		return nil
-	}
-	return desktop(ctx, "groundwork: drift in "+n.Env, n.Text)
+	return SendTo(ctx, (&config.Config{Drift: d}).NotifySettings(), n)
 }
 
-// webhookClient has its own timeout and follows no redirects: the URL was
-// validated as http(s) with a host, and a redirect could point elsewhere.
-var webhookClient = &http.Client{
-	Timeout: 10 * time.Second,
-	CheckRedirect: func(*http.Request, []*http.Request) error {
-		return http.ErrUseLastResponse
-	},
+// SendTo delivers a notice to the desktop and/or the webhook, as the drift
+// channels of s say. The console channel needs nothing here: the run's own
+// notification covers it.
+func SendTo(ctx context.Context, s config.NotifySettings, n Notice) error {
+	var errs []error
+	for _, ch := range s.Drift {
+		switch ch {
+		case config.ChannelDesktop:
+			if err := notify.Desktop(ctx, "groundwork: drift in "+n.Env, n.Text); err != nil {
+				errs = append(errs, err)
+			}
+		case config.ChannelWebhook:
+			if s.Webhook != "" {
+				if err := notify.PostWebhook(ctx, s.Webhook, n); err != nil {
+					errs = append(errs, err)
+				}
+			}
+		}
+	}
+	return errors.Join(errs...)
 }
 
-func webhook(ctx context.Context, url string, n Notice) error {
-	b, _ := json.Marshal(n)
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(b))
-	if err != nil {
-		return err
+// External reports whether the drift channels reach anything outside the
+// console for env.
+func External(s config.NotifySettings, env string) bool {
+	if !s.EnvAllowed(env) {
+		return false
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "groundwork")
-	res, err := webhookClient.Do(req)
-	if err != nil {
-		return err
-	}
-	res.Body.Close()
-	if res.StatusCode >= 300 {
-		return fmt.Errorf("webhook answered %s", res.Status)
-	}
-	return nil
-}
-
-// desktop shows a notification; text goes in as argv, never into a script.
-func desktop(ctx context.Context, title, text string) error {
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.CommandContext(ctx, "osascript",
-			"-e", "on run argv", "-e", "display notification (item 2 of argv) with title (item 1 of argv)", "-e", "end run", title, text)
-	default:
-		cmd = exec.CommandContext(ctx, "notify-send", "--app-name=groundwork", title, text)
-	}
-	return cmd.Run()
+	return slices.Contains(s.Drift, config.ChannelDesktop) || (slices.Contains(s.Drift, config.ChannelWebhook) && s.Webhook != "")
 }

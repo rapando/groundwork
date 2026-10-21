@@ -26,6 +26,7 @@ type Config struct {
 	Ansible   Ansible   `yaml:"ansible,omitempty"`
 	Checks    Checks    `yaml:"checks,omitempty"`
 	Drift     Drift     `yaml:"drift,omitempty"`
+	Notify    *Notify   `yaml:"notify,omitempty"`
 	Retention Retention `yaml:"retention,omitempty"`
 	Ignore    []string  `yaml:"ignore,omitempty"`
 
@@ -466,6 +467,9 @@ func (c *Config) validate() []problem {
 	}
 	if s := c.Drift.Schedule; s != "" && len(strings.Fields(s)) != 5 {
 		add("schedule must be a 5-field cron expression", "drift", "schedule")
+	}
+	for _, p := range c.Notify.problems(c.Drift.Webhook) {
+		add(p.msg, append([]any{"notify"}, p.keys...)...)
 	}
 	return out
 }

@@ -5,6 +5,7 @@
 - [Setup: detection, scaffolding and groundwork.yaml](setup.md)
 - [Checks](checks.md)
 - [Runs: plan, approve, apply](runs.md)
+- [Notifications: failures, approvals, drift; desktop and webhook](notifications.md)
 - [Ansible](ansible.md)
 - [Graph and drift](graph.md)
 - [Variables and secrets](variables.md)
