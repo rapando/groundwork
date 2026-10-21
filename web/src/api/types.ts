@@ -564,6 +564,14 @@ export interface SystemModel extends Architecture {
   unlinked: UnplacedHost[]
   rules: Record<string, FirewallRule[]>
 }
+/** GET /graph/system */
+export interface SystemGraphResponse {
+  system: SystemModel
+  scopes: SystemScope[]
+  state_error: string
+  /** RFC3339: when terraform state was last pulled */
+  state_pulled_at?: string
+}
 export interface SystemScope {
   project: string
   env: string
@@ -815,4 +823,62 @@ export interface ProjectView {
   config_error?: string
   active_runs?: number
   open_issues?: number
+  unread_notifications?: number
+  unread_failed?: number
+  waiting_approval?: number
+}
+
+export type NotifyEvent = 'failed' | 'approval' | 'succeeded' | 'cancelled' | 'drift'
+/** console = a toast in the console */
+export type Channel = 'console' | 'desktop' | 'webhook'
+/** a per-run override: finish = whatever happens, fail = only if it fails, none = record only */
+export type NotifyMode = 'default' | 'finish' | 'fail' | 'none'
+export interface Notification {
+  id: number
+  /** project id: only on the service-level list */
+  project?: string
+  project_name?: string
+  event: NotifyEvent
+  run_id: number
+  kind: string
+  stage: string
+  label: string
+  root: string
+  env: string
+  title: string
+  text: string
+  /** the matched Troubleshoot issue; action is the label of its first step */
+  cause?: { issue_id: number; rule_id: string; title: string; action?: string }
+  plan?: { create: number; update: number; replace: number; delete: number; danger: number }
+  drift_count?: number
+  duration_s: number
+  at: string
+  read_at?: string
+  toast: boolean
+  desktop: boolean
+}
+export interface NotificationsResponse {
+  items: Notification[]
+  unread: number
+}
+/** the notify: block in groundwork.yaml */
+export interface NotifySettings {
+  failed: Channel[]
+  approval: Channel[]
+  success: Channel[]
+  drift: Channel[]
+  /** Go duration, e.g. "30s": successes shorter than this get no toast, desktop or webhook */
+  quiet_under: string
+  /** empty = all; limits desktop and webhook to these environments */
+  envs: string[]
+  webhook: string
+}
+export interface NotifySettingsResponse {
+  settings: NotifySettings
+  /** a notify: block exists in groundwork.yaml */
+  configured: boolean
+}
+export interface NotifyTestResponse {
+  sent: Channel[]
+  errors: { channel: Channel; error: string }[]
 }

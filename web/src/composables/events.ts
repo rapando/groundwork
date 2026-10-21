@@ -21,6 +21,8 @@ const TYPES = [
   'drift.updated',
   'issues.updated',
   'doctor.updated',
+  'notification.new',
+  'notifications.updated',
 ]
 let es: EventSource | null = null
 let backoff = 500
