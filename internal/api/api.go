@@ -22,6 +22,7 @@ import (
 	"github.com/rapando/groundwork/internal/doctor"
 	"github.com/rapando/groundwork/internal/drift"
 	"github.com/rapando/groundwork/internal/events"
+	"github.com/rapando/groundwork/internal/notify"
 	"github.com/rapando/groundwork/internal/redact"
 	"github.com/rapando/groundwork/internal/runner"
 	"github.com/rapando/groundwork/internal/scaffold"
@@ -51,6 +52,8 @@ type API struct {
 
 	Issues     *diagnostics.Engine
 	Drift      *drift.Scheduler
+	Notifier   *notify.Notifier
+	settingsMu sync.Mutex  // one notification settings write at a time
 	DoctorExec doctor.Exec // nil: the real one
 }
 
@@ -62,7 +65,12 @@ func New(root, version string, bus *events.Bus, st *store.Store) *API {
 	a.Checks = checks.New(root, func() *config.Config { c, _ := a.config(); return c }, checks.OSExec{}, st, bus, nil)
 	a.Issues = diagnostics.New(root, st, a.Runner, a.Checks, bus, nil)
 	a.Drift = drift.New(a.Runner, st, func() *config.Config { c, _ := a.config(); return c }, nil)
-	a.Runner.OnPanic, a.Checks.OnPanic, a.Issues.OnPanic, a.Drift.OnPanic = a.InternalError, a.InternalError, a.InternalError, a.InternalError
+	a.Notifier = notify.New(st, bus, func() *config.Config { c, _ := a.config(); return c }, nil)
+	a.Notifier.Project = filepath.Base(root)
+	a.Notifier.Diagnose = a.Issues.ProcessRun
+	a.Notifier.Cause = a.causeFor
+	a.Drift.Notify = a.driftNotice
+	a.Runner.OnPanic, a.Checks.OnPanic, a.Issues.OnPanic, a.Drift.OnPanic, a.Notifier.OnPanic = a.InternalError, a.InternalError, a.InternalError, a.InternalError, a.InternalError
 	return a
 }
 
@@ -163,6 +171,13 @@ func (a *API) Routes(r chi.Router) {
 	r.Get("/runs/{id}/hosts", a.runHosts)
 	r.Get("/runs/{id}/plan", a.runPlan)
 	r.Get("/runs/{id}/plan/resource", a.planResource)
+	r.Get("/runs/{id}/notify", a.getRunNotify)
+	r.Put("/runs/{id}/notify", a.setRunNotify)
+	r.Get("/notifications", a.listNotifications)
+	r.Post("/notifications/read", a.readNotifications)
+	r.Get("/notifications/settings", a.notifySettings)
+	r.Put("/notifications/settings", a.setNotifySettings)
+	r.Post("/notifications/test", a.testNotification)
 	r.Post("/runs/{id}/replan", a.replanRun)
 	r.Post("/runs/{id}/cancel", a.cancelRun)
 	r.Post("/runs/{id}/approve", a.approveRun)
@@ -478,10 +493,13 @@ func writeError(w http.ResponseWriter, status int, code, msg string, details any
 
 // Summary is the project card on the service's project list.
 type Summary struct {
-	Configured  bool   `json:"configured"`
-	ConfigError string `json:"config_error,omitempty"`
-	ActiveRuns  int    `json:"active_runs"`
-	OpenIssues  int    `json:"open_issues"`
+	Configured          bool   `json:"configured"`
+	ConfigError         string `json:"config_error,omitempty"`
+	ActiveRuns          int    `json:"active_runs"`
+	OpenIssues          int    `json:"open_issues"`
+	UnreadNotifications int    `json:"unread_notifications"`
+	UnreadFailed        int    `json:"unread_failed"`
+	WaitingApproval     int    `json:"waiting_approval"`
 }
 
 func (a *API) Summary() Summary {
@@ -492,6 +510,10 @@ func (a *API) Summary() Summary {
 	}
 	if open, err := a.Store.ListIssues(store.IssueOpen, time.Time{}, 1000); err == nil {
 		s.OpenIssues = len(open)
+	}
+	s.UnreadNotifications, s.UnreadFailed = a.Store.UnreadCounts()
+	if w, err := a.Store.ListRuns(store.RunFilter{Status: store.StatusWaitingApproval, Limit: 1000}); err == nil {
+		s.WaitingApproval = len(w)
 	}
 	return s
 }

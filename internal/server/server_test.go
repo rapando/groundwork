@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -8,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -305,5 +307,35 @@ func TestEventStreamPaths(t *testing.T) {
 		if got := isEventStream(p); got != want {
 			t.Errorf("isEventStream(%q) = %v, want %v", p, got, want)
 		}
+	}
+}
+
+// OpenStreams counts console event streams while they are connected: the
+// service leaves desktop notifications to an open console.
+func TestOpenStreamsCountsConnectedConsoles(t *testing.T) {
+	bus := events.NewBus()
+	ts := httptest.NewServer(SSE(bus))
+	defer ts.Close()
+	before := OpenStreams()
+	ctx, cancel := context.WithCancel(context.Background())
+	req, _ := http.NewRequestWithContext(ctx, "GET", ts.URL, nil)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	buf := make([]byte, 64)
+	if n, _ := res.Body.Read(buf); !strings.Contains(string(buf[:n]), "hello") {
+		t.Fatalf("%q", buf[:n])
+	}
+	if got := OpenStreams(); got != before+1 {
+		t.Fatalf("open streams %d, want %d", got, before+1)
+	}
+	cancel()
+	res.Body.Close()
+	for i := 0; OpenStreams() != before; i++ {
+		if i > 200 {
+			t.Fatalf("stream still counted after disconnect: %d", OpenStreams())
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }

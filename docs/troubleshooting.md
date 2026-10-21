@@ -109,7 +109,9 @@ drift:
   webhook: https://hooks.example.com/…
 ```
 
-While groundwork is running it checks every Terraform environment on that schedule with a refresh-only plan (it changes nothing; each check queues behind other jobs on the same root). When the set of drifted resources changes, it notifies once: a desktop notification (macOS Notification Center, or `notify-send` on Linux), or a JSON POST to the webhook with a Slack-compatible `text` field plus `root`, `env`, `drift_count`, `addresses` and `run_id`. Unchanged drift isn't re-sent; drift that goes away and comes back is. The Overview shows the schedule and the next run. Edits to `groundwork.yaml` apply without a restart.
+While groundwork is running it checks every Terraform environment on that schedule with a refresh-only plan (it changes nothing; each check queues behind other jobs on the same root). Every check that finds drift is listed under the bell. When the set of drifted resources changes, it notifies once, on the channels for drift: a desktop notification (from the browser while a console is open, otherwise macOS Notification Center or `notify-send` on Linux), and/or a JSON POST to the webhook with a Slack-compatible `text` field plus `event`, `project`, `kind`, `root`, `env`, `drift_count`, `addresses` and `run_id`. Unchanged drift isn't re-sent; drift that goes away and comes back is. The Overview shows the schedule and the next run. Edits to `groundwork.yaml` apply without a restart.
+
+`drift.notify` and `drift.webhook` still work. A [`notify:` block](notifications.md#configuration) can replace them (`notify.drift` lists the channels, `notify.envs` limits them to some environments, `notify.webhook` is shared with failures) and also covers failed runs, approvals and successes.
 
 `groundwork drift [--env prod]` runs the same check once from a terminal: exit code 1 if anything drifted, 3 if a check failed.
 

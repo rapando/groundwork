@@ -63,11 +63,23 @@ test('drift: detect, see it in Graph and on the Overview, copy the real value in
   await page.getByRole('combobox', { name: 'Stack' }).selectOption({ label: 'dev / terraform/envs/dev' })
   await page.getByRole('button', { name: 'Detect drift' }).click()
 
+  // the check runs in the background (the button says so) and the graph picks up the drifted resource
+  const node = page.getByRole('button', { name: /local_file motd, drift/ })
+  await expect(node).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('button', { name: 'Detect drift' })).toBeEnabled()
+  const g = page.getByRole('region', { name: 'Dependency graph' })
+  await expect(g.getByRole('button', { name: /Drifted\s*1/ })).toBeVisible()
+
+  // the summary says when drift was last checked and links to the check
+  await g.getByRole('link', { name: /dev checked/ }).click()
   await expect(page).toHaveURL(/\/runs\/\d+$/)
-  await expect(page.locator('.banner', { hasText: /Drift: 1 resource\(s\) differ/ })).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator('.banner', { hasText: /Drift: 1 resource\(s\) differ/ })).toBeVisible()
   await page.getByRole('link', { name: 'Review in Graph →' }).click()
 
-  const node = page.getByRole('button', { name: /local_file motd, drift/ })
+  // the Drifted filter is in the URL, so a link can open the graph on it
+  await g.getByRole('button', { name: /Drifted/ }).click()
+  await expect(page).toHaveURL(/filter=drifted/)
+  await expect(g.getByText(/1 of \d+ shown/)).toBeVisible()
   await expect(node).toBeVisible({ timeout: 10_000 })
   await node.click({ force: true })
   const insp = page.getByRole('region', { name: 'Selected resource' })
@@ -94,17 +106,43 @@ test('drift: detect, see it in Graph and on the Overview, copy the real value in
   await expect(page.getByRole('complementary', { name: 'Sidebar' }).getByText('drift')).toBeVisible()
 })
 
-test('dependency graph renders and switches to the modules view', async ({ page }) => {
+test('dependency graph: select to see what a resource reaches, find it, switch to modules', async ({ page }) => {
   gw = await start('iac-only', { init: true })
   await login(page)
   await page.goto(origin() + '/graph?root=terraform/envs/prod&env=prod')
   const g = page.getByRole('region', { name: 'Dependency graph' })
   await expect(g.getByText(/2 resources · 1 edges · from static/)).toBeVisible()
-  await expect(g.getByRole('button', { name: /aws_subnet private/ })).toBeVisible()
+  const subnet = g.getByRole('button', { name: /aws_subnet private/ })
+  await expect(subnet).toBeVisible()
+  await expect(g.getByText(/No plan is waiting for approval|Overlay: plan #/)).toBeVisible()
+
+  // selecting a resource lights up what it uses, and lists it beside the canvas
+  await subnet.click({ force: true })
+  const insp = page.getByRole('region', { name: 'Selected resource' })
+  await expect(insp.getByText('Uses · 1')).toBeVisible()
+  await expect(insp.getByRole('button', { name: /aws_vpc\.main/ })).toBeVisible()
+  await expect(insp.getByText(/Used by · 0/)).toBeVisible()
+  await expect(g.getByRole('button', { name: /aws_vpc main.*the selection uses it/ })).toBeVisible()
+  await expect(g.locator('svg g[data-lit]')).toHaveCount(1)
+  await expect(insp.getByRole('link', { name: 'Open in Code' })).toHaveAttribute('href', /\/code\/.*\?line=\d+/)
+
+  // find a resource: Enter selects the match
+  await page.keyboard.press('Escape')
+  await expect(insp).toHaveCount(0)
+  await page.keyboard.press('ControlOrMeta+f')
+  await expect(g.getByRole('searchbox', { name: 'Find a resource' })).toBeFocused()
+  await page.keyboard.type('aws_vpc')
+  await expect(g.getByText('1 of 2 shown')).toBeVisible()
+  await page.keyboard.press('Enter')
+  await expect(insp.locator('.addr')).toContainText('aws_vpc.main')
+
+  // zoom controls sit on the canvas; exports are in the menu
+  await expect(g.getByRole('button', { name: 'Fit to view' })).toBeVisible()
   await page.getByRole('button', { name: 'Modules' }).click()
   await expect(g.getByRole('button', { name: /module network/ })).toBeVisible()
   const dl = page.waitForEvent('download')
-  await g.getByRole('button', { name: 'Export SVG' }).click()
+  await g.getByRole('button', { name: 'Export' }).click()
+  await g.getByRole('menuitem', { name: 'Export SVG' }).click()
   const file = await (await dl).path()
   expect(readFileSync(file!, 'utf8')).toContain('<svg')
 })
@@ -115,7 +153,7 @@ test('system view places Ansible hosts on the servers in state, with roles and p
   await login(page)
   await page.goto(origin() + '/graph?root=infra&env=dev&view=system')
   const sys = page.getByRole('region', { name: 'System architecture' })
-  await expect(sys.getByText(/3 hosts · 3 groups · 2 on Terraform servers · from .* \+ terraform state/)).toBeVisible()
+  await expect(sys.getByText(/3 hosts · 3 groups · 2 on Terraform servers · 2 services · 2 port issues · (state pulled|from terraform state)/)).toBeVisible()
   // one box per host in each inventory group; app-1 is in two groups, so it is drawn twice and starred
   await expect(sys.getByText(/^app · 2 hosts$/)).toBeVisible()
   await expect(sys.getByText(/^monitoring · 1 host$/)).toBeVisible()
@@ -125,9 +163,12 @@ test('system view places Ansible hosts on the servers in state, with roles and p
   await expect(app1.first()).toContainText('*')
   await expect(sys.getByRole('button', { name: /app-2/ })).toContainText('aws_instance.app[1]')
   await expect(sys.getByRole('button', { name: /stray/ })).toContainText('not placed')
-  // services with their ports inside the box
-  await expect(app1.first()).toContainText('app')
+  // services as cards with their ports and where they came from; ssh in the header, roles without ports on one line
+  await expect(app1.first()).toContainText('role app')
   await expect(app1.first()).toContainText('8080')
+  await expect(app1.first()).toContainText('no firewall rule for 8080')
+  await expect(app1.first()).toContainText('ssh 22')
+  await expect(app1.first()).toContainText('also: base')
 
   await app1.first().click({ force: true })
   const insp = page.getByRole('region', { name: 'Selected host' })
@@ -136,6 +177,14 @@ test('system view places Ansible hosts on the servers in state, with roles and p
   const row = insp.locator('tr', { hasText: '8080' })
   await expect(row).toContainText('app_port (role app)')
   await expect(row).toContainText('no firewall rule allows it')
+  await expect(row).toContainText('not checked · Check')
+  // the issue chip jumps to the row it means
+  await insp.getByRole('button', { name: /1 port issue/ }).click()
+  await expect(row).toHaveClass(/hit/)
+  await expect(sys.getByRole('button', { name: 'Check listening ports' })).toBeVisible()
+  await sys.getByRole('button', { name: 'More actions' }).click()
+  await expect(sys.getByRole('menuitem', { name: 'Refresh state' })).toBeVisible()
+  await page.keyboard.press('Escape')
   await page.screenshot({ path: path.join(SHOTS, 'graph-system.png'), fullPage: true })
 
   // the mode is in the URL; switching back keeps the stack

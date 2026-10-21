@@ -143,6 +143,7 @@ type Engine struct {
 	OnPanic safego.Hook
 
 	mu       sync.Mutex
+	runMu    sync.Mutex // one ProcessRun at a time, so a caller returns only once the run's issues are stored
 	rules    []*Rule
 	ruleErrs []error
 	done     map[int64]string // run id → status already processed
@@ -316,7 +317,11 @@ func hostsOK(text string) map[string]bool {
 }
 
 // ProcessRun matches a finished run's log and updates issues on its target.
+// It is safe to call from several goroutines: when it returns, the run (in
+// its current status) has been processed, by this call or an earlier one.
 func (e *Engine) ProcessRun(id int64) {
+	e.runMu.Lock()
+	defer e.runMu.Unlock()
 	run, err := e.Store.GetRun(id)
 	if err != nil || !terminal(run.Status) {
 		return

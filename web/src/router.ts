@@ -10,6 +10,7 @@ const projectRoutes = [
   { path: '/inventory', component: () => import('./views/InventoryView.vue') },
   { path: '/variables', component: () => import('./views/VariablesView.vue') },
   { path: '/troubleshoot/:id(\\d+)?', component: () => import('./views/TroubleshootView.vue') },
+  { path: '/notifications', component: () => import('./views/NotificationsView.vue') },
   { path: '/code/:path(.*)*', component: () => import('./views/CodeView.vue') },
   { path: '/setup/detect', component: () => import('./views/DetectView.vue') },
   { path: '/setup/scaffold', component: () => import('./views/ScaffoldView.vue') },

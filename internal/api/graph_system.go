@@ -38,31 +38,27 @@ var (
 )
 
 // terraformState pulls the stack's state and reduces it at once: the raw
-// state (which can hold secrets) is never kept, logged or written.
-func (a *API) terraformState(ctx context.Context, t runner.Target, refresh bool) (*graph.State, error) {
+// state (which can hold secrets) is never kept, logged or written. It also
+// returns when that state was pulled (it is cached for a minute).
+func (a *API) terraformState(ctx context.Context, t runner.Target, refresh bool) (*graph.State, time.Time, error) {
 	dir := filepath.Join(a.Root, filepath.FromSlash(t.Root))
 	if _, err := os.Stat(filepath.Join(dir, ".terraform")); err != nil {
-		return nil, errors.New("the root isn't initialised (run init), so its state can't be read")
+		return nil, time.Time{}, errors.New("the root isn't initialised (run init), so its state can't be read")
 	}
 	key := dir + "|" + t.Workspace
-	fresh := func() (*graph.State, error, bool) {
-		if e, ok := stateCache.Load(key); ok && !refresh && time.Since(e.(stateEntry).at) < stateTTL {
-			return e.(stateEntry).state, e.(stateEntry).err, true
-		}
-		return nil, nil, false
-	}
-	if s, err, ok := fresh(); ok {
-		return s, err
+	if e, ok := stateCache.Load(key); ok && !refresh && time.Since(e.(stateEntry).at) < stateTTL {
+		return e.(stateEntry).state, e.(stateEntry).at, e.(stateEntry).err
 	}
 	mu, _ := stateLoads.LoadOrStore(key, &sync.Mutex{})
 	mu.(*sync.Mutex).Lock()
 	defer mu.(*sync.Mutex).Unlock()
 	if e, ok := stateCache.Load(key); ok && time.Since(e.(stateEntry).at) < time.Second { // pulled while we waited
-		return e.(stateEntry).state, e.(stateEntry).err
+		return e.(stateEntry).state, e.(stateEntry).at, e.(stateEntry).err
 	}
 	s, err := a.pullState(ctx, t, dir)
-	stateCache.Store(key, stateEntry{time.Now(), s, err})
-	return s, err
+	now := time.Now()
+	stateCache.Store(key, stateEntry{now, s, err})
+	return s, now, err
 }
 
 func (a *API) pullState(ctx context.Context, t runner.Target, dir string) (*graph.State, error) {
@@ -125,13 +121,17 @@ func (a *API) graphSystem(w http.ResponseWriter, r *http.Request) {
 	arch := graph.BuildArchitecture(g, rules)
 
 	hosts, scopes := a.systemHosts(r.Context(), t.Env)
-	st, err := a.terraformState(r.Context(), t, q.Get("refresh") == "1")
+	st, pulledAt, err := a.terraformState(r.Context(), t, q.Get("refresh") == "1")
 	stateNote := ""
 	if err != nil {
 		stateNote = err.Error()
 	}
 	sys := graph.BuildSystem(arch, st, hosts, rules, "state unavailable: "+stateNote)
-	writeJSON(w, 200, map[string]any{"system": sys, "state_error": stateNote, "scopes": scopes, "target": t})
+	out := map[string]any{"system": sys, "state_error": stateNote, "scopes": scopes, "target": t}
+	if err == nil && !pulledAt.IsZero() {
+		out["state_pulled_at"] = pulledAt.UTC().Format(time.RFC3339)
+	}
+	writeJSON(w, 200, out)
 }
 
 // systemHosts collects the hosts of every Ansible project's inventory for

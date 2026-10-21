@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useWorkspace } from '../stores/workspace'
 import { useChecks } from '../stores/checks'
 import { useGit } from '../stores/git'
@@ -8,16 +9,30 @@ import { useIssues } from '../stores/issues'
 import BrandMark from './BrandMark.vue'
 import ThemeToggle from './ThemeToggle.vue'
 import { connection } from '../composables/events'
+import NotificationBell from './NotificationBell.vue'
+import NotificationToasts from './NotificationToasts.vue'
+import { startNotifications, useNotifications } from '../stores/notifications'
+import { startDelivery } from '../composables/notifyDelivery'
 
 const ws = useWorkspace()
 const checks = useChecks()
 const git = useGit()
 const runs = useRuns()
 const issues = useIssues()
+const notes = useNotifications()
+const unreadFailed = notes.unreadFailed
+startNotifications()
+startDelivery(useRouter())
 
 const RANK: Record<string, number> = { dev: 0, test: 1, qa: 1, staging: 2, prod: 3 }
 const envStatus = computed(() => new Map(runs.envs.map((e) => [e.name, e.status])))
 const STATUS_TEXT: Record<string, string> = { pending: 'pending', failed: 'failed', running: 'running', drift: 'drift' }
+// the first run waiting for approval in each environment: its row says "approve"
+const waiting = computed(() => {
+  const m = new Map<string, number>()
+  for (const r of runs.list) if (r.status === 'waiting_approval' && !m.has(r.target.env)) m.set(r.target.env, r.id)
+  return m
+})
 const envs = computed(() => {
   const cfg = ws.ws?.config
   const set = new Set<string>()
@@ -42,10 +57,13 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
 <template>
   <div class="app">
     <aside class="side" aria-label="Sidebar">
-      <a class="brand" href="/" title="All projects">
-        <BrandMark />
-        <span class="mono name">groundwork</span>
-      </a>
+      <div class="between top">
+        <a class="brand" href="/" title="All projects">
+          <BrandMark />
+          <span class="mono name">groundwork</span>
+        </a>
+        <NotificationBell />
+      </div>
 
       <div class="repo">
         <div class="between"><span class="lbl">Project</span><a class="switch" href="/">All projects</a></div>
@@ -61,8 +79,9 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
         <RouterLink class="nav" to="/runs" active-class="on">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M5 3l14 9-14 9z" /></svg>
           Runs
-          <span v-if="runs.live" class="mono badge run">{{ runs.live }} live</span>
-          <span v-else-if="runs.awaiting" class="mono badge warn" :aria-label="`${runs.awaiting} awaiting approval`">{{ runs.awaiting }}</span>
+          <span v-if="unreadFailed" class="mono badge fail">{{ unreadFailed }} failed</span>
+          <span v-else-if="runs.awaiting" class="mono badge warn" :aria-label="`${runs.awaiting} waiting for approval`">{{ runs.awaiting }} waiting</span>
+          <span v-else-if="runs.live" class="mono badge run">{{ runs.live }} live</span>
         </RouterLink>
         <RouterLink v-if="(ws.ws?.config?.terraform?.roots ?? []).length" class="nav" to="/graph" active-class="on">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="5" cy="12" r="2.5" /><circle cx="19" cy="5" r="2.5" /><circle cx="19" cy="19" r="2.5" /><path d="M7.3 11l9.4-5M7.3 13l9.4 5" /></svg>
@@ -88,13 +107,18 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
           <span v-if="checks.counts.error" class="mono badge fail" :aria-label="`${checks.counts.error} errors`">{{ checks.counts.error }}</span>
           <span v-else-if="checks.counts.warning" class="mono badge warn" :aria-label="`${checks.counts.warning} warnings`">{{ checks.counts.warning }}</span>
         </RouterLink>
+        <RouterLink class="nav" to="/notifications" active-class="on">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
+          Notifications
+        </RouterLink>
       </nav>
 
       <div v-if="envs.length" class="envs">
         <span class="lbl">Environments</span>
         <span v-for="e in envs" :key="e" class="nav static">
-          <span class="dot" :class="envStatus.get(e) ?? 'unknown'" aria-hidden="true" />{{ e }}
-          <span v-if="STATUS_TEXT[envStatus.get(e) ?? '']" class="mono badge" :class="envStatus.get(e) === 'failed' ? 'fail' : envStatus.get(e) === 'pending' || envStatus.get(e) === 'drift' ? 'warn' : 'run'">{{ STATUS_TEXT[envStatus.get(e) ?? ''] }}</span>
+          <span class="dot" :class="waiting.has(e) ? 'pending' : envStatus.get(e) ?? 'unknown'" aria-hidden="true" />{{ e }}
+          <RouterLink v-if="waiting.has(e)" class="mono badge warn approve" :to="`/runs/${waiting.get(e)}/plan`" :aria-label="`Review the plan waiting for approval on ${e}`">approve</RouterLink>
+          <span v-else-if="STATUS_TEXT[envStatus.get(e) ?? '']" class="mono badge" :class="envStatus.get(e) === 'failed' ? 'fail' : envStatus.get(e) === 'pending' || envStatus.get(e) === 'drift' ? 'warn' : 'run'">{{ STATUS_TEXT[envStatus.get(e) ?? ''] }}</span>
         </span>
       </div>
       <div class="foot">
@@ -106,6 +130,7 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
       </div>
     </aside>
     <main class="main" :class="{ stale: connection === 'reconnecting' }"><slot /></main>
+    <NotificationToasts />
   </div>
 </template>
 
@@ -140,5 +165,8 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-disabled); }
 .dot.ok { background: var(--ok); } .dot.pending, .dot.drift { background: var(--warn); } .dot.failed { background: var(--fail); } .dot.running { background: var(--running); }
 .badge.run { color: var(--running); }
+.top { padding-right: 2px; }
+.approve { text-decoration: none; padding: 1px 6px; border-radius: 4px; background: var(--warn-bg); border: 1px solid var(--warn-line); }
+.approve:hover { color: var(--warn-strong); border-color: var(--warn); }
 @media (max-width: 900px) { .side { max-width: 100%; flex-basis: 100%; position: static; width: auto; overflow: visible; } .main { height: auto; min-height: 70vh; margin-left: 0; } }
 </style>

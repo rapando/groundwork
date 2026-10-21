@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { serviceApi } from '../api/client'
 import type { ProjectView, ServiceInfo } from '../api/types'
 import BrandMark from '../components/BrandMark.vue'
@@ -7,6 +7,8 @@ import ThemeToggle from '../components/ThemeToggle.vue'
 import { swallow } from '../api/swallow'
 import Modal from '../components/Modal.vue'
 import SignInSettings from '../components/SignInSettings.vue'
+import NotificationBell from '../components/NotificationBell.vue'
+import { startNotifications, useNotifications } from '../stores/notifications'
 
 const projects = ref<ProjectView[] | null>(null)
 const info = ref<ServiceInfo | null>(null)
@@ -16,6 +18,10 @@ const error = ref('')
 const removing = ref<ProjectView | null>(null)
 const removeError = ref('')
 const signin = ref(false)
+const notes = useNotifications()
+startNotifications()
+// reading notifications in the bell resolves the "1 failed" pills
+watch(notes.serviceUnread, () => refresh())
 
 // https://, ssh:// and git@host:path are cloned; anything else is a folder
 const isURL = computed(() => /^(https:\/\/|ssh:\/\/|[\w.-]+@[\w.-]+:)/.test(source.value.trim()))
@@ -64,6 +70,9 @@ async function reopen(p: ProjectView) {
 
 function status(p: ProjectView): { cls: string; text: string } {
   if (p.status !== 'ok') return { cls: 'fail', text: 'unavailable' }
+  // what needs you comes first, in place of "ready", until you've read it
+  if (p.unread_failed) return { cls: 'fail', text: `${p.unread_failed} failed` }
+  if (p.waiting_approval) return { cls: 'warn', text: `${p.waiting_approval} waiting` }
   if (p.active_runs) return { cls: 'run', text: `${p.active_runs} running` }
   if (p.config_error) return { cls: 'fail', text: 'config error' }
   if (!p.configured) return { cls: 'warn', text: 'needs setup' }
@@ -92,6 +101,7 @@ onUnmounted(() => {
       <BrandMark />
       <span class="mono name">groundwork</span>
       <span class="mono meta">{{ info ? `${info.version} · ${info.home}` : '' }}</span>
+      <NotificationBell align="right" />
       <button class="btn sm" type="button" @click="signin = true">Sign-in</button>
       <ThemeToggle />
     </header>

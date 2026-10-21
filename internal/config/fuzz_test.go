@@ -1,6 +1,7 @@
 package config
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -11,6 +12,8 @@ func FuzzParse(f *testing.F) {
 	f.Add([]byte("version: 1\ndrift: { notify: webhook, webhook: 'https://user:pw@h/x' }\nignore: ['', 'a\\nb']\n"))
 	f.Add([]byte("version: 1\nterraform:\n  roots:\n    - path: a\n      envs: { dev: { workspace: '-chdir=/' }, 'de v': {} }\n"))
 	f.Add([]byte("version: 1\nansible:\n  projects:\n    - path: a\n      config: ../ansible.cfg\n      vault_password_file: ~root/../x\n      inventories: { 'd;v': ../inv }\n"))
+	f.Add([]byte("version: 1\nmode: standalone\nnotify: { failed: [console, webhook], quiet_under: 1m, envs: [prod], webhook: 'https://h/x' }\n"))
+	f.Add([]byte("version: 1\nmode: standalone\nnotify: { drift: [pager], quiet_under: soon, envs: ['-x'], webhook: 'ftp://h' }\n"))
 	f.Fuzz(func(t *testing.T, b []byte) {
 		c, err := Parse(b, "groundwork.yaml")
 		if err != nil {
@@ -30,6 +33,28 @@ func FuzzParse(f *testing.F) {
 		for _, p := range c.Ansible.Projects {
 			if strings.Contains(p.VaultPasswordFile, "..") || strings.Contains(p.Config, "..") {
 				t.Fatalf("path with .. accepted: %+v", p)
+			}
+		}
+		if c.Notify != nil {
+			if w := c.Notify.Webhook; w != "" && !strings.HasPrefix(w, "http://") && !strings.HasPrefix(w, "https://") {
+				t.Fatalf("notify webhook %q accepted", w)
+			}
+			for _, e := range c.Notify.Envs {
+				if !ValidEnvName(e) {
+					t.Fatalf("notify env %q accepted", e)
+				}
+			}
+		}
+		// writing the effective notify settings back keeps the file valid and
+		// means the same thing
+		want := c.NotifySettings()
+		if out, err := SetNotifyBlock(b, want.Block()); err == nil {
+			c2, err := Parse(out, "groundwork.yaml")
+			if err != nil {
+				t.Fatalf("SetNotifyBlock broke the file: %v\n%s", err, out)
+			}
+			if got := c2.NotifySettings(); !reflect.DeepEqual(got, want) {
+				t.Fatalf("settings changed: %+v != %+v\n%s", got, want, out)
 			}
 		}
 		if w := c.Drift.Webhook; w != "" && !strings.HasPrefix(w, "http://") && !strings.HasPrefix(w, "https://") {

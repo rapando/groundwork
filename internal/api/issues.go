@@ -27,8 +27,10 @@ import (
 // they have, so the store isn't closed (or the folder removed) under them.
 func (a *API) Start(ctx context.Context) {
 	engine := a.Issues.Start(ctx)
-	a.bg.Add(3)
+	notifier := a.Notifier.Start(ctx)
+	a.bg.Add(4)
 	go func() { defer a.bg.Done(); <-engine }()
+	go func() { defer a.bg.Done(); <-notifier }()
 	safego.Go(nil, "inventory warm-up", a.InternalError, func() { // the Overview needs host counts first thing
 		defer a.bg.Done()
 		cfg, _ := a.config()
@@ -70,17 +72,41 @@ func (a *API) getIssueParam(w http.ResponseWriter, r *http.Request) (*store.Issu
 func weekAgo() time.Time { return time.Now().Add(-7 * 24 * time.Hour) }
 
 func (a *API) listIssues(w http.ResponseWriter, r *http.Request) {
-	open, err := a.Store.ListIssues(store.IssueOpen, time.Time{}, 200)
+	var open, resolved []store.Issue
+	var err error
+	q := r.URL.Query().Get("run")
+	if q != "" {
+		// the issues a run raised (open or resolved since)
+		id, perr := strconv.ParseInt(q, 10, 64)
+		if perr != nil || id <= 0 {
+			writeError(w, 400, "bad_request", "invalid run id", nil)
+			return
+		}
+		all, lerr := a.Store.IssuesForRun(id)
+		if err = lerr; err == nil {
+			open, resolved = []store.Issue{}, []store.Issue{}
+			for _, i := range all {
+				if i.Status == store.IssueOpen {
+					open = append(open, i)
+				} else {
+					resolved = append(resolved, i)
+				}
+			}
+		}
+	} else if open, err = a.Store.ListIssues(store.IssueOpen, time.Time{}, 200); err == nil {
+		resolved, _ = a.Store.ListIssues(store.IssueResolved, weekAgo(), 20)
+	}
 	if err != nil {
 		writeError(w, 500, "issues_failed", err.Error(), nil)
 		return
 	}
-	resolved, _ := a.Store.ListIssues(store.IssueResolved, weekAgo(), 20)
 	views := func(is []store.Issue) []diagnostics.View {
 		out := make([]diagnostics.View, 0, len(is))
 		for _, i := range is {
 			v := a.Issues.View(i)
-			v.Excerpt = "" // the list doesn't need logs
+			if q == "" {
+				v.Excerpt = "" // the list doesn't need logs; a run's few issues keep theirs for its failure card
+			}
 			out = append(out, v)
 		}
 		return out

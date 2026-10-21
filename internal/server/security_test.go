@@ -294,6 +294,32 @@ func TestNoPathEscapesOrArgumentInjection(t *testing.T) {
 			t.Errorf("%v accepted: %d %s", body, res.StatusCode, b)
 		}
 	}
+	// notification settings end up in groundwork.yaml, and their text in a
+	// desktop notification's argv: hostile values are refused, the file kept
+	cfgBefore, _ := os.ReadFile(filepath.Join(s.root, "groundwork.yaml"))
+	for _, body := range []map[string]any{
+		{"failed": []string{"console", "desktop; rm -rf /"}},
+		{"failed": []string{"webhook"}, "webhook": "file:///etc/passwd"},
+		{"failed": []string{"webhook"}, "webhook": "http://user:pw@evil.example/"},
+		{"envs": []string{"-chdir=/"}},
+		{"envs": []string{"prod\nansible:\n  allow_vault_script: true"}},
+		{"quiet_under": "30s\nansible: {allow_vault_script: true}"},
+		{"webhook": "https://hooks.example.com/x\nansible: {allow_vault_script: true}"},
+	} {
+		if res := s.call("PUT", "/api/notifications/settings", body, true); res.StatusCode < 400 {
+			b, _ := io.ReadAll(res.Body)
+			t.Errorf("settings %v accepted: %d %s", body, res.StatusCode, b)
+		}
+	}
+	if b, _ := os.ReadFile(filepath.Join(s.root, "groundwork.yaml")); !bytes.Equal(b, cfgBefore) {
+		t.Errorf("refused settings changed groundwork.yaml:\n%s", b)
+	}
+	for _, mode := range []string{"--help", "finish; id", ""} {
+		if res := s.call("PUT", "/api/runs/1/notify", map[string]any{"mode": mode}, true); res.StatusCode < 400 {
+			t.Errorf("mode %q accepted: %d", mode, res.StatusCode)
+		}
+	}
+
 	for _, q := range []string{"project=../..&env=dev", "project=ansible&env=../../etc", "project=/etc&env=dev"} {
 		if res := s.call("GET", "/api/inventory?"+q, nil, true); res.StatusCode < 400 {
 			b, _ := io.ReadAll(res.Body)

@@ -42,6 +42,7 @@ const SCREENS = computed(() => [
   ...(hasAns.value ? [{ key: 'i', label: 'Inventory', to: '/inventory' }] : []),
   { key: 'v', label: 'Variables', to: '/variables' },
   { key: 't', label: 'Troubleshoot', to: '/troubleshoot' },
+  { key: 'n', label: 'Notifications', to: '/notifications' },
 ])
 
 function go(to: string) { router.push(to) }

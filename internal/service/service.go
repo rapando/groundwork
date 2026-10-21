@@ -107,6 +107,10 @@ func (in *instance) start(ctx context.Context, version string, log *slog.Logger)
 	_ = os.WriteFile(filepath.Join(stateDir, "VERSION"), []byte(version+"\n"), 0o600)
 	bus := events.NewBus()
 	a := api.New(in.p.Path, version, bus, st)
+	if in.p.Name != "" {
+		a.Notifier.Project = in.p.Name
+	}
+	a.Notifier.Streams = server.OpenStreams
 	var ret config.Retention
 	if c := a.Config(); c != nil {
 		ret = c.Retention
@@ -349,6 +353,8 @@ func (s *Service) Routes(r chi.Router) {
 			writeJSON(w, 200, map[string]bool{"ok": true})
 		}
 	})
+	r.Get("/notifications", s.listNotifications)
+	r.Post("/notifications/read", s.readNotifications)
 	r.Mount("/p/{pid}", http.HandlerFunc(s.dispatch))
 }
 
