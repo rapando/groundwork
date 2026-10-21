@@ -1,0 +1,1 @@
+import{A as e,U as t}from"./index-BTsR62f6.js";function n(n=1e3){let r=t(Date.now()),i=window.setInterval(()=>r.value=Date.now(),n);return e(()=>window.clearInterval(i)),r}export{n as t};
