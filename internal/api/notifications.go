@@ -47,7 +47,7 @@ func (a *API) causeFor(runID int64) *store.Cause {
 // channels, with the desktop notification left to an open console.
 func (a *API) driftNotice(ctx context.Context, _ config.Drift, n drift.Notice) error {
 	n.Project = a.Notifier.Project
-	s := a.Config().NotifySettings()
+	s := a.NotifySettings()
 	return a.Notifier.External(ctx, s.Drift, "drift in "+n.Env, n.Text, n)
 }
 
@@ -117,19 +117,39 @@ func (a *API) readNotifications(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]int{"unread": unread})
 }
 
+func (a *API) baseNotify() *config.Notify {
+	if a.MachineNotify == nil {
+		return nil
+	}
+	return a.MachineNotify()
+}
+
+// NotifySettings are the project's effective notification settings: its
+// notify: block over the settings for every project.
+func (a *API) NotifySettings() config.NotifySettings {
+	return a.Config().NotifySettingsOver(a.baseNotify())
+}
+
+// settingsView is GET /notifications/settings: the effective settings, the
+// project's overrides (null or "" where it follows every project's) and the
+// settings for every project they apply over.
 func (a *API) settingsView() map[string]any {
 	c := a.Config()
-	return map[string]any{"settings": c.NotifySettings(), "configured": c.NotifyConfigured()}
+	base := a.baseNotify()
+	return map[string]any{"settings": c.NotifySettingsOver(base), "configured": c.NotifyConfigured(),
+		"overrides": c.NotifyOverrides(), "base": config.ResolveNotify(base), "shared": a.MachineNotify != nil}
 }
 
 func (a *API) notifySettings(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, 200, a.settingsView())
 }
 
-// setNotifySettings writes the notify: block into groundwork.yaml, leaving
-// the rest of the file (comments included) as it was.
+// setNotifySettings writes the project's overrides as the notify: block of
+// groundwork.yaml (removing it when nothing is overridden), leaving the rest
+// of the file (comments included) as it was. A key that is null, or "" for
+// quiet_under and webhook, follows the settings for every project.
 func (a *API) setNotifySettings(w http.ResponseWriter, r *http.Request) {
-	var s config.NotifySettings
+	var s config.Notify
 	if !decode(w, r, &s) {
 		return
 	}
@@ -144,7 +164,7 @@ func (a *API) setNotifySettings(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 409, "not_configured", msg, nil)
 		return
 	}
-	if probs := cfg.ValidateNotify(s); len(probs) > 0 {
+	if probs := cfg.ValidateNotifyOverrides(s, a.baseNotify()); len(probs) > 0 {
 		writeError(w, 400, "invalid_settings", strings.Join(probs, "; "), probs)
 		return
 	}
@@ -156,7 +176,7 @@ func (a *API) setNotifySettings(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 500, "read_failed", err.Error(), nil)
 		return
 	}
-	out, err := config.SetNotifyBlock(cur, s.Block())
+	out, err := config.SetNotifyBlock(cur, s)
 	if err != nil {
 		writeError(w, 400, "invalid_settings", err.Error(), nil)
 		return

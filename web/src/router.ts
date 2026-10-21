@@ -17,9 +17,10 @@ const projectRoutes = [
   { path: '/:rest(.*)*', component: () => import('./views/NotFound.vue') },
 ]
 
-// Outside /p/<id>/ the only page is the project list.
+// Outside /p/<id>/: the project list and the settings for every project.
 const serviceRoutes = [
   { path: '/', component: () => import('./views/ProjectsView.vue') },
+  { path: '/notifications', component: () => import('./views/NotificationsView.vue') },
   { path: '/:rest(.*)*', redirect: '/' },
 ]
 

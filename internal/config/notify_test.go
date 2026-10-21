@@ -1,6 +1,7 @@
 package config
 
 import (
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -73,7 +74,7 @@ func TestNotifyValidation(t *testing.T) {
 		"notify: { envs: ['-chdir=/'] }":                      "notify.envs[0]",
 		"notify: { webhook: 'ftp://h/x' }":                    "http",
 		"notify: { webhook: 'https://u:p@h/x' }":              "credentials",
-		"notify: { drift: [webhook] }":                        "webhook URL required",
+		"notify: { drift: [webhook] }":                        "", // the URL may come from the settings for every project
 		"notify: { failed: [console], extra: 1 }":             "extra",
 		"notify: { failed: [webhook], webhook: 'https://h' }": "",
 	}
@@ -149,8 +150,18 @@ drift:
 	if err != nil || !strings.HasPrefix(string(out), plain+"\nnotify:\n  failed: [console]\n") {
 		t.Fatalf("%v\n%s", err, out)
 	}
-	if c, err := Parse(out, FileName); err != nil || len(c.Notify.Drift) != 0 || c.Notify.Drift == nil {
+	// a list left out isn't written, so it keeps following the settings below it
+	if c, err := Parse(out, FileName); err != nil || c.Notify.Drift != nil || strings.Contains(string(out), "drift") {
 		t.Fatalf("%v %+v", err, c)
+	}
+	// nothing overridden: the block goes, the rest stays
+	out, err = SetNotifyBlock([]byte("version: 1\nnotify:\n  failed: [console]\n# tail\nmode: standalone\n"), Notify{})
+	if err != nil || string(out) != "version: 1\n# tail\nmode: standalone\n" {
+		t.Fatalf("%v %q", err, out)
+	}
+	out, _ = SetNotifyBlock([]byte("version: 1\nmode: standalone\n"), Notify{})
+	if string(out) != "version: 1\nmode: standalone\n" {
+		t.Fatalf("%q", out)
 	}
 	// a block on one line
 	out, _ = SetNotifyBlock([]byte("version: 1\nnotify: {failed: [desktop]}\nmode: standalone\n"), Notify{Failed: []string{"console"}})
@@ -159,6 +170,70 @@ drift:
 	}
 	for _, bad := range []string{"{version: 1}", "- a\n", ": :"} {
 		if _, err := SetNotifyBlock([]byte(bad), Notify{}); err == nil {
+			t.Errorf("%q accepted", bad)
+		}
+	}
+}
+
+// The settings for every project sit under the project's: each key comes
+// from the project's block, its legacy drift keys, the base, the default.
+func TestNotifySettingsOver(t *testing.T) {
+	base := &Notify{Failed: []string{"console", "webhook"}, Success: []string{"console", "desktop"}, Drift: []string{"console"},
+		QuietUnder: "2m", Envs: []string{"prod"}, Webhook: "https://hooks.example.com/all"}
+	var nilCfg *Config
+	if s := nilCfg.NotifySettingsOver(base); !slices.Equal(s.Failed, base.Failed) || !slices.Equal(s.Approval, []string{"console", "desktop"}) ||
+		!slices.Equal(s.Success, base.Success) || !slices.Equal(s.Drift, base.Drift) || s.QuietUnder != "2m" || !slices.Equal(s.Envs, base.Envs) || s.Webhook != base.Webhook {
+		t.Fatalf("base alone: %+v", s)
+	}
+	if s := ResolveNotify(nil); !slices.Equal(s.Failed, []string{"console", "desktop"}) || s.Webhook != "" {
+		t.Fatalf("no base is the defaults: %+v", s)
+	}
+	// the base webhook turns on the default webhook for failures
+	if s := ResolveNotify(&Notify{Webhook: "https://h/x"}); !slices.Equal(s.Failed, []string{"console", "desktop", "webhook"}) {
+		t.Fatalf("%+v", s)
+	}
+	c := &Config{Notify: &Notify{Success: []string{}, Envs: []string{}, QuietUnder: "0s"}}
+	s := c.NotifySettingsOver(base)
+	if len(s.Success) != 0 || len(s.Envs) != 0 || s.QuietUnder != "0s" || !slices.Equal(s.Failed, base.Failed) || s.Webhook != base.Webhook {
+		t.Fatalf("project overrides: %+v", s)
+	}
+	// legacy drift keys beat the base; unset drift.notify follows it
+	c = &Config{Drift: Drift{Notify: "webhook", Webhook: "https://old.example/x"}}
+	if s := c.NotifySettingsOver(base); !slices.Equal(s.Drift, []string{"console", "webhook"}) || s.Webhook != "https://old.example/x" {
+		t.Fatalf("legacy: %+v", s)
+	}
+	if s := (&Config{}).NotifySettingsOver(base); !slices.Equal(s.Drift, base.Drift) {
+		t.Fatalf("unset drift.notify: %+v", s)
+	}
+	if o := (&Config{}).NotifyOverrides(); !o.Empty() || o.Count() != 0 {
+		t.Fatal("no block, no overrides")
+	}
+	if n := (Notify{Failed: []string{}, Webhook: "x"}); n.Empty() || n.Count() != 2 {
+		t.Fatal("count")
+	}
+	// a project's webhook channel is satisfied by the base URL
+	if p := (&Config{}).ValidateNotifyOverrides(Notify{Drift: []string{"webhook"}}, base); len(p) != 0 {
+		t.Fatalf("%v", p)
+	}
+	if p := (&Config{}).ValidateNotifyOverrides(Notify{Drift: []string{"webhook"}}, nil); len(p) != 1 || !strings.Contains(p[0], "webhook URL required") {
+		t.Fatalf("%v", p)
+	}
+}
+
+func TestNotifyFile(t *testing.T) {
+	b, err := RenderNotifyFile(ResolveNotify(nil).Block())
+	if err != nil || !strings.HasPrefix(string(b), "# Notification settings for every project") {
+		t.Fatalf("%v\n%s", err, b)
+	}
+	n, err := ParseNotifyFile(b)
+	if err != nil || !reflect.DeepEqual(ResolveNotify(n), ResolveNotify(nil)) {
+		t.Fatalf("%v %+v", err, n)
+	}
+	if n, err := ParseNotifyFile([]byte("# nothing yet\n")); err != nil || n != nil {
+		t.Fatalf("empty: %v %+v", err, n)
+	}
+	for _, bad := range []string{"notify: { failed: [sms] }", "notify: { extra: 1 }", "other: 1", "notify: { failed: [webhook] }", "- a"} {
+		if _, err := ParseNotifyFile([]byte(bad)); err == nil {
 			t.Errorf("%q accepted", bad)
 		}
 	}

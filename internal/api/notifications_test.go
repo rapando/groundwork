@@ -179,6 +179,54 @@ func TestNotificationSettingsOverHTTP(t *testing.T) {
 	}
 }
 
+// A project's settings sit over the settings for every project: only what it
+// overrides is written to groundwork.yaml, and clearing every override
+// removes the block.
+func TestNotificationOverridesOverHTTP(t *testing.T) {
+	e := newConfigured(t)
+	base := &config.Notify{Failed: []string{"console", "webhook"}, QuietUnder: "2m", Webhook: "https://hooks.example.com/all"}
+	e.a.MachineNotify = func() *config.Notify { return base }
+	p := filepath.Join(e.root, config.FileName)
+	orig, _ := os.ReadFile(p)
+
+	g := into(t, call(t, e.h, "GET", "/notifications/settings", nil))
+	st, bs, ov := g["settings"].(map[string]any), g["base"].(map[string]any), g["overrides"].(map[string]any)
+	if g["shared"] != true || st["webhook"] != base.Webhook || st["quiet_under"] != "2m" || bs["quiet_under"] != "2m" || ov["failed"] != nil || ov["webhook"] != "" {
+		t.Fatalf("%v", g)
+	}
+	if s := e.a.NotifySettings(); s.Webhook != base.Webhook || len(s.Failed) != 2 {
+		t.Fatalf("effective %+v", s)
+	}
+	// the webhook channel is satisfied by the base URL; only the overrides are written
+	rec := call(t, e.h, "PUT", "/notifications/settings", map[string]any{"drift": []string{"console", "webhook"}, "envs": []string{}})
+	if rec.Code != 200 {
+		t.Fatalf("%d %s", rec.Code, rec.Body)
+	}
+	g = into(t, rec)
+	if st := g["settings"].(map[string]any); len(st["drift"].([]any)) != 2 || st["webhook"] != base.Webhook || st["quiet_under"] != "2m" {
+		t.Fatalf("%v", g)
+	}
+	b, _ := os.ReadFile(p)
+	if !strings.HasSuffix(string(b), "notify:\n  drift: [console, webhook]\n  envs: []\n") {
+		t.Fatalf("%s", b)
+	}
+	// a change below reaches the project at once
+	base = &config.Notify{QuietUnder: "5m"}
+	if s := e.a.NotifySettings(); s.QuietUnder != "5m" || len(s.Drift) != 2 {
+		t.Fatalf("%+v", s)
+	}
+	// nothing overridden: the block goes
+	if rec := call(t, e.h, "PUT", "/notifications/settings", map[string]any{}); rec.Code != 200 {
+		t.Fatalf("%d %s", rec.Code, rec.Body)
+	}
+	if b, _ := os.ReadFile(p); string(b) != string(orig) {
+		t.Fatalf("block not removed:\n%s", b)
+	}
+	if g := into(t, call(t, e.h, "GET", "/notifications/settings", nil)); g["configured"] != false {
+		t.Fatalf("%v", g)
+	}
+}
+
 func TestNotificationSettingsNeedAConfig(t *testing.T) {
 	root := fixture(t, "iac-only")
 	h := newAPI(t, root)

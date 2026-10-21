@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"slices"
 	"strings"
 	"time"
@@ -27,14 +28,38 @@ const DefaultQuietUnder = 30 * time.Second
 
 // Notify is the `notify:` block: which channels each kind of event reaches.
 // A list left out takes its default; an empty list ([]) means "record only".
+// The service keeps one for every project (notify.yaml in its data
+// directory); a project's block in groundwork.yaml overrides it key by key.
+// As JSON it is a project's overrides: null (or "") means "not overridden".
 type Notify struct {
-	Failed     []string `yaml:"failed,omitempty"`
-	Approval   []string `yaml:"approval,omitempty"`
-	Success    []string `yaml:"success,omitempty"`
-	Drift      []string `yaml:"drift,omitempty"`
-	QuietUnder string   `yaml:"quiet_under,omitempty"`
-	Envs       []string `yaml:"envs,omitempty"`
-	Webhook    string   `yaml:"webhook,omitempty"`
+	Failed     []string `yaml:"failed,omitempty" json:"failed"`
+	Approval   []string `yaml:"approval,omitempty" json:"approval"`
+	Success    []string `yaml:"success,omitempty" json:"success"`
+	Drift      []string `yaml:"drift,omitempty" json:"drift"`
+	QuietUnder string   `yaml:"quiet_under,omitempty" json:"quiet_under"`
+	Envs       []string `yaml:"envs,omitempty" json:"envs"`
+	Webhook    string   `yaml:"webhook,omitempty" json:"webhook"`
+}
+
+// Empty reports whether the block sets nothing.
+func (n Notify) Empty() bool {
+	return n.Failed == nil && n.Approval == nil && n.Success == nil && n.Drift == nil && n.QuietUnder == "" && n.Envs == nil && n.Webhook == ""
+}
+
+// Count is how many keys the block sets.
+func (n Notify) Count() int {
+	c := 0
+	for _, l := range [][]string{n.Failed, n.Approval, n.Success, n.Drift, n.Envs} {
+		if l != nil {
+			c++
+		}
+	}
+	for _, v := range []string{n.QuietUnder, n.Webhook} {
+		if v != "" {
+			c++
+		}
+	}
+	return c
 }
 
 // NotifySettings are the effective notification settings: the `notify:`
@@ -50,10 +75,20 @@ type NotifySettings struct {
 	Webhook    string   `json:"webhook"`
 }
 
-// NotifySettings resolves the effective settings. A nil config gives the
-// defaults with no webhook.
-func (c *Config) NotifySettings() NotifySettings {
-	var n Notify
+// NotifySettings resolves the effective settings from the project's config
+// alone. A nil config gives the defaults with no webhook.
+func (c *Config) NotifySettings() NotifySettings { return c.NotifySettingsOver(nil) }
+
+// ResolveNotify is the effective settings of the block for every project
+// (nil: the defaults).
+func ResolveNotify(base *Notify) NotifySettings { return (*Config)(nil).NotifySettingsOver(base) }
+
+// NotifySettingsOver resolves the effective settings with base (the
+// settings for every project, nil for none) under the project's own. Each
+// key comes from the first of: the project's notify: block, its legacy
+// drift.notify/drift.webhook, base, the default.
+func (c *Config) NotifySettingsOver(base *Notify) NotifySettings {
+	var n, b Notify
 	var d Drift
 	if c != nil {
 		d = c.Drift
@@ -61,31 +96,46 @@ func (c *Config) NotifySettings() NotifySettings {
 			n = *c.Notify
 		}
 	}
-	s := NotifySettings{Webhook: n.Webhook, QuietUnder: n.QuietUnder, Envs: cleanList(n.Envs)}
-	if s.Webhook == "" {
-		s.Webhook = d.Webhook
+	if base != nil {
+		b = *base
 	}
-	if s.QuietUnder == "" {
-		s.QuietUnder = DefaultQuietUnder.String()
-	}
+	s := NotifySettings{Webhook: first(n.Webhook, d.Webhook, b.Webhook), QuietUnder: first(n.QuietUnder, b.QuietUnder, DefaultQuietUnder.String())}
+	s.Envs = cleanList(orDefault(n.Envs, b.Envs))
 	failed := []string{ChannelConsole, ChannelDesktop}
 	if s.Webhook != "" {
 		failed = append(failed, ChannelWebhook)
 	}
-	var drift []string
+	drift := orDefault(b.Drift, []string{ChannelConsole, ChannelDesktop})
 	switch d.Notify {
 	case "webhook":
 		drift = []string{ChannelConsole, ChannelWebhook}
 	case "none":
 		drift = []string{ChannelConsole}
-	default: // desktop, or unset (which has always meant desktop)
+	case "desktop":
 		drift = []string{ChannelConsole, ChannelDesktop}
 	}
-	s.Failed = orDefault(n.Failed, failed)
-	s.Approval = orDefault(n.Approval, []string{ChannelConsole, ChannelDesktop})
-	s.Success = orDefault(n.Success, []string{ChannelConsole})
+	s.Failed = orDefault(n.Failed, orDefault(b.Failed, failed))
+	s.Approval = orDefault(n.Approval, orDefault(b.Approval, []string{ChannelConsole, ChannelDesktop}))
+	s.Success = orDefault(n.Success, orDefault(b.Success, []string{ChannelConsole}))
 	s.Drift = orDefault(n.Drift, drift)
 	return s
+}
+
+// NotifyOverrides is the project's notify: block (empty when it has none).
+func (c *Config) NotifyOverrides() Notify {
+	if c == nil || c.Notify == nil {
+		return Notify{}
+	}
+	return *c.Notify
+}
+
+func first(vs ...string) string {
+	for _, v := range vs {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 // Configured reports whether groundwork.yaml has a `notify:` block.
@@ -157,8 +207,10 @@ type notifyProblem struct {
 	keys []any
 }
 
-// problems validates the block; driftWebhook is the legacy fallback URL.
-func (n *Notify) problems(driftWebhook string) []notifyProblem {
+// problems validates the block. With requireURL, listing the webhook channel
+// needs a URL here or in fallback; groundwork.yaml skips that check, since
+// the URL may come from the settings for every project.
+func (n *Notify) problems(fallback string, requireURL bool) []notifyProblem {
 	if n == nil {
 		return nil
 	}
@@ -190,7 +242,7 @@ func (n *Notify) problems(driftWebhook string) []notifyProblem {
 		if msg := checkWebhook(n.Webhook); msg != "" {
 			add(msg, "webhook")
 		}
-	} else if wantsWebhook && driftWebhook == "" {
+	} else if wantsWebhook && requireURL && fallback == "" {
 		add("webhook URL required when a webhook channel is listed", "webhook")
 	}
 	return out
@@ -200,25 +252,78 @@ func (n *Notify) problems(driftWebhook string) []notifyProblem {
 // config's legacy drift.webhook as the fallback URL. It returns the problems
 // as user-facing lines.
 func (c *Config) ValidateNotify(s NotifySettings) []string {
-	var dw string
+	return c.ValidateNotifyOverrides(s.Block(), nil)
+}
+
+// ValidateNotifyOverrides checks a project's overrides submitted from the
+// console: a webhook channel needs a URL in the overrides, drift.webhook or
+// base (the settings for every project).
+func (c *Config) ValidateNotifyOverrides(n Notify, base *Notify) []string {
+	var fb string
 	if c != nil {
-		dw = c.Drift.Webhook
+		fb = c.Drift.Webhook
 	}
-	b := s.Block()
+	if fb == "" && base != nil {
+		fb = base.Webhook
+	}
+	return ValidateNotifyBlock(n, fb)
+}
+
+// ValidateNotifyBlock checks a block on its own (fallback: a URL that
+// satisfies a webhook channel). It returns the problems as user-facing lines.
+func ValidateNotifyBlock(n Notify, fallback string) []string {
 	var out []string
-	for _, p := range b.problems(dw) {
+	for _, p := range n.problems(fallback, true) {
 		out = append(out, pathString(append([]any{"notify"}, p.keys...))+": "+p.msg)
 	}
 	return out
 }
 
-// SetNotifyBlock returns groundwork.yaml content with its top-level
-// `notify:` block replaced by n (or added after the last top-level key).
-// Every other line, comments included, is kept as it was.
-func SetNotifyBlock(src []byte, n Notify) ([]byte, error) {
+// ParseNotifyFile reads the settings for every project: a file holding a
+// top-level notify: block, as in groundwork.yaml. An empty file is no block.
+func ParseNotifyFile(b []byte) (*Notify, error) {
+	var f struct {
+		Notify *Notify `yaml:"notify"`
+	}
+	dec := yaml.NewDecoder(bytes.NewReader(b))
+	dec.KnownFields(true)
+	if err := dec.Decode(&f); err != nil && !errors.Is(err, io.EOF) {
+		return nil, err
+	}
+	if probs := ValidateNotifyBlock(f.Notify.orEmpty(), ""); len(probs) > 0 {
+		return nil, errors.New(strings.Join(probs, "; "))
+	}
+	return f.Notify, nil
+}
+
+func (n *Notify) orEmpty() Notify {
+	if n == nil {
+		return Notify{}
+	}
+	return *n
+}
+
+// RenderNotifyFile is the content of the file for every project's settings.
+func RenderNotifyFile(n Notify) ([]byte, error) {
 	block, err := renderNotify(n)
 	if err != nil {
 		return nil, err
+	}
+	return []byte("# Notification settings for every project, written by groundwork.\n" +
+		"# A project's notify: block in groundwork.yaml overrides them key by key.\n" + block), nil
+}
+
+// SetNotifyBlock returns groundwork.yaml content with its top-level
+// `notify:` block replaced by n (or added after the last top-level key).
+// Every other line, comments included, is kept as it was.
+// An empty n removes the block.
+func SetNotifyBlock(src []byte, n Notify) ([]byte, error) {
+	block := ""
+	if !n.Empty() {
+		var err error
+		if block, err = renderNotify(n); err != nil {
+			return nil, err
+		}
 	}
 	var doc yaml.Node
 	if err := yaml.Unmarshal(src, &doc); err != nil {
@@ -256,6 +361,9 @@ func SetNotifyBlock(src []byte, n Notify) ([]byte, error) {
 		return []byte(out), nil
 	}
 	out := strings.Join(lines, "")
+	if block == "" {
+		return []byte(out), nil
+	}
 	if out != "" && !strings.HasSuffix(out, "\n") {
 		out += "\n"
 	}
@@ -283,14 +391,18 @@ func renderNotify(n Notify) (string, error) {
 	}
 	m := &yaml.Node{Kind: yaml.MappingNode}
 	add := func(k string, v *yaml.Node) { m.Content = append(m.Content, str(k), v) }
-	add("failed", seq(n.Failed))
-	add("approval", seq(n.Approval))
-	add("success", seq(n.Success))
-	add("drift", seq(n.Drift))
+	for _, l := range []struct {
+		k string
+		v []string
+	}{{"failed", n.Failed}, {"approval", n.Approval}, {"success", n.Success}, {"drift", n.Drift}} {
+		if l.v != nil {
+			add(l.k, seq(l.v))
+		}
+	}
 	if n.QuietUnder != "" {
 		add("quiet_under", str(n.QuietUnder))
 	}
-	if len(n.Envs) > 0 {
+	if n.Envs != nil {
 		add("envs", seq(n.Envs))
 	}
 	if n.Webhook != "" {

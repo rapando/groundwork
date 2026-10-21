@@ -53,8 +53,12 @@ type API struct {
 	Issues     *diagnostics.Engine
 	Drift      *drift.Scheduler
 	Notifier   *notify.Notifier
-	settingsMu sync.Mutex  // one notification settings write at a time
-	DoctorExec doctor.Exec // nil: the real one
+	settingsMu sync.Mutex // one notification settings write at a time
+	// MachineNotify returns the notification settings for every project
+	// (the service's notify.yaml), which this project's notify: block
+	// overrides. nil: none.
+	MachineNotify func() *config.Notify
+	DoctorExec    doctor.Exec // nil: the real one
 }
 
 func New(root, version string, bus *events.Bus, st *store.Store) *API {
@@ -69,6 +73,7 @@ func New(root, version string, bus *events.Bus, st *store.Store) *API {
 	a.Notifier.Project = filepath.Base(root)
 	a.Notifier.Diagnose = a.Issues.ProcessRun
 	a.Notifier.Cause = a.causeFor
+	a.Notifier.Base, a.Drift.Base = a.baseNotify, a.baseNotify
 	a.Drift.Notify = a.driftNotice
 	a.Runner.OnPanic, a.Checks.OnPanic, a.Issues.OnPanic, a.Drift.OnPanic, a.Notifier.OnPanic = a.InternalError, a.InternalError, a.InternalError, a.InternalError, a.InternalError
 	return a

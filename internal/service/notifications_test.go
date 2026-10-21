@@ -1,6 +1,8 @@
 package service
 
 import (
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -75,5 +77,62 @@ func TestNotificationsAcrossProjects(t *testing.T) {
 	}
 	if resp, _ := e.call(t, "GET", "/api/notifications", nil, false); resp.StatusCode != 401 {
 		t.Fatal("needs credentials")
+	}
+}
+
+// The settings for every project live in <home>/notify.yaml; each project
+// resolves its own over them, and a hand edit applies without a restart.
+func TestNotificationSettingsForEveryProject(t *testing.T) {
+	e := newEnv(t)
+	resp, p := e.call(t, "POST", "/api/projects", map[string]string{"path": repo(t)}, true)
+	if resp.StatusCode != 201 {
+		t.Fatalf("add: %d %v", resp.StatusCode, p)
+	}
+	id := p["id"].(string)
+
+	_, g := e.call(t, "GET", "/api/notifications/settings", nil, true)
+	if g["configured"] != false || g["settings"].(map[string]any)["quiet_under"] != "30s" || g["path"] != NotifyPath(e.svc.Home) {
+		t.Fatalf("%v", g)
+	}
+	body := map[string]any{"failed": []string{"console", "webhook"}, "approval": []string{"console"}, "success": []string{},
+		"drift": []string{"console"}, "quiet_under": "2m", "envs": []string{}, "webhook": "https://hooks.example.com/all"}
+	if resp, g = e.call(t, "PUT", "/api/notifications/settings", body, true); resp.StatusCode != 200 || g["configured"] != true {
+		t.Fatalf("%d %v", resp.StatusCode, g)
+	}
+	b, err := os.ReadFile(NotifyPath(e.svc.Home))
+	if err != nil || !strings.Contains(string(b), "notify:\n  failed: [console, webhook]\n") {
+		t.Fatalf("%v\n%s", err, b)
+	}
+	_, g = e.call(t, "GET", "/api/p/"+id+"/notifications/settings", nil, true)
+	if st := g["settings"].(map[string]any); st["webhook"] != "https://hooks.example.com/all" || st["quiet_under"] != "2m" || g["shared"] != true {
+		t.Fatalf("project doesn't inherit: %v", g)
+	}
+
+	for _, bad := range []map[string]any{{"failed": []string{"pager"}}, {"failed": []string{"webhook"}, "webhook": ""}, {"extra": 1}} {
+		if resp, _ := e.call(t, "PUT", "/api/notifications/settings", bad, true); resp.StatusCode != 400 {
+			t.Errorf("%v: %d", bad, resp.StatusCode)
+		}
+	}
+	if b2, _ := os.ReadFile(NotifyPath(e.svc.Home)); string(b2) != string(b) {
+		t.Fatal("a refused save changed the file")
+	}
+
+	// a hand edit applies; a broken one is reported and ignored
+	if err := os.WriteFile(NotifyPath(e.svc.Home), []byte("notify:\n  quiet_under: 5m\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if n := e.svc.MachineNotify(); n == nil || n.QuietUnder != "5m" {
+		t.Fatalf("%+v", n)
+	}
+	if err := os.WriteFile(NotifyPath(e.svc.Home), []byte("notify:\n  failed: [sms]\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, g = e.call(t, "GET", "/api/notifications/settings", nil, true); g["error"] == nil || !strings.Contains(g["error"].(string), "unknown channel") || e.svc.MachineNotify() != nil {
+		t.Fatalf("%v", g)
+	}
+
+	os.Remove(NotifyPath(e.svc.Home))
+	if resp, g = e.call(t, "POST", "/api/notifications/test", nil, true); resp.StatusCode != 200 || len(g["sent"].([]any)) != 1 {
+		t.Fatalf("test send by the defaults: %d %v", resp.StatusCode, g)
 	}
 }

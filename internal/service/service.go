@@ -43,6 +43,10 @@ type Service struct {
 
 	mu   sync.Mutex
 	live map[string]*instance
+
+	notifyMu      sync.Mutex // guards notify
+	notify        notifyFile
+	notifyWriteMu sync.Mutex // one notify.yaml write at a time
 }
 
 type instance struct {
@@ -82,14 +86,14 @@ func (s *Service) open(p Project) *instance {
 	}
 	in := &instance{p: p}
 	s.live[p.ID] = in
-	if err := in.start(s.ctx, s.Version, s.Log.With("project", p.ID)); err != nil {
+	if err := in.start(s.ctx, s.Version, s.MachineNotify, s.Log.With("project", p.ID)); err != nil {
 		in.err = err
 		s.Log.Warn("project unavailable", "project", p.ID, "path", p.Path, "err", err)
 	}
 	return in
 }
 
-func (in *instance) start(ctx context.Context, version string, log *slog.Logger) error {
+func (in *instance) start(ctx context.Context, version string, base func() *config.Notify, log *slog.Logger) error {
 	if fi, err := os.Stat(in.p.Path); err != nil || !fi.IsDir() {
 		return fmt.Errorf("folder not found: %s", in.p.Path)
 	}
@@ -111,6 +115,7 @@ func (in *instance) start(ctx context.Context, version string, log *slog.Logger)
 		a.Notifier.Project = in.p.Name
 	}
 	a.Notifier.Streams = server.OpenStreams
+	a.MachineNotify = base
 	var ret config.Retention
 	if c := a.Config(); c != nil {
 		ret = c.Retention
@@ -355,6 +360,9 @@ func (s *Service) Routes(r chi.Router) {
 	})
 	r.Get("/notifications", s.listNotifications)
 	r.Post("/notifications/read", s.readNotifications)
+	r.Get("/notifications/settings", s.getNotifySettings)
+	r.Put("/notifications/settings", s.setNotifySettings)
+	r.Post("/notifications/test", s.testNotification)
 	r.Mount("/p/{pid}", http.HandlerFunc(s.dispatch))
 }
 
