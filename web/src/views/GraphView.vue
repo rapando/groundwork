@@ -284,7 +284,8 @@ async function applyPreview() {
             <template v-if="planRun && !node.action">no change in plan #{{ planRun }} · </template><template v-if="node.module">{{ node.module }} · </template><RouterLink :to="codeHref(node.file, node.line)">{{ node.file }}:{{ node.line }}</RouterLink></span>
           <span v-if="node.drift && nodeDrift[0]" class="pill st-warn">drifted · detected {{ since(nodeDrift[0].detected_at, now) }}</span>
           <span v-else-if="node.action" class="pill st-run">{{ node.action }} in plan #{{ planRun }}</span>
-          <div class="rel">
+          <p v-if="!uses.length && !usedBy.length" class="small muted rel0">Uses nothing · used by nothing</p>
+          <div v-else class="rel">
             <span class="lbl">Uses · {{ uses.length }}</span>
             <ul v-if="uses.length" class="refs mono"><li v-for="id in uses" :key="id"><button class="link" type="button" @click="show(id)">{{ id }}</button></li></ul>
             <span v-else class="small muted">nothing</span>
@@ -304,19 +305,13 @@ async function applyPreview() {
           <template v-for="d in nodeDrift" :key="d.address">
             <p v-if="d.action === 'delete'" class="small warn">{{ d.address }} was deleted outside Terraform. A plan will recreate it.
               <button class="btn sm" type="button" @click="act(d.attrs[0], 'revert')">Revert with apply</button></p>
-            <div v-else class="scroll">
-              <table class="mono dt">
-                <thead><tr><th>attribute</th><th>in state / code</th><th>actual</th><th></th></tr></thead>
-                <tbody>
-                  <tr v-for="a in d.attrs" :key="a.id">
-                    <td>{{ a.attr_path }}</td><td class="muted">{{ a.code }}</td><td class="warn">{{ a.actual }}</td>
-                    <td class="acts">
-                      <button class="btn xs" type="button" @click="act(a, 'copy')">Copy into code</button>
-                      <button class="btn xs" type="button" @click="act(a, 'ignore')">Ignore</button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div v-else class="dattrs">
+              <div class="between dsum"><span class="small">{{ d.attrs.length }} {{ d.attrs.length === 1 ? 'attribute differs' : 'attributes differ' }}</span><span class="small muted">code → real infrastructure</span></div>
+              <div v-for="a in d.attrs" :key="a.id" class="dattr" role="group" :aria-label="a.attr_path">
+                <div class="dah"><span class="mono an">{{ a.attr_path }}</span>
+                  <span class="acts"><button class="btn xs" type="button" @click="act(a, 'copy')">Copy into code</button><button class="btn xs ghost" type="button" @click="act(a, 'ignore')">Ignore</button></span></div>
+                <div class="dav mono"><span class="k">code</span><span>{{ a.code }}</span><span class="k">actual</span><span class="warn">{{ a.actual }}</span></div>
+              </div>
               <button class="btn sm primary" type="button" @click="act(d.attrs[0], 'revert')">Revert with apply</button>
             </div>
           </template>
@@ -384,10 +379,18 @@ h1 { margin: 0; font-size: 18px; font-weight: 600; } h2 { margin: 0; font-size: 
 .refs li { padding: 1px 0; overflow-wrap: anywhere; }
 .riskbox { margin: 0; padding: 8px 10px; border: 1px solid var(--fail-line); border-radius: 6px; background: var(--fail-bg); color: var(--fail-strong); }
 .driftpane { flex: 2 1 420px; min-width: 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
-.scroll { overflow-x: auto; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
-.dt { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 13.5px; }
-.dt th { text-align: left; font-weight: 500; padding: 6px 8px 6px 0; color: var(--text-label); }
-.dt td { border-top: 1px solid var(--line); padding: 8px 8px 8px 0; overflow-wrap: anywhere; vertical-align: top; }
+.rel0 { margin: 0; }
+.dattrs { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+.dattrs > .btn { align-self: flex-start; }
+.between { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.dattr { border: 1px solid var(--line); border-radius: 8px; background: var(--bg-card); overflow: hidden; }
+.dah { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; background: var(--bg-raised); border-bottom: 1px solid var(--line); }
+.an { font-size: 13.5px; font-weight: 500; overflow-wrap: anywhere; }
+.dav { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 4px 10px; padding: 8px 12px; font-size: 13.5px; }
+.dav > span { overflow-wrap: anywhere; }
+.dav .k { color: var(--text-faint); }
+.dav .warn { color: var(--warn); }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--text-muted); }
 .acts { display: flex; gap: 6px; flex-wrap: wrap; }
 .btn.xs { height: 26px; font-size: 12px; padding: 0 8px; }
 .pill { font: 600 12.5px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; align-self: flex-start; }
@@ -401,12 +404,11 @@ h1 { margin: 0; font-size: 18px; font-weight: 600; } h2 { margin: 0; font-size: 
 .dact { display: flex; justify-content: flex-end; gap: 8px; }
 /* wide screens: the inspector sits beside the canvas */
 @media (min-width: 1280px) {
-  .split { grid-template-columns: minmax(0, 1fr) 380px; align-items: start; }
+  .split { grid-template-columns: minmax(0, 1fr) 440px; align-items: start; }
   .cwrap { height: 600px; }
   .split .inspector { flex-direction: column; flex-wrap: nowrap; max-height: calc(100vh - 140px); overflow: auto; position: sticky; top: 0; }
   .split .meta, .split .driftpane { flex: none; }
   .split .meta { border-right: 0; border-bottom: 1px solid var(--line); }
-  .split .dt { min-width: 0; }
   .split .hint { padding: 18px 20px; border: 1px dashed var(--line-strong); border-radius: 10px; }
 }
 </style>

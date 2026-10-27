@@ -84,7 +84,7 @@ test('drift: detect, see it in Graph and on the Overview, copy the real value in
   await node.click({ force: true })
   const insp = page.getByRole('region', { name: 'Selected resource' })
   await expect(insp.getByText(/drifted · detected/)).toBeVisible()
-  const row = insp.locator('tr', { hasText: 'content' })
+  const row = insp.getByRole('group', { name: 'content' })
   await expect(row).toContainText('"hello"')
   await expect(row).toContainText('"changed outside"')
   await page.screenshot({ path: path.join(SHOTS, 'graph-drift.png'), fullPage: true })
@@ -102,7 +102,7 @@ test('drift: detect, see it in Graph and on the Overview, copy the real value in
   await page.getByRole('link', { name: 'Overview', exact: true }).click()
   const dev = page.locator('article').filter({ has: page.locator('.ename', { hasText: /^dev$/ }) })
   await expect(dev.getByText('drift', { exact: true })).toBeVisible()
-  await expect(dev.getByRole('link', { name: '1' })).toBeVisible()
+  await expect(dev.getByRole('link', { name: '1 drifted' })).toBeVisible()
   await expect(page.getByRole('complementary', { name: 'Sidebar' }).getByText('drift')).toBeVisible()
 })
 
