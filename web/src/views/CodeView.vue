@@ -176,6 +176,16 @@ async function toggleDiff() {
 }
 
 // --- navigation ---
+// what to offer when nothing is open: uncommitted files first, then the usual entry points
+const uncommitted = computed(() => git.status?.files ?? [])
+const starters = computed(() => {
+  const all = files.files
+  const pick = ['groundwork.yaml', ...all.filter((f) => /(^|\/)(main\.tf|site\.ya?ml|playbook\.ya?ml)$/.test(f))].filter((f, i, a) => all.includes(f) && a.indexOf(f) === i)
+  return pick.slice(0, 4)
+})
+const dirOf = (p: string) => (p.includes('/') ? p.slice(0, p.lastIndexOf('/') + 1) : '')
+const baseOf = (p: string) => p.slice(p.lastIndexOf('/') + 1)
+const openPalette = () => window.dispatchEvent(new Event('gw:palette'))
 function open(p: string) {
   router.push('/code/' + p.split('/').map(encodeURIComponent).join('/'))
 }
@@ -250,11 +260,11 @@ function gotoFrom(file: string, line: number) {
           <span v-if="i" class="sep">/</span>
           <span :class="{ cur: i === crumbs.length - 1 }">{{ c }}</span>
         </template>
-        <span v-if="!crumbs.length" class="muted">Select a file</span>
+        <span v-if="!crumbs.length" class="muted">No file open</span>
         <span v-if="dirty" class="mod" role="status">● modified</span>
         <span v-else-if="gitFile" class="mod git" role="status">● uncommitted</span>
       </nav>
-      <div class="actions">
+      <div v-if="path" class="actions">
         <div v-if="canVisualize" class="seg-group" role="group" aria-label="View">
           <button class="seg" :class="{ on: viewMode === 'code' }" type="button" :aria-pressed="viewMode === 'code'" @click="setMode('code')">Code</button>
           <button class="seg" :class="{ on: viewMode === 'split' }" type="button" :aria-pressed="viewMode === 'split'" @click="setMode('split')">Split</button>
@@ -291,7 +301,23 @@ function gotoFrom(file: string, line: number) {
       />
       <div class="pane">
         <div class="editor-area" :class="{ split: showVisual && showEditor, visualonly: showVisual && !showEditor }">
-          <p v-if="!path" class="state muted">Choose a file from the tree to start editing.</p>
+          <section v-if="!path" class="start" aria-label="Open a file">
+            <div><h2>Open a file</h2>
+              <p class="muted">Pick one from the tree, or press <kbd class="mono">⌘K</kbd> to <button class="link" type="button" @click="openPalette">search every file by name</button>.</p></div>
+            <div v-if="uncommitted.length">
+              <div class="shead"><span class="lbl">Uncommitted · {{ git.dirty }}</span></div>
+              <ul class="flist">
+                <li v-for="f in uncommitted.slice(0, 8)" :key="f.path">
+                  <button class="frow" type="button" @click="open(f.path)"><span class="mono"><span class="dir">{{ dirOf(f.path) }}</span>{{ baseOf(f.path) }}</span><span class="mono st">{{ f.status }}</span></button>
+                </li>
+              </ul>
+              <p v-if="uncommitted.length > 8" class="small muted more">and {{ uncommitted.length - 8 }} more, marked in the tree</p>
+            </div>
+            <div v-if="starters.length">
+              <span class="lbl">Start from</span>
+              <div class="starters"><button v-for="f in starters" :key="f" class="btn sm mono" type="button" @click="open(f)">{{ f }}</button></div>
+            </div>
+          </section>
           <p v-else-if="loading" class="state muted">Loading…</p>
           <div v-else-if="loadError" class="state" role="alert">
             <p class="fail">{{ loadError.message }}</p>
@@ -323,7 +349,7 @@ function gotoFrom(file: string, line: number) {
 </template>
 
 <style scoped>
-.head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 24px; border-bottom: 1px solid var(--line); }
+.head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; min-height: 59px; padding: 12px 24px; border-bottom: 1px solid var(--line); }
 .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 14px; color: var(--text-label); min-width: 0; }
 .crumbs .cur { color: var(--text); }
 .mod { margin-left: 6px; font-size: 13px; color: var(--warn); }
@@ -346,6 +372,22 @@ function gotoFrom(file: string, line: number) {
 .seg { font-size: 14px; height: 30px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; color: var(--text-muted); cursor: pointer; }
 .seg.on { background: var(--line-strong); color: var(--text); }
 .state { padding: 24px; margin: 0; }
+.start { max-width: 760px; padding: 48px 56px; display: flex; flex-direction: column; gap: 28px; }
+.start h2 { margin: 0 0 6px; font-size: 22px; font-weight: 600; }
+.start p { margin: 0; }
+.start kbd { font-size: 12.5px; border: 1px solid var(--line-strong); border-radius: 4px; padding: 1px 6px; }
+.shead { margin-bottom: 8px; }
+.flist { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-card); overflow: hidden; }
+.flist li + li { border-top: 1px solid var(--line); }
+.frow { all: unset; box-sizing: border-box; width: 100%; display: flex; justify-content: space-between; gap: 12px; padding: 9px 16px; font-size: 13.5px; cursor: pointer; }
+.frow:hover { background: var(--bg-hover); }
+.frow:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.frow .dir { color: var(--text-faint); }
+.frow .st { color: var(--ok); }
+.more { margin-top: 8px !important; }
+.starters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.start .small { font-size: 13px; }
+.start .link { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; }
 .status { padding: 6px 16px; font-size: 13px; color: var(--text-faint); border-top: 1px solid var(--bg-hover); display: flex; gap: 12px; }
 .notice { margin-left: auto; color: var(--ok); }
 :deep(.tray) { max-height: 40vh; }
