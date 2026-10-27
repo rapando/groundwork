@@ -266,7 +266,7 @@ h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .between { display: flex; align-items: baseline; justify-content: space-between; }
 .path { font-size: 15px; font-weight: 700; word-break: break-all; }
 .aside { margin-left: auto; font-size: 13px; color: var(--text-label); }
-.kind { font: 500 12px var(--font-mono); padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line-strong); }
+.kind { font: 600 12.5px var(--font-mono); padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line-strong); }
 .k-tf { color: var(--purple); border-color: var(--purple-line); }
 .k-an { color: var(--warn); border-color: var(--warn-line); }
 .k-ci { color: var(--text-muted); }

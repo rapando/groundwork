@@ -374,5 +374,5 @@ const summary = computed(() => `${props.nodes.length} nodes, ${props.edges.lengt
 .ctl { position: absolute; top: 10px; right: 10px; display: flex; gap: 4px; cursor: default; }
 .btn.sq { height: 28px; width: 28px; padding: 0; justify-content: center; background: var(--bg-card); }
 .legend { position: absolute; left: 10px; bottom: 10px; max-width: calc(100% - 20px); padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 8px;
-  background: var(--bg-card); box-shadow: var(--shadow); font-size: 12px; color: var(--text-muted); cursor: default; }
+  background: var(--bg-card); box-shadow: var(--shadow); font-size: 13px; color: var(--text-muted); cursor: default; }
 </style>

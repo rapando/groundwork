@@ -225,7 +225,7 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .detail.empty { justify-content: center; }
 .dtitle { font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
 .explain { margin: 0; color: var(--text-soft); line-height: 1.55; max-width: 760px; }
-.pill { font: 500 12px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; align-self: flex-start; }
+.pill { font: 600 12.5px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; align-self: flex-start; }
 .st-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); } .st-fail { color: var(--fail); background: color-mix(in srgb, var(--fail) 10%, transparent); }
 .st-warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); } .st-idle { color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 10%, transparent); }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; }

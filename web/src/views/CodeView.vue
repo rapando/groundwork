@@ -326,10 +326,10 @@ function gotoFrom(file: string, line: number) {
 .head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 24px; border-bottom: 1px solid var(--line); }
 .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 14px; color: var(--text-label); min-width: 0; }
 .crumbs .cur { color: var(--text); }
-.mod { margin-left: 6px; font-size: 12px; color: var(--warn); }
+.mod { margin-left: 6px; font-size: 13px; color: var(--warn); }
 .mod.git { color: var(--text-label); }
 .actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
-.kbd { font-size: 12px; color: var(--text-label); }
+.kbd { font-size: 13px; color: var(--text-label); }
 .banner { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 24px; font-size: 14px; border-bottom: 1px solid var(--line); }
 .banner.fail { background: var(--fail-bg); color: var(--fail-strong); }
 .banner.warn { background: var(--warn-bg); color: var(--warn-strong); }
@@ -346,7 +346,7 @@ function gotoFrom(file: string, line: number) {
 .seg { font-size: 14px; height: 30px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; color: var(--text-muted); cursor: pointer; }
 .seg.on { background: var(--line-strong); color: var(--text); }
 .state { padding: 24px; margin: 0; }
-.status { padding: 6px 16px; font-size: 12.5px; color: var(--text-faint); border-top: 1px solid var(--bg-hover); display: flex; gap: 12px; }
+.status { padding: 6px 16px; font-size: 13px; color: var(--text-faint); border-top: 1px solid var(--bg-hover); display: flex; gap: 12px; }
 .notice { margin-left: auto; color: var(--ok); }
 :deep(.tray) { max-height: 40vh; }
 @media (max-width: 900px) { .work { flex-wrap: wrap; } .tree { max-width: 100%; max-height: 260px; } }

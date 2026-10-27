@@ -2,7 +2,7 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 body {
-  margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 var(--font-ui);
+  margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 var(--font-ui);
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;
 }
 a { color: var(--accent); }
@@ -14,7 +14,7 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--accent); }
 .mono, pre, code, .inp { font-family: var(--font-mono); }
 /* Code must render literally: no `~>` or `>=` ligatures. */
 .mono, pre, code, .inp, td, dd { font-variant-ligatures: none; }
-.lbl { font-size: 12px; font-weight: 500; color: var(--text-label); text-transform: uppercase; letter-spacing: .07em; }
+.lbl { font-size: 12.5px; font-weight: 600; color: var(--text-label); text-transform: uppercase; letter-spacing: .07em; }
 .muted { color: var(--text-muted); }
 
 .btn {

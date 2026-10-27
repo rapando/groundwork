@@ -141,9 +141,9 @@ ul { list-style: none; margin: 0; padding: 0; }
 .itext { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .irow { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .ititle { flex: 1; min-width: 0; font-size: 14px; }
-.time { flex: none; font-size: 12px; color: var(--text-label); }
-.sub { font-size: 12.5px; color: var(--text-muted); }
-.chip { flex: none; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: 4px; font-size: 11.5px; color: var(--text-soft); }
+.time { flex: none; font-size: 13px; color: var(--text-label); }
+.sub { font-size: 13px; color: var(--text-muted); }
+.chip { flex: none; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: 4px; font-size: 12px; color: var(--text-soft); }
 .detail { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ifoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--line); font-size: 13px; }
 .ifoot a { text-decoration: none; }

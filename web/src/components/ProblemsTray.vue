@@ -96,7 +96,7 @@ const statusText = (r: UnitStatus['results'][number]) => {
 .tab { background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--text-muted); height: 38px; padding: 0 4px; cursor: pointer; font-size: 13px; }
 .tab.on { color: var(--text); border-bottom-color: var(--accent); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-left: 4px; }
-.chip { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: color-mix(in srgb, var(--text-muted) 10%, transparent); color: var(--text-muted); }
+.chip { font-size: 13px; padding: 2px 8px; border-radius: 4px; background: color-mix(in srgb, var(--text-muted) 10%, transparent); color: var(--text-muted); }
 .chip.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); }
 .chip.issues { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); }
 .chip.failed { color: var(--fail); background: color-mix(in srgb, var(--fail) 10%, transparent); }
@@ -106,16 +106,16 @@ const statusText = (r: UnitStatus['results'][number]) => {
 .note { margin: 4px 0; font-size: 13.5px; color: var(--text-muted); }
 .list { list-style: none; margin: 0; padding: 4px 0; overflow: auto; }
 .item { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 8px 14px; border-bottom: 1px solid var(--bg-button); }
-.pill { font: 500 12px var(--font-mono); text-transform: uppercase; letter-spacing: .04em; padding: 3px 8px; border-radius: 4px; }
+.pill { font: 600 12.5px var(--font-mono); text-transform: uppercase; letter-spacing: .04em; padding: 3px 8px; border-radius: 4px; }
 .pill.error { color: var(--fail); background: color-mix(in srgb, var(--fail) 10%, transparent); }
 .pill.warning { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); }
 .pill.info { color: var(--running); background: color-mix(in srgb, var(--running) 12%, transparent); }
-.tool { font-size: 12.5px; color: var(--text-label); }
+.tool { font-size: 13px; color: var(--text-label); }
 .msg { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 2px; flex: 1 1 260px; min-width: 0; font-size: 14px; }
 .msg:hover > span:first-child { text-decoration: underline; }
 .msg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .detail { font-size: 13px; }
-.loc { font-size: 12.5px; color: var(--text-label); }
+.loc { font-size: 13px; color: var(--text-label); }
 .docs { font-size: 13px; }
 .fix { height: 28px; font-size: 13px; }
 .empty { margin: 0; padding: 14px; font-size: 14px; }

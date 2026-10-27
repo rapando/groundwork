@@ -333,7 +333,7 @@ h1 { margin: 0; font-size: 20px; font-weight: 700; }
 .loc { margin-left: auto; }
 .table { padding: 10px 0; overflow-x: auto; }
 .df { display: grid; grid-template-columns: 22px minmax(140px, 260px) minmax(0, 1fr); gap: 12px; padding: 4px 16px; font: 13.5px/20px var(--font-mono); font-variant-ligatures: none; min-width: 520px; align-items: start; }
-.df.head { color: var(--text-label); font-size: 12.5px; font-family: var(--font-ui); }
+.df.head { color: var(--text-label); font-size: 13px; font-family: var(--font-ui); }
 .df.forces { background: color-mix(in srgb, var(--fail) 7%, transparent); }
 .df.same { color: var(--text-faint); }
 .path { overflow-wrap: anywhere; }
@@ -350,7 +350,7 @@ h1 { margin: 0; font-size: 20px; font-weight: 700; }
 .approve { flex: 1 1 300px; max-width: 380px; border-left: 1px solid var(--line); padding: 18px; display: flex; flex-direction: column; gap: 18px; background: var(--bg-sunken); overflow: auto; }
 .checks { display: flex; flex-direction: column; gap: 10px; }
 .cgrid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 8px; align-items: center; }
-.pill { font: 500 12px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; justify-self: end; }
+.pill { font: 600 12.5px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; justify-self: end; }
 .st-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); } .st-warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); }
 .st-fail { color: var(--fail); background: color-mix(in srgb, var(--fail) 10%, transparent); } .st-idle { color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 10%, transparent); }
 .st-run { color: var(--running); background: color-mix(in srgb, var(--running) 12%, transparent); }

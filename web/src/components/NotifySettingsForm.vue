@@ -267,7 +267,7 @@ defineExpose({ load })
 .wrap { display: flex; flex-direction: column; gap: 14px; }
 .matrix { width: 100%; border-collapse: collapse; font-size: 14px; }
 .matrix th, .matrix td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: center; }
-.matrix thead th { font-size: 12px; font-weight: 500; color: var(--text-label); text-transform: uppercase; letter-spacing: .07em; }
+.matrix thead th { font-size: 12.5px; font-weight: 600; color: var(--text-label); text-transform: uppercase; letter-spacing: .07em; }
 .matrix th:first-child, .matrix .from { text-align: left; }
 .matrix tbody tr:last-child > * { border-bottom: 0; }
 .matrix tbody th { font-weight: 400; display: flex; flex-direction: column; gap: 2px; }
@@ -277,7 +277,7 @@ defineExpose({ load })
 tr.inh .tog, .inp.inh, .chips.inh .chip { opacity: .6; }
 tr.inh .tog:hover, tr.inh .tog:focus-visible, .chips.inh .chip:hover, .inp.inh:focus { opacity: 1; }
 .inp.inh { border-style: dashed; }
-.src { font-size: 12.5px; color: var(--text-muted); font-weight: 400; white-space: nowrap; }
+.src { font-size: 13px; color: var(--text-muted); font-weight: 400; white-space: nowrap; }
 .envs legend .src { margin-left: 8px; }
 .fhead { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .src.ov { color: var(--accent); font-weight: 600; }

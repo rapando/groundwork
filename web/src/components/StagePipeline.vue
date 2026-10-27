@@ -44,7 +44,7 @@ const items = computed(() => props.stages.filter((s) => s.name !== 'summary' || 
 .arrow { color: var(--text-faint); }
 .stage { display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--bg-panel); min-width: 104px; }
 .n { font-size: 13px; }
-.note { font-size: 12px; color: var(--text-label); }
+.note { font-size: 13px; color: var(--text-label); }
 .stage.succeeded { border-color: var(--ok-line); } .stage.succeeded .note { color: var(--ok); }
 .stage.running { border-color: var(--running-line); background: var(--running-bg); box-shadow: 0 0 0 3px color-mix(in srgb, var(--running) 8%, transparent); } .stage.running .note { color: var(--running); }
 .stage.failed { border-color: var(--fail-line); } .stage.failed .note { color: var(--fail); }

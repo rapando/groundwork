@@ -449,7 +449,7 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .tab:hover { color: var(--text); }
 .tab[aria-selected='true'] { color: var(--text); border-bottom-color: var(--accent); }
 .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
-.n { font-size: 12px; color: var(--text-faint); }
+.n { font-size: 13px; color: var(--text-faint); }
 .n.w { color: var(--warn); } .n.e { color: var(--fail-strong); }
 .vis { flex: 1; min-height: 0; overflow: auto; background-color: var(--bg-panel); background-image: radial-gradient(var(--line) 1px, transparent 1px); background-size: 18px 18px; }
 .changes { padding: 18px 24px 24px; display: flex; flex-direction: column; gap: 14px; }

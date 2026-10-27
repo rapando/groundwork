@@ -4,64 +4,64 @@
    (the graph reads them at runtime so its SVG/PNG export keeps concrete colours). */
 :root, :root[data-theme='paper'] {
   color-scheme: light;
-  --bg: #F6F3EB;
-  --bg-sidebar: #EFEBE1;
-  --bg-panel: #FBF9F3;
-  --bg-card: #FFFDF8;
-  --bg-inset: #F2EEE5;
-  --bg-sunken: #F1EDE4;
-  --bg-raised: #FAF7F0;
-  --bg-button: #FFFDF8;
-  --bg-hover: #ECE7DB;
-  --bg-active: #E6E0D2;
-  --line: #E3DDCF;
-  --line-strong: #D3CBB9;
-  --line-hover: #B5AC97;
-  --text: #1F1C17;
-  --text-soft: #3A362F;
-  --text-muted: #5A554B;
-  --text-label: #665F53;
-  --text-code: #2B2823;
-  --text-faint: #736C60;
-  --text-disabled: #B9B1A0;
-  --accent: #4C7514;
-  --accent-hover: #3B5C0E;
-  --accent-bg: #EBF1DC;
-  --accent-line: #C8D9A6;
-  --on-accent: #FFFDF8;
-  --ok: #1B7642;
-  --ok-bg: #E5F2E8;
-  --ok-line: #B4D9BF;
-  --warn: #945600;
-  --warn-strong: #774400;
-  --warn-bg: #FBF0DB;
-  --warn-line: #E8CD95;
-  --fail: #B3261A;
-  --fail-strong: #8E1D14;
-  --fail-bg: #FBE8E4;
-  --fail-line: #ECBDB4;
-  --running: #1E5CB8;
-  --running-bg: #E7EEFA;
-  --running-line: #B5C9EC;
-  --purple: #6C3DAD;
-  --purple-line: #D4C5EC;
-  --attn-bg: #FBF2E9;
-  --attn-line: #EAD4BF;
+  --bg: #F7F5F0;
+  --bg-sidebar: #F0EDE6;
+  --bg-panel: #FCFBF8;
+  --bg-card: #FFFFFF;
+  --bg-inset: #F3F1EB;
+  --bg-sunken: #F2EFE9;
+  --bg-raised: #FBFAF7;
+  --bg-button: #FFFFFF;
+  --bg-hover: #ECE8DF;
+  --bg-active: #E5E0D4;
+  --line: #DCD5C7;
+  --line-strong: #C5BCAA;
+  --line-hover: #A39A86;
+  --text: #16140F;
+  --text-soft: #2E2A24;
+  --text-muted: #48443C;
+  --text-label: #4F4A41;
+  --text-code: #1F1C17;
+  --text-faint: #5E584E;
+  --text-disabled: #8C8473;
+  --accent: #3B5D10;
+  --accent-hover: #2E4A0B;
+  --accent-bg: #E9F0DA;
+  --accent-line: #BCD196;
+  --on-accent: #FFFFFF;
+  --ok: #13603A;
+  --ok-bg: #E3F1E6;
+  --ok-line: #A9D2B6;
+  --warn: #7A4700;
+  --warn-strong: #613800;
+  --warn-bg: #FAEFD9;
+  --warn-line: #E2C384;
+  --fail: #A11F14;
+  --fail-strong: #7F170E;
+  --fail-bg: #FBE6E2;
+  --fail-line: #E7B0A6;
+  --running: #174FA3;
+  --running-bg: #E5EDFA;
+  --running-line: #AFC4EA;
+  --purple: #5E3299;
+  --purple-line: #CDBDE8;
+  --attn-bg: #FAF0E6;
+  --attn-line: #E5CCB4;
   --attn-hover: #F6E9DC;
   --scrim: rgba(31, 28, 23, .38);
   --hover-tint: rgba(31, 28, 23, .035);
   --shadow: 0 1px 2px rgba(31, 28, 23, .06), 0 8px 24px rgba(31, 28, 23, .08);
   /* code editor (a warm light palette) */
-  --syn-keyword: #2550A8;
-  --syn-string: #3D7012;
-  --syn-property: #925400;
-  --syn-number: #0C6B86;
-  --syn-comment: #857D6F;
+  --syn-keyword: #1F4596;
+  --syn-string: #335E0E;
+  --syn-property: #7A4700;
+  --syn-number: #0A5A71;
+  --syn-comment: #655E52;
   --syn-operator: #645E52;
-  --syn-type: #6C3DAD;
+  --syn-type: #5E3299;
   --syn-selection: rgba(30, 92, 184, .18);
   --syn-active-line: rgba(31, 28, 23, .04);
-  --syn-gutter: #9A927F;
+  --syn-gutter: #7D7666;
 }
 
 :root[data-theme='dark'] {
@@ -129,8 +129,8 @@
 /* Orange accent (experimental; <html data-accent='orange'>). Only the accent
    moves: it stays clear of --warn (amber) by leaning red. */
 :root[data-accent='orange'] {
-  --accent: #B8460B;
-  --accent-hover: #933707;
+  --accent: #9A3A07;
+  --accent-hover: #7E2F05;
   --accent-bg: #FBE9DD;
   --accent-line: #EDC3A6;
 }
@@ -149,6 +149,6 @@
   --r-card: 10px;
   --r-panel: 12px;
   /* accent picker swatches: the paper accents, fixed in both themes */
-  --swatch-green: #4C7514;
-  --swatch-orange: #B8460B;
+  --swatch-green: #3B5D10;
+  --swatch-orange: #9A3A07;
 }

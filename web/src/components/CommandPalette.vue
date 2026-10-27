@@ -226,9 +226,9 @@ const grouped = computed(() => {
 .it { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 14px; }
 .it.on { background: var(--bg-active); box-shadow: inset 2px 0 0 var(--accent); }
 .lab { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hint { color: var(--text-label); font-size: 12.5px; white-space: nowrap; }
+.hint { color: var(--text-label); font-size: 13px; white-space: nowrap; }
 .empty { padding: 16px; color: var(--text-muted); font-size: 14px; }
-.foot { display: flex; gap: 16px; padding: 8px 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--text-label); }
+.foot { display: flex; gap: 16px; padding: 8px 14px; border-top: 1px solid var(--line); font-size: 13px; color: var(--text-label); }
 kbd { font: 500 12px var(--font-mono); border: 1px solid var(--line-strong); border-radius: 4px; padding: 1px 5px; margin-right: 2px; color: var(--text-muted); }
 .helpbox { padding: 20px; gap: 14px; width: min(420px, 100%); }
 .helpbox h2 { margin: 0; font-size: 16px; }

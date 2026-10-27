@@ -63,7 +63,7 @@ function click() {
 .tree:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .caret { width: 10px; color: var(--text-label); }
 .name { overflow: hidden; text-overflow: ellipsis; }
-.cnt { margin-left: auto; font-size: 12px; display: inline-flex; gap: 6px; }
+.cnt { margin-left: auto; font-size: 13px; display: inline-flex; gap: 6px; }
 .gitm { font-weight: 700; }
 .gitm.modified { color: var(--warn); } .gitm.added, .gitm.untracked { color: var(--ok); }
 .gitm.deleted, .gitm.conflict { color: var(--fail); } .gitm.renamed { color: var(--running); }

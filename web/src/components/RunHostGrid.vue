@@ -93,12 +93,12 @@ const tally = computed(() => {
 
 <style scoped>
 .grid-wrap { display: flex; flex-direction: column; gap: 14px; }
-.small { font-size: 12.5px; }
-.tally { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--text-muted); }
+.small { font-size: 13px; }
+.tally { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--text-muted); }
 .tally b { color: var(--text); }
 .t-ok { color: var(--ok); } .t-warn { color: var(--warn); } .t-fail { color: var(--fail); }
 .scroll { overflow: auto; max-width: 100%; }
-.matrix { border-collapse: separate; border-spacing: 4px; font-size: 12px; }
+.matrix { border-collapse: separate; border-spacing: 4px; font-size: 12.5px; }
 .matrix th { font-weight: 500; color: var(--text-label); text-align: left; padding: 2px 6px; white-space: nowrap; vertical-align: bottom; }
 .tk { max-width: 340px; overflow: hidden; text-overflow: ellipsis; }
 .play { color: var(--text-faint); }
@@ -107,7 +107,7 @@ const tally = computed(() => {
 .hbtn { all: unset; display: block; cursor: pointer; color: var(--text); font-weight: 700; text-align: center; }
 .hbtn:hover { text-decoration: underline; }
 .hbtn:focus-visible, .cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.cell { all: unset; box-sizing: border-box; display: block; min-width: 96px; height: 28px; line-height: 26px; padding: 0 8px; border-radius: 5px; text-align: center; font: 500 11px var(--font-mono); text-transform: uppercase; letter-spacing: .04em; cursor: pointer; border: 1px solid transparent; white-space: nowrap; }
+.cell { all: unset; box-sizing: border-box; display: block; min-width: 96px; height: 28px; line-height: 26px; padding: 0 8px; border-radius: 5px; text-align: center; font: 600 12px var(--font-mono); text-transform: uppercase; letter-spacing: .04em; cursor: pointer; border: 1px solid transparent; white-space: nowrap; }
 .cell.on { box-shadow: 0 0 0 2px var(--accent); }
 .c-ok { background: var(--ok-bg); color: var(--ok); border-color: var(--ok-line); }
 .c-warn { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-line); }
@@ -120,7 +120,7 @@ const tally = computed(() => {
 .tmsg, .tdiff { margin: 0; width: 100%; box-sizing: border-box; font: 12.5px/1.5 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg-inset); padding: 6px 8px; border-radius: 4px; max-height: 240px; overflow: auto; }
 .tmsg { color: var(--fail-strong); }
 .tdiff { color: var(--text-code); }
-.pill { font: 500 11.5px var(--font-mono); padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.pill { font: 600 12px var(--font-mono); padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
 .st-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); } .st-fail { color: var(--fail); background: color-mix(in srgb, var(--fail) 10%, transparent); }
 .st-warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); } .st-idle { color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 10%, transparent); }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--text-muted); }

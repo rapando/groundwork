@@ -198,7 +198,7 @@ h2 { margin: 0; font-size: 18px; font-weight: 600; }
 a.pname:hover { color: var(--accent-hover); }
 .path { font-size: 13px; color: var(--text-muted); word-break: break-all; }
 .actions { display: flex; gap: 8px; }
-.pill { font-size: 12px; font-weight: 500; padding: 3px 9px; border-radius: 4px; }
+.pill { font-size: 12.5px; font-weight: 600; padding: 3px 9px; border-radius: 4px; }
 .pill.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
 .pill.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
 .pill.fail { color: var(--fail); background: color-mix(in srgb, var(--fail) 12%, transparent); }

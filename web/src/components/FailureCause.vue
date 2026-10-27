@@ -159,7 +159,7 @@ async function copy(text: string) {
 .fc { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: 8px; border: 1px solid var(--fail-line); background: var(--fail-bg); }
 .top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .title { margin: 0; font-size: 15px; font-weight: 600; color: var(--fail-strong); overflow-wrap: anywhere; }
-.pill { font: 500 11.5px var(--font-mono); padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; color: var(--fail-strong); background: color-mix(in srgb, var(--fail) 12%, transparent); }
+.pill { font: 600 12px var(--font-mono); padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; color: var(--fail-strong); background: color-mix(in srgb, var(--fail) 12%, transparent); }
 .small { font-size: 13px; }
 .line { margin: 0; overflow-wrap: anywhere; }
 .kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; font-size: 13.5px; }

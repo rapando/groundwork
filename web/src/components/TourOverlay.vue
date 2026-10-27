@@ -76,7 +76,7 @@ function finish() { emit('done') }
 .tour-ring { position: fixed; z-index: 45; border: 2px solid var(--accent); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(5, 7, 8, .0); pointer-events: none; transition: all .15s ease; }
 .tip { position: fixed; z-index: 60; width: 360px; max-width: calc(100% - 32px); box-sizing: border-box; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; border: 1px solid var(--accent-line); border-radius: 12px; background: var(--accent-bg); box-shadow: 0 18px 48px var(--scrim); }
 .th { display: flex; align-items: center; justify-content: space-between; }
-.tn { font-size: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; }
+.tn { font-size: 12.5px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; }
 .x { width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 16px; }
 h2 { margin: 0; font-size: 17px; font-weight: 600; line-height: 1.3; }
 p { margin: 0; font-size: 14.5px; color: var(--text-code); line-height: 1.55; }

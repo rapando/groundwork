@@ -73,6 +73,6 @@ async function choose(m: NotifyMode) {
 .nm :deep(.btn) { gap: 6px; }
 .dflt { font-size: 13px; }
 .caret { font-size: 11px; color: var(--text-muted); }
-.hint { font-size: 12.5px; color: var(--text-muted); white-space: normal; }
+.hint { font-size: 13px; color: var(--text-muted); white-space: normal; }
 .err { margin: 0; }
 </style>

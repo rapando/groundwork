@@ -651,13 +651,13 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .vt tbody th { color: var(--text); width: 26%; }
 .vt td { cursor: pointer; overflow-wrap: anywhere; }
 .vt td:hover { background: var(--bg-raised); }
-.vt small { display: block; margin-top: 2px; font-size: 12px; color: var(--text-label); }
+.vt small { display: block; margin-top: 2px; font-size: 13px; color: var(--text-label); }
 .vt tr.sel { background: var(--accent-bg); } .vt tr.sel th { box-shadow: inset 3px 0 0 var(--accent); }
 .vt td.cur { outline: 1px solid var(--accent); outline-offset: -1px; }
 .vname { all: unset; cursor: pointer; } .vname:focus-visible { outline: 2px solid var(--accent); }
 .c-set { color: var(--text); } .c-def { color: var(--text-muted); font-style: italic; } .c-sec { color: var(--warn); }
 .c-miss { color: var(--fail); font-weight: 500; } .c-abs { color: var(--text-faint); }
-.srcl { display: block; font-size: 12px; color: var(--text-label); text-decoration: none; margin-top: 2px; }
+.srcl { display: block; font-size: 13px; color: var(--text-label); text-decoration: none; margin-top: 2px; }
 .srcl:hover { color: var(--accent); }
 .shead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
 .sact { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
@@ -670,7 +670,7 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .where { display: flex; flex-direction: column; gap: 2px; }
 .where a { color: var(--text-label); text-decoration: none; }
 .act { justify-self: end; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; text-align: right; }
-.pill { font: 500 12px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; justify-self: start; white-space: nowrap; align-self: flex-start; }
+.pill { font: 600 12.5px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; justify-self: start; white-space: nowrap; align-self: flex-start; }
 .st-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); } .st-fail { color: var(--fail); background: color-mix(in srgb, var(--fail) 10%, transparent); }
 .st-warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); } .st-idle { color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 10%, transparent); }
 .btn.xs { height: 28px; font-size: 13px; padding: 0 10px; }

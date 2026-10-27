@@ -145,8 +145,8 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
 .switch { font-size: 14px; text-decoration: none; }
 .switch:hover { text-decoration: underline; }
 .name { font-weight: 700; font-size: 14px; }
-.ver { font-size: 12px; color: var(--text-label); word-break: break-all; }
-.conn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--warn); padding: 3px 8px; border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); border-radius: 999px; }
+.ver { font-size: 13px; color: var(--text-label); word-break: break-all; }
+.conn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--warn); padding: 3px 8px; border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); border-radius: 999px; }
 .conn .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
 .main.stale { opacity: .6; transition: opacity .3s; }
@@ -159,7 +159,7 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
 .nav:hover:not(.static) { background: var(--bg-hover); color: var(--text); }
 .nav.on { background: var(--bg-active); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .nav.static { padding: 6px 12px; cursor: default; }
-.badge { margin-left: auto; font-size: 12px; }
+.badge { margin-left: auto; font-size: 13px; }
 .envs { display: flex; flex-direction: column; gap: 4px; }
 .envs .lbl { padding: 0 12px 4px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-disabled); }

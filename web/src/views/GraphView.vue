@@ -366,13 +366,13 @@ h1 { margin: 0; font-size: 18px; font-weight: 600; } h2 { margin: 0; font-size: 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .fchip { height: 28px; padding: 0 10px; font-size: 13px; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--bg-card); color: var(--text-muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .fchip.on { border-color: var(--accent-line); background: var(--accent-bg); color: var(--text); }
-.fchip .cnt { font: 500 12px var(--font-mono); color: var(--text-label); }
+.fchip .cnt { font: 600 12.5px var(--font-mono); color: var(--text-label); }
 .cwrap { height: 460px; }
 .lgd { display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .lgd span { display: inline-flex; align-items: center; gap: 5px; }
 .lg { width: 14px; height: 10px; border: 1px solid var(--line-hover); border-radius: 3px; display: inline-block; }
 .lg.drift { border: 1px dashed var(--warn); } .lg.update { border-color: var(--running); } .lg.create { border-color: var(--ok); } .lg.replace { border-color: var(--fail); }
-.ovl { margin-top: 5px; font-family: var(--font-mono); font-size: 11.5px; }
+.ovl { margin-top: 5px; font-family: var(--font-mono); font-size: 12px; }
 .inspector { border: 1px solid var(--line); border-radius: 10px; background: var(--bg-panel); display: flex; flex-wrap: wrap; min-width: 0; }
 .inspector.drifted { border-color: var(--warn-line); }
 .meta { flex: 1 1 300px; min-width: 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; border-right: 1px solid var(--line); }
@@ -390,7 +390,7 @@ h1 { margin: 0; font-size: 18px; font-weight: 600; } h2 { margin: 0; font-size: 
 .dt td { border-top: 1px solid var(--line); padding: 8px 8px 8px 0; overflow-wrap: anywhere; vertical-align: top; }
 .acts { display: flex; gap: 6px; flex-wrap: wrap; }
 .btn.xs { height: 26px; font-size: 12px; padding: 0 8px; }
-.pill { font: 500 12px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; align-self: flex-start; }
+.pill { font: 600 12.5px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; align-self: flex-start; }
 .st-warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); } .st-run { color: var(--running); background: color-mix(in srgb, var(--running) 12%, transparent); }
 .link { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font: inherit; text-align: left; }
 .link:disabled { color: var(--text-disabled); cursor: default; }

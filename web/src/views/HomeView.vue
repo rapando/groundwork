@@ -253,7 +253,7 @@ const hasTerraform = computed(() => (ws.ws?.config?.terraform?.roots ?? []).leng
 .btn.ghost { border-color: transparent; background: transparent; color: var(--text-muted); }
 .getting { border: 1px solid var(--accent-line); border-radius: 10px; background: var(--accent-bg); padding: 16px 20px; display: flex; flex-wrap: wrap; gap: 12px 32px; }
 .gl { flex: 1 1 240px; display: flex; flex-direction: column; gap: 8px; }
-.gk { font-size: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; }
+.gk { font-size: 12.5px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; }
 .gh { font-size: 17px; }
 .bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin-top: 4px; }
 .bar div { height: 100%; background: var(--accent); }
@@ -271,7 +271,7 @@ const hasTerraform = computed(() => (ws.ws?.config?.terraform?.roots ?? []).leng
 .arow { display: flex; align-items: center; gap: 8px; }
 .atitle { font-size: 14px; color: var(--text); }
 .amuted { color: var(--text-soft); }
-.pill { font: 500 12px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; }
+.pill { font: 600 12.5px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; }
 .st-fail { color: var(--fail); background: color-mix(in srgb, var(--fail) 10%, transparent); } .st-warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); } .st-idle { color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 10%, transparent); }
 .fail { color: var(--fail); }
 h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.01em; }
@@ -286,7 +286,7 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .num.warn { color: var(--warn); text-decoration: none; }
 .stats > div { display: flex; flex-direction: column; gap: 2px; }
-.lbl { font-size: 12px; color: var(--text-label); text-transform: uppercase; letter-spacing: .06em; }
+.lbl { font-size: 12.5px; font-weight: 600; color: var(--text-label); text-transform: uppercase; letter-spacing: .06em; }
 .num { font-size: 18px; }
 .btn.dg { color: var(--fail); border-color: var(--fail-line); }
 .dconf { margin-top: 10px; }

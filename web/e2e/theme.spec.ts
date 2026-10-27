@@ -11,7 +11,7 @@ test('paper by default; dark is one click away, remembered, and recolours the ed
   const html = page.locator('html')
   await expect(html).toHaveAttribute('data-theme', 'paper')
   const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor)
-  expect(await bg()).toBe('rgb(246, 243, 235)')
+  expect(await bg()).toBe('rgb(247, 245, 240)')
 
   await page.getByRole('radio', { name: 'Dark' }).click()
   await expect(html).toHaveAttribute('data-theme', 'dark')
@@ -38,11 +38,11 @@ test('the accent switches between green and orange in either theme, and is remem
   const html = page.locator('html')
   const accent = () => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim().toLowerCase())
   await expect(html).toHaveAttribute('data-accent', 'green')
-  expect(await accent()).toBe('#4c7514')
+  expect(await accent()).toBe('#3b5d10')
 
   await page.getByRole('radio', { name: 'Orange accent' }).click()
   await expect(html).toHaveAttribute('data-accent', 'orange')
-  expect(await accent()).toBe('#b8460b')
+  expect(await accent()).toBe('#9a3a07')
 
   await page.getByRole('radio', { name: 'Dark' }).click()
   expect(await accent()).toBe('#ff8b3d')

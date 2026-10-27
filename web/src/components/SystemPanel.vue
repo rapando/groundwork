@@ -232,6 +232,6 @@ const allowedText = (p: PortRow, h: MapHost) =>
 .jump { border: 0; cursor: pointer; }
 .link { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font: inherit; }
 .link:disabled { color: var(--text-disabled); cursor: default; }
-.pill { font: 500 12px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; }
+.pill { font: 600 12.5px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; }
 .st-warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); }
 </style>

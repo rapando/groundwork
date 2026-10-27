@@ -498,7 +498,7 @@ h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .hname { all: unset; cursor: pointer; font-weight: 500; color: var(--text); }
 .hname:focus-visible { outline: 2px solid var(--accent); }
 .play { color: var(--text-muted); text-decoration: none; } .play.fail { color: var(--fail); }
-.pill { font: 500 12px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; justify-self: start; white-space: nowrap; }
+.pill { font: 600 12.5px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; justify-self: start; white-space: nowrap; }
 .st-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); } .st-fail { color: var(--fail); background: color-mix(in srgb, var(--fail) 10%, transparent); }
 .st-idle { color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 10%, transparent); }
 .detail { margin: 16px 24px 28px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-panel); display: flex; flex-wrap: wrap; }
@@ -518,8 +518,8 @@ h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .vt tr.ov td:first-child { text-decoration: none; }
 .secret { color: var(--warn); }
 .src { color: var(--accent); text-decoration: none; }
-.lvl { display: block; font-size: 12px; color: var(--text-label); text-decoration: none; }
-.badge { font-size: 12px; padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--text-muted) 10%, transparent); color: var(--text-muted); }
+.lvl { display: block; font-size: 13px; color: var(--text-label); text-decoration: none; }
+.badge { font-size: 12.5px; padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--text-muted) 10%, transparent); color: var(--text-muted); }
 .badge.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); }
 .link { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font: inherit; }
 .dlg { width: min(480px, 100%); }
@@ -534,6 +534,6 @@ h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .rmg { text-align: left; margin-top: 6px; }
 .note { margin: 10px 0 0; }
 .hacts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-.vacts { display: flex; gap: 10px; margin-top: 2px; font-family: var(--font-ui); font-size: 12.5px; }
+.vacts { display: flex; gap: 10px; margin-top: 2px; font-family: var(--font-ui); font-size: 13px; }
 @media (max-width: 900px) { .cols { flex-wrap: wrap; } .groups { max-width: 100%; } }
 </style>

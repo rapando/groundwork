@@ -145,5 +145,5 @@ h3 { margin: 0; font-size: 15px; font-weight: 600; }
 .key { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-control); }
 .kmain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .kname { font-weight: 500; overflow-wrap: anywhere; }
-.kmeta { font-size: 12px; color: var(--text-muted); }
+.kmeta { font-size: 13px; color: var(--text-muted); }
 </style>

@@ -62,20 +62,20 @@ const pct = (cls: string) => (props.changes.length ? (count(cls) / props.changes
 
 <style scoped>
 .map { display: flex; flex-direction: column; gap: 14px; }
-.small { font-size: 12.5px; }
-.tally { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; font-size: 12.5px; color: var(--text-muted); }
+.small { font-size: 13px; }
+.tally { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; font-size: 13px; color: var(--text-muted); }
 .tally b { color: var(--text); }
 .t-run { color: var(--running); } .t-fail { color: var(--fail); }
 .bar { flex: 1 1 160px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; display: flex; }
 .bar i { display: block; height: 100%; transition: width .3s; }
 .b-ok { background: var(--ok); } .b-run { background: var(--running); } .b-fail { background: var(--fail); }
 .mod { position: relative; border: 1.5px dashed var(--line-hover); border-radius: 10px; padding: 30px 12px 12px; }
-.ml { position: absolute; top: 8px; left: 12px; font-size: 12px; color: var(--text-label); }
+.ml { position: absolute; top: 8px; left: 12px; font-size: 13px; color: var(--text-label); }
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
 .tile { all: unset; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 9px 11px; border: 1px solid var(--line-strong); border-left: 4px solid var(--line-hover); border-radius: 8px; background: var(--bg-card); cursor: pointer; transition: opacity .2s, background .2s; }
 .tile:hover { border-color: var(--line-hover); }
 .tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.ty { font-size: 11px; color: var(--text-faint); overflow-wrap: anywhere; }
+.ty { font-size: 12px; color: var(--text-faint); overflow-wrap: anywhere; }
 .nm { font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
 .ft { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px; }
 .a-create { border-left-color: var(--ok); } .a-update { border-left-color: var(--running); }
@@ -88,7 +88,7 @@ const pct = (cls: string) => (props.changes.length ? (count(cls) / props.changes
 .s-ok { background: color-mix(in srgb, var(--ok) 5%, var(--bg-card)); }
 @keyframes pulse { 50% { box-shadow: 0 0 0 5px var(--running-line); } }
 @media (prefers-reduced-motion: reduce) { .s-run { animation: none; } }
-.pill { font: 500 11.5px var(--font-mono); padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.pill { font: 600 12px var(--font-mono); padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
 .st-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); } .st-fail { color: var(--fail); background: color-mix(in srgb, var(--fail) 10%, transparent); }
 .st-run { color: var(--running); background: color-mix(in srgb, var(--running) 12%, transparent); } .st-idle { color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 10%, transparent); }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--text-muted); }

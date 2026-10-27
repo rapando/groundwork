@@ -57,7 +57,7 @@ function act(n: Notification) {
 .title { flex: 1; font-size: 14px; font-weight: 600; line-height: 1.4; }
 .x { flex: none; width: 26px; height: 26px; margin: -4px -4px 0 0; border: 0; border-radius: var(--r-control); background: transparent; color: var(--text-muted); cursor: pointer; font-size: 13px; }
 .x:hover { background: var(--bg-hover); color: var(--text); }
-.text { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--text-muted); overflow-wrap: anywhere; }
+.text { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-muted); overflow-wrap: anywhere; }
 .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .acts .btn { height: 30px; padding: 0 12px; font-size: 13px; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
