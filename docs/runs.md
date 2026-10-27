@@ -36,7 +36,7 @@ The red error banner becomes a card that explains the failure:
 ## Plan, review, approval, apply
 
 - A plan is written to `.groundwork/runs/<id>/tfplan`. If it has changes the run stops at **needs approval** and releases its lock; if not, the run succeeds and `approve`/`apply` are skipped.
-- **Review** (`/runs/<id>/plan`) shows add/change/replace/destroy tiles, a resource list filterable by action, and per-resource attribute diffs (before → after) loaded on demand. Attributes that force a replacement are marked and listed first; values only known after apply are shown as such; each resource links to its declaration in the editor.
+- **Review** (`/runs/<id>/plan`) shows the add/change/replace/destroy counts next to the resources that hold data the plan would lose (each opens its diff), a resource list filterable by action (the module and type above each name), and per-resource attribute diffs (before → after) loaded on demand. Attributes that force a replacement are marked and listed first; values only known after apply are shown as such; each resource links to its declaration in the editor.
 - **Approve** applies *that saved plan file*. Nothing is re-planned, so what you reviewed is exactly what runs. It is refused (409, "re-plan required") when:
   - the plan file no longer matches its recorded SHA-256;
   - the plan is older than `terraform.plan_ttl` (default `1h`);

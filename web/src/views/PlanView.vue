@@ -9,11 +9,14 @@ import { since, useRuns } from '../stores/runs'
 import { onEvent } from '../composables/events'
 import { useNow } from '../composables/now'
 import { swallow } from '../api/swallow'
+import { useChecks } from '../stores/checks'
 
 const route = useRoute()
 const router = useRouter()
 const runs = useRuns()
 const now = useNow(10_000)
+const checksStore = useChecks()
+onMounted(() => checksStore.refresh())
 
 const id = computed(() => Number(route.params.id))
 const review = ref<PlanReview | null>(null)
@@ -145,6 +148,21 @@ const ackText = computed(() => {
   return `I understand ${ds.length} data-bearing resources will be destroyed or recreated`
 })
 const symClass = (c: PlanChange | ResourceDiff) => 'a-' + c.action
+// module.app.aws_instance.web[0] → meta "module.app · aws_instance", name "web[0]", so nothing wraps mid-token
+function parts(c: PlanChange): { meta: string; name: string } {
+  let a = c.address
+  if (c.module && a.startsWith(c.module + '.')) a = a.slice(c.module.length + 1)
+  const data = a.startsWith('data.')
+  if (data) a = a.slice(5)
+  if (a.startsWith(c.type + '.')) a = a.slice(c.type.length + 1)
+  return { meta: [c.module, (data ? 'data.' : '') + c.type].filter(Boolean).join(' · '), name: a }
+}
+// checks that haven't run share one row, with a button that runs them
+const notRun = computed(() => (review.value?.checks ?? []).filter((c) => c.status === 'idle'))
+const ranChecks = computed(() => (review.value?.checks ?? []).filter((c) => c.status !== 'idle'))
+const unitId = computed(() => checksStore.units.find((u) => u.path === review.value?.target.root)?.id ?? '')
+function runChecks() { checksStore.run(unitId.value, true).catch(swallow('run checks')) }
+const destroys = computed(() => (review.value?.danger ?? []).length)
 </script>
 
 <template>
@@ -174,16 +192,20 @@ const symClass = (c: PlanChange | ResourceDiff) => 'a-' + c.action
           </div>
         </div>
         <p v-if="review.target.destroy" class="dbanner" role="note">This plan destroys every resource in <span class="mono">{{ review.target.root }}</span> for <b>{{ review.target.env }}</b>. Approving it needs the environment's name typed, whatever the approval setting.</p>
-        <div class="tiles">
-          <div class="tile"><span class="mono n" style="color: var(--ok)">+{{ review.plan.create }}</span><span class="small muted">to add</span></div>
-          <div class="tile"><span class="mono n" style="color: var(--running)">~{{ review.plan.update }}</span><span class="small muted">to change</span></div>
-          <div class="tile" :class="{ hot: review.plan.replace }"><span class="mono n" :style="{ color: review.plan.replace ? 'var(--fail)' : 'var(--text-label)' }">±{{ review.plan.replace }}</span><span class="small" :class="review.plan.replace ? 'hotlbl' : 'muted'">to replace</span></div>
-          <div class="tile" :class="{ hot: review.plan.delete }"><span class="mono n" :style="{ color: review.plan.delete ? 'var(--fail)' : 'var(--text-label)' }">−{{ review.plan.delete }}</span><span class="small" :class="review.plan.delete ? 'hotlbl' : 'muted'">to destroy</span></div>
-        </div>
-        <div v-for="d in review.danger" :key="d.address" class="danger" role="alert">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--fail)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 16H3z" /><path d="M12 10v4M12 17h.01" /></svg>
-          <span><b>{{ d.address }} {{ d.action === 'replace' ? 'will be destroyed and recreated.' : 'will be destroyed.' }}</b>{{ ' ' }}<span class="dsub">{{ d.message.slice(d.message.indexOf('. ') + 2) }}</span></span>
-          <button class="btn sm" type="button" @click="select(d.address)">Show diff</button>
+        <div class="strip" :class="{ hot: destroys }">
+          <div class="tiles">
+            <div class="tile"><span class="mono n" style="color: var(--ok)">+{{ review.plan.create }}</span><span class="small muted">to add</span></div>
+            <div class="tile"><span class="mono n" style="color: var(--running)">~{{ review.plan.update }}</span><span class="small muted">to change</span></div>
+            <div class="tile" :class="{ hot: review.plan.replace }"><span class="mono n" :style="{ color: review.plan.replace ? 'var(--fail)' : 'var(--text-label)' }">±{{ review.plan.replace }}</span><span class="small" :class="review.plan.replace ? 'hotlbl' : 'muted'">to replace</span></div>
+            <div class="tile" :class="{ hot: review.plan.delete }"><span class="mono n" :style="{ color: review.plan.delete ? 'var(--fail)' : 'var(--text-label)' }">−{{ review.plan.delete }}</span><span class="small" :class="review.plan.delete ? 'hotlbl' : 'muted'">to destroy</span></div>
+          </div>
+          <div v-if="destroys" class="dlist">
+            <span class="dtitle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 16H3z" /><path d="M12 10v4M12 17h.01" /></svg>
+              {{ destroys === 1 ? 'A resource that holds data' : `${destroys} resources that hold data` }} would be lost</span>
+            <div v-for="d in review.danger" :key="d.address" class="danger" role="alert">
+              <span><button class="addrbtn mono" type="button" title="Show its diff" @click="select(d.address)">{{ d.address }}</button> {{ d.action === 'replace' ? 'will be destroyed and recreated.' : 'will be destroyed.' }}{{ ' ' }}<span class="dsub">{{ d.message.slice(d.message.indexOf('. ') + 2) }}</span></span>
+            </div>
+          </div>
         </div>
         <div v-if="allStale.length && review.status === 'waiting_approval'" class="stale" role="alert">
           <b>Re-plan required.</b>
@@ -203,7 +225,7 @@ const symClass = (c: PlanChange | ResourceDiff) => 'a-' + c.action
           </div>
           <button v-for="c in shown" :key="c.address" type="button" class="res" :class="{ on: c.address === selected, danger: dangerSet.has(c.address) }" @click="select(c.address)">
             <span class="sym mono" :class="symClass(c)">{{ SYM[c.action] }}</span>
-            <span class="mono addr">{{ c.address }}</span>
+            <span class="addr" :title="c.address"><span class="mono meta">{{ parts(c).meta }}</span><span class="mono nm">{{ parts(c).name }}</span></span>
             <span class="small" :class="dangerSet.has(c.address) || c.action === 'replace' || c.action === 'delete' ? 'hotlbl' : 'muted'">{{ LABEL[c.action] }}</span>
           </button>
           <p v-if="!changes.length" class="muted small pad0">No changes.</p>
@@ -256,15 +278,17 @@ const symClass = (c: PlanChange | ResourceDiff) => 'a-' + c.action
 
         <aside class="approve" aria-label="Approve">
           <div class="checks">
-            <span class="lbl">Checks on this plan</span>
+            <div class="chead"><span class="lbl">Checks on this plan</span>
+              <button v-if="notRun.length" class="btn xs" type="button" :disabled="checksStore.running" @click="runChecks">{{ checksStore.running ? 'Running…' : `Run ${notRun.length} ${notRun.length === 1 ? 'check' : 'checks'}` }}</button></div>
             <div class="cgrid">
-              <template v-for="c in review.checks" :key="c.tool">
+              <template v-if="notRun.length"><span class="mono small">{{ notRun.map((c) => c.tool).join(', ') }}</span><span class="pill st-idle">not run</span></template>
+              <template v-for="c in ranChecks" :key="c.tool">
                 <span class="mono small">{{ c.tool }}</span><span class="pill" :class="'st-' + checkPill(c.status)[0]">{{ c.status === 'issues' ? c.count + ' issues' : checkPill(c.status)[1] }}</span>
               </template>
-              <span class="mono small">plan age</span><span class="pill" :class="'st-' + ageClass">{{ ageMinutes }}m / {{ Math.round(review.plan_ttl_seconds / 60) }}m</span>
-              <span class="mono small">config changed since</span><span class="pill" :class="review.stale.some((r) => r.includes('configuration')) ? 'st-fail' : 'st-ok'">{{ review.stale.some((r) => r.includes('configuration')) ? 'yes' : 'no' }}</span>
-              <span class="mono small">state changed since</span><span class="pill st-idle">checked on apply</span>
-              <span class="mono small">destroys data</span><span class="pill" :class="review.danger.length ? 'st-fail' : 'st-ok'">{{ review.danger.length ? 'yes' : 'no' }}</span>
+              <span class="mono small">plan age</span><span class="pill" :class="'st-' + ageClass">{{ ageMinutes }} / {{ Math.round(review.plan_ttl_seconds / 60) }} min</span>
+              <span class="mono small">config changed</span><span class="pill" :class="review.stale.some((r) => r.includes('configuration')) ? 'st-fail' : 'st-ok'">{{ review.stale.some((r) => r.includes('configuration')) ? 'yes' : 'no' }}</span>
+              <span class="mono small">state changed</span><span class="pill st-idle">checked on apply</span>
+              <span class="mono small">destroys data</span><span class="pill" :class="review.danger.length ? 'st-fail' : 'st-ok'">{{ review.danger.length ? `yes · ${review.danger.length}` : 'no' }}</span>
             </div>
           </div>
 
@@ -302,28 +326,35 @@ const symClass = (c: PlanChange | ResourceDiff) => 'a-' + c.action
 h1 { margin: 0; font-size: 20px; font-weight: 700; }
 .sub { font-size: 14px; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.tiles { display: flex; flex-wrap: wrap; gap: 10px; }
-.tile { display: flex; flex-direction: column; gap: 2px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-panel); min-width: 110px; }
+.strip { display: flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg-card); }
+.strip.hot { border-color: var(--fail-line); }
+.tiles { display: flex; }
+.tile { display: flex; flex-direction: column; gap: 2px; padding: 12px 20px; border-right: 1px solid var(--line); min-width: 104px; }
 .tile .n { font-size: 22px; }
-.tile.hot { border-color: var(--fail-line); background: var(--fail-bg); }
+.tile.hot { background: var(--fail-bg); border-right-color: var(--fail-line); }
 .hotlbl { color: var(--fail-strong); }
-.danger { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 16px; border: 1px solid var(--fail-line); border-radius: 8px; background: var(--fail-bg); font-size: 14.5px; }
-.danger .btn { margin-left: auto; height: 32px; }
-.dsub { color: var(--fail-strong); }
+.dlist { flex: 1 1 360px; display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 12px 20px; background: var(--fail-bg); }
+.dtitle { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14.5px; color: var(--fail-strong); }
+.danger { font-size: 14px; }
+.addrbtn { all: unset; font-family: var(--font-mono); font-variant-ligatures: none; color: var(--fail-strong); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; font-size: 13.5px; }
+.addrbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+.dsub { color: var(--text-soft); }
 .stale { padding: 12px 16px; border: 1px solid var(--warn-line); border-radius: 8px; background: var(--warn-bg); color: var(--warn-strong); font-size: 14px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .stale ul { margin: 0; padding-left: 18px; }
 /* one row on desktop, so each column has a definite height and scrolls inside it */
 .cols { display: flex; flex: 1; min-height: 0; }
 .reslist { flex: 1 1 300px; max-width: 360px; padding: 16px 10px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; background: var(--bg-sunken); overflow: auto; }
-.seg-group { display: flex; flex-wrap: wrap; gap: 2px; padding: 2px; margin: 0 4px 8px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--bg-card); align-self: flex-start; }
-.seg { font-size: 13px; height: 28px; padding: 0 10px; border: 0; border-radius: 5px; background: transparent; color: var(--text-muted); cursor: pointer; }
+.seg-group { display: flex; gap: 2px; padding: 2px; margin: 0 4px 8px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--bg-card); }
+.seg { flex: 1 1 auto; white-space: nowrap; font-size: 13px; height: 28px; padding: 0 7px; border: 0; border-radius: 5px; background: transparent; color: var(--text-muted); cursor: pointer; }
 .seg.on { background: var(--line-strong); color: var(--text); }
 .res { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 6px; cursor: pointer; }
 .res:hover { background: var(--bg-raised); }
 .res.on { background: var(--bg-active); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .res.on.danger { background: var(--fail-bg); box-shadow: inset 0 0 0 1px var(--fail-line); }
 .res:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.addr { font-size: 13.5px; overflow-wrap: anywhere; }
+.addr { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.meta { font-size: 12.5px; color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nm { font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
 .sym { font-weight: 700; text-align: center; }
 .a-create { color: var(--ok); } .a-update { color: var(--running); } .a-replace { color: var(--fail); } .a-delete { color: var(--fail); } .a-read { color: var(--text-label); }
 .diffpane { flex: 999 1 440px; min-width: 0; display: flex; flex-direction: column; overflow: auto; }
@@ -349,6 +380,7 @@ h1 { margin: 0; font-size: 20px; font-weight: 700; }
 .code { font-size: 13px; padding: 1px 5px; border-radius: 4px; background: var(--bg-inset); border: 1px solid var(--line); }
 .approve { flex: 1 1 300px; max-width: 380px; border-left: 1px solid var(--line); padding: 18px; display: flex; flex-direction: column; gap: 18px; background: var(--bg-sunken); overflow: auto; }
 .checks { display: flex; flex-direction: column; gap: 10px; }
+.chead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .cgrid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 8px; align-items: center; }
 .pill { font: 600 12.5px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; justify-self: end; }
 .st-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); } .st-warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); }
