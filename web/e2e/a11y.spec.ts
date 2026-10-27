@@ -29,9 +29,10 @@ test('every screen passes axe without serious violations', async ({ page }) => {
   await page.waitForLoadState('networkidle')
   await scan(page, '/projects')
   await page
-    .getByRole('button', { name: /^Remove / })
+    .getByRole('button', { name: /^More actions for / })
     .first()
     .click()
+  await page.getByRole('menuitem', { name: /^Remove / }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
   await scan(page, '/projects remove dialog')
 })
