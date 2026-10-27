@@ -268,13 +268,15 @@ test('destroy is a plan: confirmed, reviewed, then approved by typing the enviro
   gw = await start('iac-only', { init: true })
   await overview(page, gw.url)
 
-  await card(page, 'dev').getByRole('button', { name: 'Destroy…' }).click()
+  await card(page, 'dev').getByRole('button', { name: 'More actions for dev' }).click()
+  await card(page, 'dev').getByRole('menuitem', { name: 'Destroy…' }).click()
   const confirm = card(page, 'dev').getByRole('group', { name: 'Plan the destruction of everything in dev?' })
   await expect(confirm).toContainText('Nothing is destroyed yet')
   await confirm.getByRole('button', { name: 'Keep it' }).click()
   await expect(confirm).toHaveCount(0)
 
-  await card(page, 'dev').getByRole('button', { name: 'Destroy…' }).click()
+  await card(page, 'dev').getByRole('button', { name: 'More actions for dev' }).click()
+  await card(page, 'dev').getByRole('menuitem', { name: 'Destroy…' }).click()
   await confirm.getByRole('button', { name: 'Plan destroy' }).click()
   await expect(page).toHaveURL(/\/runs\/\d+$/)
   await expect(page.getByRole('heading', { name: /terraform plan -destroy/ })).toBeVisible()

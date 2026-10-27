@@ -131,6 +131,9 @@ test('first run: the tour points at each area, the checklist follows real activi
 
   const list = page.getByRole('region', { name: 'Getting started' })
   const item = (label: RegExp) => list.getByRole('listitem').filter({ hasText: label })
+  // the strip names the next step; All steps opens the full checklist
+  await expect(list.getByText(/^Next: /)).toBeVisible()
+  await list.getByRole('button', { name: 'All steps' }).click()
   await expect(item(/Scan the repository/).locator('.tick')).toHaveText('✓')
   await expect(item(/Run doctor/).locator('.tick')).not.toHaveText('✓')
   await expect(item(/first plan/).locator('.tick')).not.toHaveText('✓')
@@ -144,6 +147,7 @@ test('first run: the tour points at each area, the checklist follows real activi
   await page.goto(gw.base + '/troubleshoot?doctor=1')
   await expect(page.getByRole('region', { name: 'Doctor' }).getByText(/ran just now/)).toBeVisible({ timeout: 30_000 })
   await page.getByRole('link', { name: 'Overview', exact: true }).click()
+  await list.getByRole('button', { name: 'All steps' }).click()
   for (const l of [/first plan/, /infrastructure view/, /Run doctor/]) await expect(item(l).locator('.tick')).toHaveText('✓')
 
   // the ? button replays the tour; Hide removes the checklist for good

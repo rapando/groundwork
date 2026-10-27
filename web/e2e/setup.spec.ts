@@ -65,7 +65,7 @@ test('empty repo: scaffold screen validates, previews, creates', async ({ page }
   expect(existsSync(path.join(gw.dir, 'terraform/modules/network/main.tf'))).toBe(true)
 
   await page.getByRole('button', { name: 'Open console' }).click()
-  await expect(page.getByRole('region', { name: 'Verification' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Checks' })).toBeVisible()
 })
 
 test('app repo: detect screen lists findings, honours exclusions, writes config', async ({ page }) => {
@@ -87,7 +87,7 @@ test('app repo: detect screen lists findings, honours exclusions, writes config'
   await page.getByLabel(/\.tflint\.hcl in deploy\/terraform/).check()
 
   await page.getByRole('button', { name: 'Start managing' }).click()
-  await expect(page.getByRole('region', { name: 'Verification' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Checks' })).toBeVisible()
   const cfg = readFileSync(path.join(gw.dir, 'groundwork.yaml'), 'utf8')
   expect(cfg).toContain('mode: embedded')
   expect(cfg).toContain('approval: none')

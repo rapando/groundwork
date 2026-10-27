@@ -1,6 +1,6 @@
 # Runs
 
-A **run** is one job against one target: a Terraform root and environment, or an Ansible project and environment ([Ansible jobs](ansible.md#jobs)). Start a Terraform plan from the Overview (the **Plan** button), or a [destroy](#destroy) (**Destroy…**). Nothing changes real infrastructure without an approval.
+A **run** is one job against one target: a Terraform root and environment, or an Ansible project and environment ([Ansible jobs](ansible.md#jobs)). Start a Terraform plan from the Overview (the **Plan** button), or a [destroy](#destroy) (**⋯ → Destroy…**). Nothing changes real infrastructure without an approval.
 
 ```
 init → [workspace] → validate → plan → summary → approve → apply
@@ -49,7 +49,7 @@ The red error banner becomes a card that explains the failure:
 
 ## Destroy
 
-**Destroy…** on an environment's card on the Overview tears down everything Terraform manages there. It is a plan like any other, never a direct `terraform destroy`:
+**Destroy…**, in the **⋯** menu on an environment's card on the Overview, tears down everything Terraform manages there. It is a plan like any other, never a direct `terraform destroy`:
 
 1. **Destroy…** asks on the page first ("Plan the destruction of everything in dev?"). Confirming starts a run with `terraform plan -destroy`. Nothing is destroyed yet.
 2. The review page says it's a **destroy plan** and lists every resource to be removed, with the usual danger rules: data-bearing resources need the acknowledgement box.

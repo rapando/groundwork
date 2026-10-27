@@ -13,7 +13,7 @@ groundwork is a local web console for Terraform (or OpenTofu) and Ansible. One b
 
 - Don't look for a way around approval. Don't call the HTTP API with the CLI token, and don't set `approval: none` in `groundwork.yaml` to skip the review step. Don't run `terraform apply` or `ansible-playbook` yourself as a substitute.
   - If the user explicitly asks you to run terraform directly, that's their call. It then happens outside groundwork, so say so.
-- Tearing an environment down is a plan too. Don't run `terraform destroy`; the user clicks **Destroy…** on the environment's card in the console, reviews the destroy plan and types the environment name to approve it.
+- Tearing an environment down is a plan too. Don't run `terraform destroy`; the user picks **Destroy…** from the **⋯** menu on the environment's card in the console, reviews the destroy plan and types the environment name to approve it.
 - When work reaches the "now apply it" stage, hand off. Give the user the project's console URL (see *Handing off* below) and tell them what to review.
 - Everything below is read-only or local file generation, except `groundwork drift`. It runs refresh-only plans against real cloud APIs with the user's credentials. It changes nothing, but it is slow and touches real accounts, so run it when the task calls for it rather than reflexively.
 
