@@ -1,0 +1,4 @@
+collections:
+  # the Docker connection plugin: Ansible talks to the containers through the Docker API, not SSH
+  - name: community.docker
+    version: ">=3.0.0"

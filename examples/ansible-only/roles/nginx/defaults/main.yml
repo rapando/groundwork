@@ -1,3 +1,0 @@
----
-nginx_worker_processes: auto
-nginx_port: 80

@@ -1,15 +1,13 @@
 # Examples
 
-Three small repos to point groundwork at. Each has its own README and validates offline (no cloud account needed).
+| Example | What it is |
+|---|---|
+| [docker-env](docker-env) | Terraform creates three servers as Docker containers; Ansible installs RabbitMQ on one, Redis on another and nginx on the third |
 
-| Example | What it is | groundwork sees it as |
-|---|---|---|
-| [terraform-only](terraform-only) | A Terraform module and two environments | standalone repo, 2 roots + 1 module |
-| [ansible-only](ansible-only) | One role, a playbook, dev/prod inventories | standalone repo, 1 Ansible project |
-| [app-with-infra](app-with-infra) | A small Go service with `deploy/terraform` and `ops/ansible` | embedded repo, Terraform root + Ansible project |
+It needs Docker, Terraform and Ansible on your machine, and no cloud account. Copy it out of this repository before running groundwork in it: groundwork manages the enclosing git repository (here, the whole groundwork checkout) and creates `.groundwork/` in it.
 
 ```
-cp -R examples/app-with-infra /tmp/demo && cd /tmp/demo && git init && groundwork
+cp -R examples/docker-env /tmp/docker-env && cd /tmp/docker-env && git init -q && groundwork
 ```
 
-Copy an example out of this repo before running groundwork in it: groundwork manages the enclosing git repository (here, the whole groundwork checkout) and creates `.groundwork/` and `groundwork.yaml` in it.
+See its [README](docker-env/README.md) for the walk-through.

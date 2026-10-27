@@ -1,0 +1,40 @@
+# Refreshing the package index changes nothing installed, so it runs in a
+# dry run too: without it, the dry run can't tell what it would install.
+- name: Update the package index
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  check_mode: false
+  changed_when: false
+
+- name: Install RabbitMQ
+  ansible.builtin.apt:
+    name: rabbitmq-server
+    state: present
+  register: rabbitmq_install
+
+# In a dry run on a new server the package isn't there yet, so there is
+# nothing to configure or start: the dry run stops at "would install".
+- name: Configure and start RabbitMQ
+  when: not (ansible_check_mode and rabbitmq_install is changed)
+  block:
+    - name: Configure RabbitMQ
+      ansible.builtin.template:
+        src: rabbitmq.conf.j2
+        dest: /etc/rabbitmq/rabbitmq.conf
+        owner: rabbitmq
+        group: rabbitmq
+        mode: "0644"
+      notify: Restart rabbitmq
+
+    - name: Enable plugins
+      ansible.builtin.command: rabbitmq-plugins enable --offline {{ item }}
+      loop: "{{ rabbitmq_plugins }}"
+      register: plugin
+      changed_when: "'Plugin configuration unchanged' not in plugin.stdout"
+      notify: Restart rabbitmq
+
+    - name: Start RabbitMQ
+      ansible.builtin.service:
+        name: rabbitmq-server
+        state: started

@@ -128,13 +128,11 @@ See [variables](docs/variables.md#managing-ansible-vault) for the details.
 
 ## Try it
 
-[`examples/`](examples/) has three small repos: Terraform only, Ansible only, and an app with both. They use local providers, so they work without a cloud account:
+[`examples/docker-env`](examples/docker-env) builds three servers as Docker containers with Terraform, then Ansible installs RabbitMQ, Redis and nginx on them. It needs Docker, Terraform and Ansible, and no cloud account:
 
 ```sh
-cp -R examples/app-with-infra /tmp/demo && git -C /tmp/demo init -q
-cp -R examples/ansible-only /tmp/demo-ansible && git -C /tmp/demo-ansible init -q
-cd /tmp/demo && groundwork                 # opens the first project
-groundwork add /tmp/demo-ansible           # a second project, on the same console
+cp -R examples/docker-env /tmp/docker-env && git -C /tmp/docker-env init -q
+cd /tmp/docker-env && groundwork            # opens it in the console: plan dev, approve, then run the playbook
 ```
 
 ## Development

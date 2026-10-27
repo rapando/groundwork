@@ -1,0 +1,10 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+# groundwork
+.groundwork/
+# Ansible
+*.retry
+.vault-pass

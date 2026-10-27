@@ -1,6 +1,9 @@
 package workspace
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 // The examples are documentation people copy; they must keep being detected as described.
 func TestExamplesAreDetectedAsDocumented(t *testing.T) {
@@ -12,13 +15,13 @@ func TestExamplesAreDetectedAsDocumented(t *testing.T) {
 		ansible int
 		envs    []string
 	}{
-		{"terraform-only", "standalone", 2, 1, 0, []string{"dev", "prod"}},
-		{"ansible-only", "standalone", 0, 0, 1, []string{"dev", "prod"}},
-		{"app-with-infra", "embedded", 1, 0, 1, []string{"dev", "prod"}},
+		{"../../examples/docker-env", "standalone", 1, 1, 1, []string{"dev"}},
+		// the repository scripts/demo.sh drives end to end
+		{"../../testdata/repos/app-with-infra", "embedded", 1, 0, 1, []string{"dev", "prod"}},
 	}
 	for _, c := range cases {
 		t.Run(c.dir, func(t *testing.T) {
-			r, err := Detect("../../examples/"+c.dir, nil)
+			r, err := Detect(c.dir, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -29,15 +32,31 @@ func TestExamplesAreDetectedAsDocumented(t *testing.T) {
 			for _, e := range r.Envs {
 				envs = append(envs, e.Name)
 			}
-			if len(envs) != len(c.envs) || envs[0] != c.envs[0] || envs[1] != c.envs[1] {
-				t.Fatalf("envs %v", envs)
+			if !slices.Equal(envs, c.envs) {
+				t.Fatalf("envs %v, want %v", envs, c.envs)
 			}
 		})
 	}
 }
 
+// docker-env: Terraform's ansible_hosts output is the inventory, read by the
+// scaffold's script, and the Ansible project has a role per server.
+func TestDockerEnvTerraformFeedsAnsible(t *testing.T) {
+	r, _ := Detect("../../examples/docker-env", nil)
+	if r.TerraformRoots[0].Path != "terraform/envs/dev" || r.Ansible[0].Path != "ansible" {
+		t.Fatalf("%+v %+v", r.TerraformRoots, r.Ansible)
+	}
+	if inv := r.Ansible[0].Inventories; len(inv) != 1 || inv[0] != "ansible/inventory/tf_outputs.py" {
+		t.Fatalf("inventories %v", inv)
+	}
+	roles := slices.Sorted(slices.Values(r.Ansible[0].Roles))
+	if !slices.Equal(roles, []string{"ansible/roles/nginx", "ansible/roles/rabbitmq", "ansible/roles/redis"}) {
+		t.Fatalf("roles %v", roles)
+	}
+}
+
 func TestAppWithInfraTerraformFeedsAnsible(t *testing.T) {
-	r, _ := Detect("../../examples/app-with-infra", nil)
+	r, _ := Detect("../../testdata/repos/app-with-infra", nil)
 	if r.TerraformRoots[0].Path != "deploy/terraform" || r.Ansible[0].Path != "ops/ansible" {
 		t.Fatalf("%+v %+v", r.TerraformRoots, r.Ansible)
 	}

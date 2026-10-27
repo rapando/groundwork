@@ -18,10 +18,11 @@ import (
 
 // Every example must pass every installed tool with zero findings.
 func TestExamplesAreCleanUnderRealTools(t *testing.T) {
-	for _, ex := range []string{"terraform-only", "ansible-only", "app-with-infra"} {
+	// examples/docker-env, and the repository scripts/demo.sh drives
+	for _, ex := range []string{"examples/docker-env", "testdata/repos/app-with-infra"} {
 		t.Run(ex, func(t *testing.T) {
 			dir := t.TempDir() // copy: checks must not write into the examples
-			src, _ := filepath.Abs("../../examples/" + ex)
+			src, _ := filepath.Abs("../../" + ex)
 			filepath.WalkDir(src, func(p string, d os.DirEntry, err error) error {
 				rel, _ := filepath.Rel(src, p)
 				if d.IsDir() {
