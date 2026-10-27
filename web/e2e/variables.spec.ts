@@ -57,6 +57,11 @@ test('terraform matrix: precedence, edit a value, reveal a sensitive one', async
   // the plaintext scan flags both committed passwords; secrets tab shows the audit
   const secrets = page.getByRole('region', { name: 'Secrets' })
   await expect(secrets.locator('.finding')).toHaveCount(2)
+  // a finding opens its variable's row, in that file's environment
+  await row('replicas').getByRole('cell').nth(0).click()
+  await secrets.locator('.finding', { hasText: 'envs/prod/' }).getByRole('button', { name: 'Show db_password' }).click()
+  await expect(row('db_password')).toHaveClass(/sel/)
+  await expect(row('db_password').getByRole('cell').nth(1)).toHaveClass(/cur/) // the prod column
   await page.getByRole('button', { name: /^Secrets/ }).click()
   await expect(secrets.getByText('Recent reveals')).toBeVisible()
   await expect(secrets.getByText(/db_password · envs\/dev/)).toBeVisible()

@@ -69,6 +69,15 @@ function select(r: VarRow, env?: string) {
   const target = env ?? r.cells.find((c) => c.state === 'missing')?.env ?? r.cells[0]?.env ?? ''
   selEnv.value = target
 }
+// a plaintext finding on a Terraform variable opens that variable's row, in the finding's environment
+const findingRow = (f: SecretFinding) => (f.key ? tf.value?.rows.find((r) => r.name === f.key) : undefined)
+function showFinding(f: SecretFinding) {
+  const r = findingRow(f)
+  if (!r) return
+  const env = r.cells.find((c) => c.file && f.file.endsWith(c.file) && f.file.split('/').includes(c.env))?.env ?? r.cells.find((c) => f.file.split('/').includes(c.env))?.env
+  select(r, env)
+  document.querySelector(`[data-var="${CSS.escape(r.name)}"]`)?.scrollIntoView({ block: 'center' })
+}
 const edit = reactive({ value: '', file: '', diff: '', sha: '', create: false, error: '', saving: false, saved: '' })
 watch([selected, selEnv], () => {
   const c = cell.value
@@ -358,7 +367,7 @@ onBeforeUnmount(() => { closeVaultEdit(); closeNew(); closeRekey(); closeUnlock(
             <table class="mono vt">
               <thead><tr><th>variable</th><th v-for="t in tfEnvs" :key="t.root + t.env">{{ t.env }}</th></tr></thead>
               <tbody>
-                <tr v-for="r in tfRows" :key="r.name" :class="{ sel: r.name === selected }">
+                <tr v-for="r in tfRows" :key="r.name" :class="{ sel: r.name === selected }" :data-var="r.name">
                   <th scope="row"><button type="button" class="vname" @click="select(r)">{{ r.name }}</button><small>{{ r.decl?.type || 'any' }}<template v-if="r.decl && !r.decl.has_default"> · required</template><template v-if="r.unused"> · unused</template></small></th>
                   <td v-for="c in r.cells" :key="c.env" :class="{ cur: r.name === selected && c.env === selEnv }">
                     <button type="button" class="cell" :aria-label="`${r.name} in ${c.env}: ${cellText(c)}`" @click="select(r, c.env)">
@@ -443,6 +452,7 @@ onBeforeUnmount(() => { closeVaultEdit(); closeNew(); closeRekey(); closeUnlock(
             <span class="pill st-fail">plaintext</span>
             <RouterLink class="mono small" :to="codeHref(f.file, f.line)">{{ f.file }}:{{ f.line }}</RouterLink>
             <span class="small fmsg">{{ f.message }}</span>
+            <button v-if="tab === 'terraform' && findingRow(f)" class="btn xs" type="button" @click="showFinding(f)">Show {{ f.key }}</button>
             <button v-if="canMove(f)" class="btn xs" type="button" @click="previewMove(f)">Move to vault</button>
             <span v-else class="small muted" title="See docs/variables.md">mark it sensitive and pass it with TF_VAR_{{ f.key || 'name' }}</span>
           </div>
