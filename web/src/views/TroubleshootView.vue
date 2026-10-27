@@ -5,7 +5,7 @@ import AppShell from '../components/AppShell.vue'
 import { api, apiFetch } from '../api/client'
 import type { DoctorReport, Issue } from '../api/types'
 import { useIssues } from '../stores/issues'
-import { since as sinceAt } from '../stores/runs'
+import { parseGoTime, since as sinceAt } from '../stores/runs'
 import { onEvent } from '../composables/events'
 import { useNow } from '../composables/now'
 
@@ -86,6 +86,22 @@ async function runDoctor() {
   try { doctor.value = (await api<{ report: DoctorReport }>('/doctor/run', { method: 'POST' })).report } finally { doctorRunning.value = false }
 }
 const DOC: Record<string, string> = { ok: 'st-ok', warn: 'st-warn', fail: 'st-fail', missing: 'st-warn' }
+const hm = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+function factValue(k: string, v: string): string {
+  if (k === 'lock_id') return shortId(v)
+  if (k === 'operation') return v.replace(/^OperationType/, '').toLowerCase()
+  if (k === 'created') { const t = parseGoTime(v); if (t) return new Date(t).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }
+  return v
+}
+const shortId = (id: string) => (id.length > 16 ? `${id.slice(0, 8)}…${id.slice(-4)}` : id)
+const doctorState = computed(() => {
+  if (doctorRunning.value) return { cls: 'run', text: 'Doctor running…' }
+  const d = doctor.value
+  if (!d) return { cls: '', text: 'Doctor not run yet' }
+  const bad = d.checks.filter((c) => c.status === 'fail').length
+  const warn = d.checks.filter((c) => c.status === 'warn' || c.status === 'missing').length
+  return bad ? { cls: 'fail', text: `Doctor: ${bad} failing` } : warn ? { cls: 'warn', text: `Doctor: ${warn} to look at` } : { cls: 'ok', text: 'Doctor: all good' }
+})
 const factLabel = (k: string) => k.replace(/_/g, ' ').replace(/^lock id$/, 'lock ID')
 </script>
 
@@ -95,12 +111,14 @@ const factLabel = (k: string) => k.replace(/_/g, ' ').replace(/^lock id$/, 'lock
       <h1>Troubleshoot</h1>
       <span class="muted small">{{ issues.open.length }} open · {{ issues.resolvedThisWeek }} resolved this week</span>
       <div class="actions">
+        <a class="dstat" :href="doctor ? '#doctor' : undefined" :class="doctorState.cls"><span class="dot" aria-hidden="true" />{{ doctorState.text }}</a>
         <button class="btn sm" type="button" @click="exportReport">Export report</button>
         <button class="btn sm primary" type="button" :disabled="doctorRunning" @click="runDoctor">{{ doctorRunning ? 'Running doctor…' : 'Run doctor' }}</button>
       </div>
     </header>
     <p v-for="e in issues.ruleErrors" :key="e" class="err pad2" role="alert">Rule file skipped: {{ e }}</p>
 
+    <div class="tbody">
     <div class="cols">
       <section class="list" aria-label="Open issues">
         <span class="lbl pl">Open</span>
@@ -127,23 +145,16 @@ const factLabel = (k: string) => k.replace(/_/g, ' ').replace(/^lock id$/, 'lock
           <p v-if="detail.status === 'resolved'" class="small ok">{{ detail.resolution }}</p>
         </div>
 
-        <div class="cards">
-          <div v-if="detail.facts && Object.keys(detail.facts).length" class="card2">
-            <span class="lbl">Details</span>
-            <div class="kv mono">
-              <template v-for="(v, k) in detail.facts" :key="k"><span>{{ factLabel(String(k)) }}</span><span class="v">{{ v }}</span></template>
-            </div>
+        <dl class="facts" aria-label="Details">
+          <div v-for="(v, k) in detail.facts ?? {}" :key="k" class="fact">
+            <dt class="lbl">{{ factLabel(String(k)) }}</dt>
+            <dd class="mono" :title="String(v)">{{ factValue(String(k), String(v)) }}<button v-if="k === 'lock_id'" class="copy" type="button" :aria-label="`Copy lock ID ${v}`" @click="copy(String(v))">{{ copied === String(v) ? 'copied' : 'copy' }}</button></dd>
           </div>
-          <div class="card2">
-            <span class="lbl">What happened</span>
-            <ol class="mono tl">
-              <li><span class="muted">{{ new Date(detail.first_seen).toLocaleTimeString() }}</span><span>first seen<template v-if="detail.run_id"> in run #{{ detail.run_id }}</template></span></li>
-              <li v-if="detail.last_seen !== detail.first_seen"><span class="muted">{{ new Date(detail.last_seen).toLocaleTimeString() }}</span><span>seen again</span></li>
-              <li v-for="(c, i) in detail.checks ?? []" :key="i"><span class="muted">now</span><span :class="c.ok ? '' : 'fail'">{{ c.detail }}</span></li>
-            </ol>
-            <RouterLink v-if="detail.run_id" class="small" :to="'/runs/' + detail.run_id">Open run #{{ detail.run_id }} log →</RouterLink>
+          <div class="fact">
+            <dt class="lbl">Timeline</dt>
+            <dd>first seen<template v-if="detail.run_id"> in <RouterLink :to="'/runs/' + detail.run_id">run #{{ detail.run_id }}</RouterLink></template> at <span class="mono">{{ hm(detail.first_seen) }}</span><template v-if="detail.last_seen !== detail.first_seen">, again at <span class="mono">{{ hm(detail.last_seen) }}</span></template></dd>
           </div>
-        </div>
+        </dl>
 
         <div v-if="detail.status === 'open'" class="fix">
           <span class="lbl">Fix it</span>
@@ -173,7 +184,7 @@ const factLabel = (k: string) => k.replace(/_/g, ' ').replace(/^lock id$/, 'lock
               </template>
             </div>
           </div>
-          <button class="btn ghost" type="button" @click="markResolved">Mark resolved</button>
+          <div class="rfoot"><span class="small muted">Fixed it another way?</span><button class="btn sm" type="button" @click="markResolved">Mark resolved</button></div>
         </div>
 
         <details v-if="detail.excerpt" class="raw">
@@ -186,7 +197,7 @@ const factLabel = (k: string) => k.replace(/_/g, ' ').replace(/^lock id$/, 'lock
       </section>
     </div>
 
-    <section class="doctor" aria-label="Doctor">
+    <section v-if="doctor || doctorRunning" id="doctor" class="doctor" aria-label="Doctor">
       <div class="dh">
         <h2>Doctor · environment checks</h2>
         <span class="mono small muted">{{ doctor ? 'ran ' + since(doctor.ran_at) : 'not run yet' }}</span>
@@ -198,8 +209,9 @@ const factLabel = (k: string) => k.replace(/_/g, ' ').replace(/^lock id$/, 'lock
           <span class="mono small muted">{{ c.detail }}<template v-if="c.hint && c.status !== 'ok'"> · <span class="hint">{{ c.hint }}</span></template></span>
         </div>
       </div>
-      <p v-else class="pad muted small">Doctor checks tools, credentials, state backends, the SSH agent, inventory reachability and disk space. <button class="link" type="button" @click="runDoctor">Run it now</button></p>
+      <p v-else class="pad muted small">Checking tools, credentials, state backends, the SSH agent, inventory reachability and disk space…</p>
     </section>
+    </div>
   </AppShell>
 </template>
 
@@ -228,12 +240,19 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .pill { font: 600 12.5px var(--font-mono); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; align-self: flex-start; }
 .st-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); } .st-fail { color: var(--fail); background: color-mix(in srgb, var(--fail) 10%, transparent); }
 .st-warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); } .st-idle { color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 10%, transparent); }
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; }
-.card2 { border: 1px solid var(--line); border-radius: 10px; background: var(--bg-panel); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: 13.5px; color: var(--text-muted); }
-.kv .v { color: var(--text); overflow-wrap: anywhere; }
-.tl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; }
-.tl li { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 10px; }
+.tbody { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.tbody > .cols { flex: 1 0 auto; }
+.facts { display: flex; flex-wrap: wrap; gap: 10px 36px; margin: 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-panel); }
+.fact { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.fact dd { margin: 0; font-size: 13.5px; color: var(--text); overflow-wrap: anywhere; }
+.copy { all: unset; margin-left: 8px; font: 13px var(--font-ui); color: var(--accent); cursor: pointer; text-decoration: underline; }
+.copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rfoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line); }
+.dstat { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--text-muted); text-decoration: none; padding-right: 6px; }
+.dstat .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-disabled); }
+.dstat.ok .dot { background: var(--ok); } .dstat.warn .dot { background: var(--warn); } .dstat.fail .dot { background: var(--fail); } .dstat.run .dot { background: var(--running); }
+.dstat.fail { color: var(--fail); } .dstat.warn { color: var(--warn); }
+a.dstat[href]:hover { text-decoration: underline; }
 .fix { border: 1px solid var(--line); border-radius: 10px; background: var(--bg-panel); padding: 18px; display: flex; flex-direction: column; gap: 16px; }
 .step { display: flex; gap: 12px; }
 .num { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font: 600 13px var(--font-mono); border: 1px solid var(--line-strong); color: var(--text-muted); }

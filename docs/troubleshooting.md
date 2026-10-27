@@ -77,7 +77,7 @@ Put YAML files in `.groundwork/rules/`. A rule with a built-in's `id` replaces i
 
 ## Doctor
 
-**Run doctor** on the Troubleshoot screen, or `groundwork doctor` in a terminal (exit code 1 if anything fails, 2 if `groundwork.yaml` doesn't load; `--json` for scripts). Checks run in parallel, each with a 15-second timeout. Each reports ok, warn or fail with a hint:
+**Run doctor** on the Troubleshoot screen (its header shows the last result: all good, how many checks to look at, or how many fail; the full list appears under the issue once it has run), or `groundwork doctor` in a terminal (exit code 1 if anything fails, 2 if `groundwork.yaml` doesn't load; `--json` for scripts). Checks run in parallel, each with a 15-second timeout. Each reports ok, warn or fail with a hint:
 
 - **Tools**: terraform or tofu, ansible, the enabled linters and git, with versions. A missing required tool fails; a missing linter or git warns. terraform below 1.4, tofu below 1.6 or ansible-core below 2.14 warns.
 - **Credentials**, for providers the code uses:

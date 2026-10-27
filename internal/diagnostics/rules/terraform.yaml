@@ -15,8 +15,7 @@
     lock_path: 'Path:\s+(\S.*)'
   title: 'State locked on {{ .Target }}'
   explain: >
-    Another operation holds the state lock (lock {{ .lock_id }}, {{ .operation }} by {{ .who }}, created {{ .created }}).
-    If that operation crashed or was killed, the lock is stale and every plan and apply on this stack fails until it is released.
+    {{ .who }} holds the state lock and hasn't released it. If that operation crashed or was killed, every plan and apply on this stack fails until the lock is released.
   checks:
     - no_running_job_on: '{{ .Target }}'
     - no_local_process: terraform
