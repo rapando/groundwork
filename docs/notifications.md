@@ -98,4 +98,4 @@ A JSON `POST` with `Content-Type: application/json`, a 10-second timeout and no 
 
 ## Across projects
 
-The bell in the console's header counts unread notifications across every open project, and the project list shows each project's unread count, unread failures and plans waiting for approval. Notifications are stored per project, in its `.groundwork/state.db`.
+The bell in the console's header counts unread notifications across every open project, and the project list shows each project's unread failures and plans waiting for approval, the status of each of its environments, and its latest run. Notifications are stored per project, in its `.groundwork/state.db`.

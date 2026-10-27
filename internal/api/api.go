@@ -509,6 +509,16 @@ type Summary struct {
 	UnreadNotifications int    `json:"unread_notifications"`
 	UnreadFailed        int    `json:"unread_failed"`
 	WaitingApproval     int    `json:"waiting_approval"`
+	// Envs is each environment's status, as on the Overview.
+	Envs []EnvStatus `json:"envs"`
+	// LastRun is the newest run other than an inventory ping or fact gathering.
+	LastRun map[string]any `json:"last_run,omitempty"`
+}
+
+// EnvStatus is one environment of a project summary.
+type EnvStatus struct {
+	Name   string `json:"name"`
+	Status string `json:"status"` // failed | pending | running | drift | ok | unknown
 }
 
 func (a *API) Summary() Summary {
@@ -523,6 +533,20 @@ func (a *API) Summary() Summary {
 	s.UnreadNotifications, s.UnreadFailed = a.Store.UnreadCounts()
 	if w, err := a.Store.ListRuns(store.RunFilter{Status: store.StatusWaitingApproval, Limit: 1000}); err == nil {
 		s.WaitingApproval = len(w)
+	}
+	s.Envs = []EnvStatus{}
+	if envs, err := a.envViews(context.Background(), false); err == nil {
+		for _, e := range envs {
+			s.Envs = append(s.Envs, EnvStatus{Name: e.Name, Status: e.Status})
+		}
+	}
+	if recent, err := a.Store.ListRuns(store.RunFilter{Limit: 20}); err == nil {
+		for _, run := range recent { // newest first
+			if run.Kind != runner.KindAnsPing && run.Kind != runner.KindAnsFacts {
+				s.LastRun = brief(run)
+				break
+			}
+		}
 	}
 	return s
 }

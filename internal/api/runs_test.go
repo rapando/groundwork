@@ -139,6 +139,11 @@ func TestEnvsSummaryTracksPendingAndFailure(t *testing.T) {
 	if dev["status"] != "pending" || tg["pending"].(map[string]any)["create"].(float64) != 3 || tg["pending"].(map[string]any)["run_id"].(float64) != id {
 		t.Fatalf("pending: %v", dev)
 	}
+	// the project list shows the same statuses and the newest run
+	sum := e.a.Summary()
+	if len(sum.Envs) < 2 || sum.Envs[0] != (EnvStatus{Name: "dev", Status: "pending"}) || sum.LastRun == nil || sum.LastRun["id"] != int64(id) {
+		t.Fatalf("summary: %+v", sum)
+	}
 
 	call(t, e.h, "POST", "/runs/"+itoa(int(id))+"/approve", map[string]any{})
 	waitRun(t, e, id, "succeeded")

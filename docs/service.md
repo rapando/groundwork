@@ -51,6 +51,7 @@ groundwork remove platform-infra                 # stop managing it
 
 - **A folder** is used where it is. If it's inside a git repository, the repository root is imported. Importing the same repository twice returns the existing project.
 - **A URL** (`https://…`, `ssh://…` or `git@host:path`) is cloned with your own `git`, so your SSH keys and credential helpers apply, into `repos/` in the data directory. The service has no terminal, so git can't prompt: use an SSH key loaded in your agent, or a credential helper, for private repositories.
+- Each row on the Projects page shows the project's environments with their status (failed, waiting for approval, drift, running) and its latest run, so you can see which one needs you without opening it. **Remove…** is in the row's **⋯** menu.
 - **Removing** a project stops the service watching it. The files, including its `.groundwork/` run history, stay where they are, so importing it again picks up where you left off. A project with a run in progress can't be removed.
 - If a project's folder disappears (an unmounted disk, a deleted checkout), the service keeps running and marks that project **unavailable**. Use **Retry** on the Projects page once it's back.
 

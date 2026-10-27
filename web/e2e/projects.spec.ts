@@ -32,13 +32,15 @@ test('projects page imports, removes and reopens projects', async ({ page }) => 
   await expect(page.getByText(name, { exact: true })).toBeVisible()
 
   // remove it: the dialog traps focus and Escape cancels
-  await page.getByRole('button', { name: `Remove ${name}` }).click()
+  await page.getByRole('button', { name: `More actions for ${name}` }).click()
+  await page.getByRole('menuitem', { name: `Remove ${name}` }).click()
   const dlg = page.getByRole('dialog', { name: `Remove ${name}?` })
   await expect(dlg).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(dlg).toHaveCount(0)
   await expect(items).toHaveCount(2)
-  await page.getByRole('button', { name: `Remove ${name}` }).click()
+  await page.getByRole('button', { name: `More actions for ${name}` }).click()
+  await page.getByRole('menuitem', { name: `Remove ${name}` }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Remove project' }).click()
   await expect(items).toHaveCount(1)
 

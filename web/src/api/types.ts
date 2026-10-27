@@ -836,6 +836,8 @@ export interface ProjectView {
   unread_notifications?: number
   unread_failed?: number
   waiting_approval?: number
+  envs?: { name: string; status: EnvView['status'] }[]
+  last_run?: RunBrief
 }
 
 export type NotifyEvent = 'failed' | 'approval' | 'succeeded' | 'cancelled' | 'drift'

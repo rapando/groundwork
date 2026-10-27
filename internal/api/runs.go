@@ -367,15 +367,25 @@ type envView struct {
 }
 
 func (a *API) listEnvs(w http.ResponseWriter, r *http.Request) {
-	cfg, _ := a.config()
-	if cfg == nil {
-		writeJSON(w, 200, map[string]any{"envs": []envView{}})
-		return
-	}
-	runs, err := a.Store.ListRuns(store.RunFilter{Limit: 500})
+	out, err := a.envViews(r.Context(), true)
 	if err != nil {
 		writeError(w, 500, "runs_failed", err.Error(), nil)
 		return
+	}
+	writeJSON(w, 200, map[string]any{"envs": out})
+}
+
+// envViews builds the Overview's environments. Without inventories it skips
+// loading Ansible inventories (hosts stay -1): the status only depends on the
+// Terraform targets, so the project list can afford it on every refresh.
+func (a *API) envViews(ctx context.Context, inventories bool) ([]envView, error) {
+	cfg, _ := a.config()
+	if cfg == nil {
+		return []envView{}, nil
+	}
+	runs, err := a.Store.ListRuns(store.RunFilter{Limit: 500})
+	if err != nil {
+		return nil, err
 	}
 	type key struct{ root, env string }
 	latest := map[key]*store.Run{}     // newest run of any kind
@@ -440,10 +450,13 @@ func (a *API) listEnvs(w http.ResponseWriter, r *http.Request) {
 	invs := make([]*ansible.Inventory, len(scopes))
 	var wg sync.WaitGroup
 	for i, sc := range scopes {
+		if !inventories {
+			break
+		}
 		wg.Add(1)
 		safego.Go(nil, "inventory load", a.InternalError, func() {
 			defer wg.Done()
-			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
 			if inv, err := a.loadInventory(ctx, sc); err == nil {
 				invs[i] = inv
@@ -511,7 +524,7 @@ func (a *API) listEnvs(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(out, func(i, j int) bool {
 		return envRank(out[i].Name) < envRank(out[j].Name) || envRank(out[i].Name) == envRank(out[j].Name) && out[i].Name < out[j].Name
 	})
-	writeJSON(w, 200, map[string]any{"envs": out})
+	return out, nil
 }
 
 func trimSlash(p string) string { return strings.TrimSuffix(p, "/") }
