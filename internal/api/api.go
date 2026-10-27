@@ -47,6 +47,7 @@ type API struct {
 	tools     []doctor.Tool
 
 	secrets *vars.Secrets
+	keyring *vars.Keyring    // vault passwords typed in the console, in memory only
 	bg      sync.WaitGroup   // goroutines started by Start
 	red     *redact.Redactor // for output the API shows that didn't pass through a job (git diff)
 
@@ -62,10 +63,11 @@ type API struct {
 }
 
 func New(root, version string, bus *events.Bus, st *store.Store) *API {
-	a := &API{Root: root, Version: version, Bus: bus, Store: st, red: redact.New()}
+	a := &API{Root: root, Version: version, Bus: bus, Store: st, red: redact.New(), keyring: vars.NewKeyring()}
 	a.red.AddEnv(os.Environ())
 	a.reloadConfig()
 	a.Runner = runner.New(root, st, bus, func() *config.Config { c, _ := a.config(); return c }, nil)
+	a.Runner.TypedVault = func(dir string, firstFD int) vars.VaultFlags { return a.secretStore().TypedVault(dir, firstFD) }
 	a.Checks = checks.New(root, func() *config.Config { c, _ := a.config(); return c }, checks.OSExec{}, st, bus, nil)
 	a.Issues = diagnostics.New(root, st, a.Runner, a.Checks, bus, nil)
 	a.Drift = drift.New(a.Runner, st, func() *config.Config { c, _ := a.config(); return c }, nil)
@@ -155,6 +157,8 @@ func (a *API) Routes(r chi.Router) {
 	r.Post("/secrets/vault/add", a.addVault)
 	r.Post("/secrets/vault/encrypt", a.encryptVaultFile)
 	r.Post("/secrets/vault/rekey", a.rekeyVault)
+	r.Post("/secrets/vault/unlock", a.unlockVault)
+	r.Post("/secrets/vault/lock", a.lockVault)
 	r.Get("/issues", a.listIssues)
 	r.Get("/issues/export", a.exportIssues)
 	r.Get("/issues/{id}", a.getIssue)

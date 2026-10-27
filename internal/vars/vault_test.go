@@ -66,7 +66,7 @@ func revealed(t *testing.T, s *Secrets, name string) string {
 // Create, edit and add vault values, then rekey them all, with real ansible-vault.
 func TestVaultEditAddAndRekey(t *testing.T) {
 	needVault(t)
-	t.Setenv("TMPDIR", t.TempDir()) // the rekey's temporary password file must not outlive it
+	t.Setenv("TMPDIR", t.TempDir()) // the rekey's temporary (empty) ansible.cfg must not outlive it
 	root := t.TempDir()
 	proj := filepath.Join(root, "ansible")
 	pw := writeFile(t, root, "ansible/.vault_pass", "first-pw\n", 0o600)

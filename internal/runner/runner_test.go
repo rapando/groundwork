@@ -676,3 +676,56 @@ func TestConcurrentStreamsDoNotRaceOnJobState(t *testing.T) {
 		t.Fatalf("%q", d.Summary.Error)
 	}
 }
+
+// A destroy is a plan made with -destroy: reviewed, approved by typing the
+// environment even where approval isn't required, then applied as saved.
+func TestDestroyIsPlannedThenApprovedByName(t *testing.T) {
+	g := newRig(t)
+	run, err := g.r.Submit(SubmitRequest{Kind: KindPlan, Root: "terraform/envs/dev", Env: "dev", Destroy: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := g.wait(t, run.ID, store.StatusWaitingApproval)
+	if !d.Target.Destroy || !d.Target.ApprovalRequired {
+		t.Fatalf("target %+v", d.Target)
+	}
+	planned := false
+	for _, l := range g.tfLog(t) {
+		if strings.HasPrefix(l, "argv ") && strings.Contains(l, " plan ") {
+			planned = strings.Contains(l, " -destroy")
+		}
+	}
+	if !planned {
+		t.Fatalf("plan must run with -destroy: %v", g.tfLog(t))
+	}
+	if err := g.r.Approve(run.ID, ApproveRequest{}); err == nil || !strings.Contains(err.Error(), `type "dev"`) {
+		t.Fatalf("a destroy needs the environment typed, even in dev: %v", err)
+	}
+	if err := g.r.Approve(run.ID, ApproveRequest{ConfirmText: "dev", AckDanger: true}); err != nil {
+		t.Fatal(err)
+	}
+	g.wait(t, run.ID, store.StatusSucceeded)
+
+	again, err := g.r.Replan(run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d := g.wait(t, again.ID, store.StatusWaitingApproval, store.StatusSucceeded); !d.Target.Destroy {
+		t.Fatal("re-planning a destroy plans a destroy again")
+	}
+}
+
+// A normal dev plan stays approvable with a click.
+func TestPlainPlanIsNotADestroy(t *testing.T) {
+	g := newRig(t)
+	run, _ := g.r.Submit(SubmitRequest{Kind: KindPlan, Root: "terraform/envs/dev", Env: "dev"})
+	d := g.wait(t, run.ID, store.StatusWaitingApproval)
+	if d.Target.Destroy || d.Target.ApprovalRequired {
+		t.Fatalf("target %+v", d.Target)
+	}
+	for _, l := range g.tfLog(t) {
+		if strings.HasPrefix(l, "argv ") && strings.Contains(l, "-destroy") {
+			t.Fatal("-destroy without asking")
+		}
+	}
+}

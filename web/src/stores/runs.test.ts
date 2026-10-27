@@ -57,6 +57,9 @@ describe('kindLabel', () => {
     expect(kindLabel({ kind: 'tf.plan', stage: 'approve', status: 'waiting_approval' })).toBe('terraform plan')
     expect(kindLabel({ kind: 'tf.plan', stage: 'apply', status: 'running' })).toBe('terraform apply')
     expect(kindLabel({ kind: 'tf.plan', stage: 'approve', status: 'succeeded' })).toBe('terraform apply')
+    const destroy = { env: 'dev', approval_required: true, destroy: true }
+    expect(kindLabel({ kind: 'tf.plan', stage: 'approve', status: 'waiting_approval', target: destroy })).toBe('terraform plan -destroy')
+    expect(kindLabel({ kind: 'tf.plan', stage: 'apply', status: 'running', target: destroy })).toBe('terraform destroy')
     expect(kindLabel({ kind: 'ans.playbook', stage: '', status: 'running', target: { playbook: 'site.yml' } as any })).toBe('ansible-playbook site.yml')
     expect(kindLabel({ kind: 'ans.check', stage: '', status: 'running', target: { playbook: 'site.yml' } as any })).toBe('ansible-playbook site.yml --check')
     expect(kindLabel({ kind: 'ans.adhoc', stage: '', status: 'running', target: { module: 'shell', args: 'uptime' } as any })).toBe('ansible -m shell uptime')

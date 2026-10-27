@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -123,8 +124,30 @@ func TestInventoryDecryptsVaultedGroupVars(t *testing.T) {
 	a.Routes(h)
 
 	inv := into(t, call(t, h, "GET", "/inventory", nil))
-	if msg, _ := inv["error"].(string); !strings.Contains(msg, "Set vault_password_file for Ansible project . in groundwork.yaml") {
+	if msg, _ := inv["error"].(string); !strings.Contains(msg, "Unlock the vault on Variables → Secrets, or set vault_password_file for Ansible project . in groundwork.yaml") {
 		t.Fatalf("want a vault hint, got %v", inv["error"])
+	}
+
+	// typed in the console: a wrong password is refused, the right one is
+	// kept in memory and opens the inventory, locking forgets it
+	if rec := call(t, h, "POST", "/secrets/vault/unlock", map[string]any{"project": ".", "password": "nope"}); rec.Code != 422 || into(t, rec)["error"].(map[string]any)["code"] != "wrong_password" {
+		t.Fatalf("wrong password: %d %s", rec.Code, rec.Body)
+	}
+	if rec := call(t, h, "POST", "/secrets/vault/unlock", map[string]any{"project": ".", "password": "pw"}); rec.Code != 200 || into(t, rec)["checked"] != true {
+		t.Fatalf("unlock: %d %s", rec.Code, rec.Body)
+	}
+	if strings.Contains(fmt.Sprint(into(t, call(t, h, "GET", "/secrets", nil))), "pw\n") {
+		t.Fatal("the typed password must never be in a response")
+	}
+	inv = into(t, call(t, h, "GET", "/inventory", nil))
+	if inv["error"] != nil {
+		t.Fatalf("unlocked: %v", inv["error"])
+	}
+	if rec := call(t, h, "POST", "/secrets/vault/lock", map[string]any{"project": "."}); rec.Code != 200 {
+		t.Fatalf("lock: %d %s", rec.Code, rec.Body)
+	}
+	if inv = into(t, call(t, h, "GET", "/inventory", nil)); inv["error"] == nil {
+		t.Fatal("locked again: the inventory needs the password")
 	}
 
 	write("groundwork.yaml", strings.Replace(cfg, "    - path: .\n", "    - path: .\n      vault_password_file: "+pw+"\n", 1))

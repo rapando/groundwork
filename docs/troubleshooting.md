@@ -37,7 +37,7 @@ You can also mark an issue resolved. Old evidence never re-opens a resolved issu
 | `ans-host-key-changed` | `REMOTE HOST IDENTIFICATION HAS CHANGED`, per host |
 | `ans-ssh-auth-failed` | `Permission denied (publickey…)`, per host |
 | `ans-vault-decrypt-failed` | vault password doesn't open a value |
-| `ans-vault-no-password` | vault data but no password configured |
+| `ans-vault-no-password` | vault data but the vault is locked (no password typed or configured) |
 | `ans-become-password` | `Missing sudo password` / `sudo: a password is required` |
 | `ans-python-interpreter` | discovered-interpreter warning → pin `ansible_python_interpreter` |
 | `yamllint-indentation`, `ansible-lint-no-changed-when`, `ansible-lint-name-casing` | explanations for those findings |

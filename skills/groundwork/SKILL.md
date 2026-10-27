@@ -13,6 +13,7 @@ groundwork is a local web console for Terraform (or OpenTofu) and Ansible. One b
 
 - Don't look for a way around approval. Don't call the HTTP API with the CLI token, and don't set `approval: none` in `groundwork.yaml` to skip the review step. Don't run `terraform apply` or `ansible-playbook` yourself as a substitute.
   - If the user explicitly asks you to run terraform directly, that's their call. It then happens outside groundwork, so say so.
+- Tearing an environment down is a plan too. Don't run `terraform destroy`; the user clicks **Destroy…** on the environment's card in the console, reviews the destroy plan and types the environment name to approve it.
 - When work reaches the "now apply it" stage, hand off. Give the user the project's console URL (see *Handing off* below) and tell them what to review.
 - Everything below is read-only or local file generation, except `groundwork drift`. It runs refresh-only plans against real cloud APIs with the user's credentials. It changes nothing, but it is slow and touches real accounts, so run it when the task calls for it rather than reflexively.
 
@@ -131,7 +132,7 @@ Creating, editing, encrypting and rekeying ansible-vault data happens in the con
 - Leave **Rekey** to the user: it changes the password everyone uses.
 - You can write the code that *uses* a secret: reference `{{ db_password }}` in a template or task, and tell the user which variable to add, in which vars file, as an encrypted value.
 
-The project's `vault_password_file` in `groundwork.yaml` (or `vault_identity_list` in `ansible.cfg`) tells groundwork how to open the vault. `doctor` reports whether it's set up.
+The project's `vault_password_file` in `groundwork.yaml` (or `vault_identity_list` in `ansible.cfg`) tells groundwork how to open the vault. Without a password file, the user types the password in the console: **Unlock…** on Variables → Secrets. The service keeps it in memory until they lock the vault or the service stops. `doctor` reports a file that is missing or wrong, and warns when there is none, because then the console asks for the password. Doctor can't see whether the service has the vault unlocked. When a run fails with "no vault secrets found" (**Vault is locked**), send the user to Unlock. Never ask for the vault password, and don't create a password file for them unless they ask.
 
 ## Passing data from Terraform to Ansible
 

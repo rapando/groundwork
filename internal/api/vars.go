@@ -253,6 +253,7 @@ func (a *API) secretStore() *vars.Secrets {
 	secretsMu.Lock()
 	if a.secrets == nil {
 		a.secrets = vars.NewSecrets(a.Root, nil)
+		a.secrets.Keyring = a.keyring
 	}
 	s := a.secrets
 	secretsMu.Unlock()

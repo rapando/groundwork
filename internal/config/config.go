@@ -429,7 +429,7 @@ func (c *Config) validate() []problem {
 				add(msg, "ansible", "projects", i, "config")
 			}
 		}
-		if msg := checkVaultPath(p.VaultPasswordFile); msg != "" {
+		if msg := CheckVaultPath(p.VaultPasswordFile); msg != "" {
 			add(msg, "ansible", "projects", i, "vault_password_file")
 		}
 		for env, inv := range p.Inventories {
@@ -485,10 +485,11 @@ func contains(l []string, v string) bool {
 	return false
 }
 
-// checkVaultPath allows a vault password file relative to the project, under
+// CheckVaultPath allows a vault password file relative to the project, under
 // ~/ or absolute, as long as it never climbs with "..". The execute-bit rule
-// needs the filesystem and lives in Config.VaultFile.
-func checkVaultPath(p string) string {
+// needs the filesystem and lives in Config.VaultFile. It returns "" when
+// p is fine (or empty), else what is wrong with it.
+func CheckVaultPath(p string) string {
 	if p == "" {
 		return ""
 	}

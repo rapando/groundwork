@@ -32,7 +32,8 @@ ansible:
       inventories:          # env -> path relative to the project (omit to use ansible.cfg's)
         dev: inventory/dev.yml
       vault_password_file: ~/.vault-pass   # a plain file; executables are refused unless allow_vault_script.
-                                           # It's the "default" vault ID; more IDs come from vault_identity_list in ansible.cfg
+                                           # It's the "default" vault ID; more IDs come from vault_identity_list in ansible.cfg.
+                                           # Leave it out to type the password in the console (Variables → Secrets → Unlock)
   allow_vault_script: false
   run_timeout: 2h
 

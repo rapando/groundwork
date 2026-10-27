@@ -24,9 +24,9 @@ A scaffold is a Terraform layout with a `network` module, an Ansible project (`a
 
 | Preset | Provider and credentials | State (`--backend`) | `--region` |
 |---|---|---|---|
+| `vultr` (default) | `vultr/vultr`, token in `VULTR_API_KEY` | `local` (default), `http`, `s3` | e.g. `ams` |
 | `aws-envs` | AWS | `s3` (default) with a DynamoDB lock table `<bucket>-lock`; `local`, `http` | an AWS region, e.g. `eu-west-1` |
 | `gcp-envs` | Google Cloud; pass `--gcp-project` | `gcs` (default); `local`, `http` | a GCP region, e.g. `europe-west1` |
-| `vultr` | `vultr/vultr`, token in `VULTR_API_KEY` | `local` (default), `http`, `s3` | e.g. `ams` |
 | `digitalocean` | `digitalocean/digitalocean`, token in `DIGITALOCEAN_TOKEN` | `local` (default), `http`, `s3` | e.g. `fra1` |
 | `hetzner` | `hetznercloud/hcloud`, token in `HCLOUD_TOKEN` | `local` (default), `http`, `s3` | a network zone, e.g. `eu-central` |
 | `linode` | `linode/linode`, token in `LINODE_TOKEN` | `local` (default), `http`, `s3` | e.g. `eu-central` |
@@ -47,6 +47,8 @@ The Ansible inventory (`--inventory`) is either a static YAML file per environme
 The preview is rendered in memory. **Create files** never overwrites an existing file unless you tick it, and `.gitignore` is merged, not replaced. **Download as zip** produces the same files without touching the repo. Missing tools are only listed with install commands; groundwork never runs a package manager.
 
 The Ansible vault option (`--vault`) writes `vault.yml.example` files only. groundwork never writes secrets.
+
+The **ansible-vault password** choice (`--vault-password-file`) decides how groundwork opens the vault. By default no password file is configured, and you type the password in the console ([Variables → Secrets → Unlock](variables.md#typing-the-vault-password)), which keeps it in memory only. Choose **Password file** (or pass `--vault-password-file ~/.vault-pass`) to set `vault_password_file` on the Ansible project in `groundwork.yaml`. The path is relative to `ansible/`, under `~/` or absolute. groundwork doesn't create the file: put the password in it, one line, `chmod 600`.
 
 ## Code and checks
 

@@ -215,7 +215,7 @@ func ConfigFor(f *Form) *config.Config {
 	if f.Preset == "onprem" {
 		c.Terraform.Modules = nil
 	}
-	ap := config.AnsibleProject{Path: "ansible", Config: "ansible.cfg"}
+	ap := config.AnsibleProject{Path: "ansible", Config: "ansible.cfg", VaultPasswordFile: f.VaultPasswordFile}
 	if f.Inventory == "static" {
 		ap.Inventories = map[string]string{}
 		for _, e := range f.Envs {

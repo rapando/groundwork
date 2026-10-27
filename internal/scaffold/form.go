@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/rapando/groundwork/internal/config"
 )
 
 // Form is the setup form from the Scaffold screen.
@@ -21,12 +23,16 @@ type Form struct {
 	Inventory  string   `json:"inventory"`   // terraform | static
 	Roles      []string `json:"roles"`
 	Vault      bool     `json:"vault"`
-	Checks     []string `json:"checks"` // config check names (fmt, validate, tflint, ...)
-	PreCommit  bool     `json:"pre_commit"`
-	CI         bool     `json:"ci"`
+	// VaultPasswordFile is where ansible-vault's password lives ("" = none:
+	// it is typed in the console and kept in memory)
+	VaultPasswordFile string   `json:"vault_password_file"`
+	Checks            []string `json:"checks"` // config check names (fmt, validate, tflint, ...)
+	PreCommit         bool     `json:"pre_commit"`
+	CI                bool     `json:"ci"`
 }
 
-var Presets = []string{"aws-envs", "gcp-envs", "vultr", "digitalocean", "hetzner", "linode", "docker", "onprem"}
+// Presets in the order they are offered; the first is the default.
+var Presets = []string{"vultr", "aws-envs", "gcp-envs", "digitalocean", "hetzner", "linode", "docker", "onprem"}
 
 type FieldError struct {
 	Field   string `json:"field"`
@@ -49,7 +55,7 @@ var (
 // Normalize fills defaults; call before Validate.
 func (f *Form) Normalize() {
 	if f.Preset == "" {
-		f.Preset = "aws-envs"
+		f.Preset = Presets[0]
 	}
 	if f.Layout == "" {
 		f.Layout = "dirs"
@@ -148,6 +154,11 @@ func (f *Form) Validate() []FieldError {
 		if !roleRe.MatchString(r) {
 			add("roles", "%q: use lowercase letters, digits and underscores", r)
 		}
+	}
+	if msg := config.CheckVaultPath(f.VaultPasswordFile); msg != "" {
+		add("vault_password_file", "%s", msg)
+	} else if strings.ContainsAny(f.VaultPasswordFile, "\r\n") || strings.TrimSpace(f.VaultPasswordFile) != f.VaultPasswordFile {
+		add("vault_password_file", "enter a path such as ~/.vault-pass")
 	}
 	for _, c := range f.Checks {
 		if !in(c, []string{"fmt", "validate", "tflint", "checkov", "ansible-lint", "yamllint"}) {

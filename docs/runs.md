@@ -1,6 +1,6 @@
 # Runs
 
-A **run** is one job against one target: a Terraform root and environment, or an Ansible project and environment ([Ansible jobs](ansible.md#jobs)). Start a Terraform plan from the Overview (the **Plan** button). Nothing changes real infrastructure without an approval.
+A **run** is one job against one target: a Terraform root and environment, or an Ansible project and environment ([Ansible jobs](ansible.md#jobs)). Start a Terraform plan from the Overview (the **Plan** button), or a [destroy](#destroy) (**Destroy…**). Nothing changes real infrastructure without an approval.
 
 ```
 init → [workspace] → validate → plan → summary → approve → apply
@@ -46,6 +46,17 @@ The red error banner becomes a card that explains the failure:
 - Environments that require approval (`prod`-like names by default, or `approval: required`) need the environment name typed.
 - A consumed plan file is deleted after the apply, successful or not: a partial apply leaves it stale, so re-plan to continue. **Re-plan** discards a waiting plan and starts a new one for the same target.
 - A plan waiting for approval survives a restart.
+
+## Destroy
+
+**Destroy…** on an environment's card on the Overview tears down everything Terraform manages there. It is a plan like any other, never a direct `terraform destroy`:
+
+1. **Destroy…** asks on the page first ("Plan the destruction of everything in dev?"). Confirming starts a run with `terraform plan -destroy`. Nothing is destroyed yet.
+2. The review page says it's a **destroy plan** and lists every resource to be removed, with the usual danger rules: data-bearing resources need the acknowledgement box.
+3. Approving always needs the environment's name typed, whatever the `approval` setting, dev included.
+4. The approved plan is applied as saved (`terraform apply <plan>`), with the same freshness checks. The run, its notifications and history read **terraform destroy**.
+
+**Re-plan** of a destroy plan plans a destroy again.
 
 ### Danger rules
 

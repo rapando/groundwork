@@ -98,11 +98,13 @@
   match:
     any:
       - log: 'Attempting to decrypt but no vault secrets found'
-  title: No vault password configured
+  title: Vault is locked
   explain: >
-    The playbook uses vault-encrypted values but no vault password was given. Set vault_password_file on the project in groundwork.yaml.
+    The playbook uses vault-encrypted values but no vault password was given. Type the password on Variables → Secrets (groundwork keeps it in memory until you lock the vault or the service stops), or set vault_password_file on the project in groundwork.yaml.
   steps:
-    - title: Set vault_password_file
+    - title: Unlock the vault
+      action: { kind: open, label: Unlock, href: '/variables?tab=secrets&unlock=1' }
+    - title: Or set vault_password_file
       action: { kind: open, label: Open groundwork.yaml, href: '/code/groundwork.yaml' }
   resolved_by: [ans.check, ans.playbook]
   resolve: success

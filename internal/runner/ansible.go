@@ -188,7 +188,7 @@ func (r *Runner) ansExec(j *job, stage, phase string, argv []string) (execResult
 			mu.Unlock()
 		}
 	}
-	res, err := r.execute(j, execOpts{stage: stage, argv: argv, dir: r.abs(j.target.Project), env: env, events: onEvent})
+	res, err := r.execute(j, execOpts{stage: stage, argv: argv, dir: r.abs(j.target.Project), env: env, events: onEvent, vault: true})
 	mu.Lock()
 	defer mu.Unlock()
 	return res, stats, err
@@ -279,7 +279,7 @@ func (r *Runner) ansPrepare(j *job, stages []string) bool {
 func (r *Runner) ansSyntax(j *job) error {
 	return r.stage(j, "syntax", func() error {
 		res, err := r.execute(j, execOpts{stage: "syntax", argv: ansible.SyntaxArgs(j.target.playbookOpts(false)), dir: r.abs(j.target.Project),
-			env: []string{"ANSIBLE_HOME=" + filepath.Join(r.Root, ".groundwork", "ansible-home"), "ANSIBLE_NOCOLOR=1"}})
+			env: []string{"ANSIBLE_HOME=" + filepath.Join(r.Root, ".groundwork", "ansible-home"), "ANSIBLE_NOCOLOR=1"}, vault: true})
 		if err != nil {
 			return err
 		}

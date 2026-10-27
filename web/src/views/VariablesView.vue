@@ -129,7 +129,7 @@ async function revealSecret(s: SecretItem) {
 }
 
 const STATE: Record<string, [string, string]> = {
-  'can-decrypt': ['st-ok', 'can decrypt'], 'wrong-password': ['st-fail', 'wrong password'], 'no-password': ['st-warn', 'no password'],
+  'can-decrypt': ['st-ok', 'can decrypt'], 'wrong-password': ['st-fail', 'wrong password'], 'no-password': ['st-warn', 'no password'], locked: ['st-warn', 'locked'],
   'tool-missing': ['st-warn', 'tool missing'], 'cannot-decrypt': ['st-fail', "can't decrypt"], 'names-only': ['st-idle', 'name only'], unchecked: ['st-idle', 'not checked'],
 }
 const secrets = computed(() => (sec.value?.secrets ?? []).filter((s) => match(s.name) || match(s.file ?? '')))
@@ -229,6 +229,54 @@ async function submitNew() {
   } catch (e) { nv.error = conflictMsg(e) } finally { nv.busy = false }
 }
 
+// ---- typed vault passwords: unlock and lock ----
+// The password is sent once to the service, which keeps it in memory; it
+// lives in this ref only while the dialog is open.
+const typedIds = computed(() => vaultProjects.value.flatMap((p) => p.ids.filter((i) => i.prompt).map((i) => ({ project: p.path, ...i }))))
+const ul = reactive({ open: false, project: '', vaultId: '', pw: '', busy: false, error: '' })
+const ulChoices = computed(() => typedIds.value.filter((i) => !i.unlocked))
+function openUnlock(project?: string, vaultId?: string) {
+  const first = ulChoices.value.find((i) => (!project || i.project === project) && (!vaultId || i.label === vaultId)) ?? ulChoices.value[0]
+  if (!first) return
+  Object.assign(ul, { open: true, project: first.project, vaultId: first.label, pw: '', error: '' })
+}
+const closeUnlock = () => Object.assign(ul, { open: false, pw: '', error: '' })
+function pickUnlock(v: string) {
+  const [project, vaultId] = JSON.parse(v) as [string, string]
+  Object.assign(ul, { project, vaultId })
+}
+async function submitUnlock() {
+  ul.busy = true; ul.error = ''
+  try {
+    const r = await api<{ checked: boolean }>('/secrets/vault/unlock', { body: { project: ul.project, vault_id: ul.vaultId === 'default' ? '' : ul.vaultId, password: ul.pw } })
+    closeUnlock()
+    await afterVaultWrite(r.checked
+      ? 'Unlocked. groundwork keeps the password in memory, never on disk, until you lock the vault or the service stops.'
+      : 'Nothing is encrypted with this vault ID yet, so the password couldn\'t be checked. New secrets will be encrypted with it.')
+  } catch (e) { ul.error = msg(e) } finally { ul.busy = false }
+}
+async function lockVault(project: string, vaultId: string) {
+  try {
+    await api('/secrets/vault/lock', { body: { project, vault_id: vaultId === 'default' ? '' : vaultId } })
+    await afterVaultWrite('Locked. groundwork forgot the password.')
+  } catch (e) { revealErr.value = msg(e) }
+}
+// the identity a locked secret waits for
+function unlockFor(s: SecretItem) {
+  const f = s.file ?? ''
+  const mine = ulChoices.value.filter((i) => i.project === '.' || f === i.project || f.startsWith(i.project + '/'))
+    .sort((a, b) => b.project.length - a.project.length) // the innermost project first
+  const p = mine.find((i) => i.label === (s.vault_id || 'default')) ?? mine[0]
+  openUnlock(p?.project, p?.label)
+}
+// ?unlock=1 (from a failed run's fix) opens the dialog once the vault IDs are known
+watch(sec, () => {
+  if (route.query.unlock && ulChoices.value.length) {
+    router.replace({ query: { ...route.query, unlock: undefined } })
+    openUnlock()
+  }
+})
+
 const rk = reactive({ open: false, project: '', vaultId: '', pw: '', pw2: '', update: true, plan: null as RekeyPlan | null, loading: false, busy: false, error: '' })
 const rkIds = computed(() => vaultProjects.value.find((p) => p.path === rk.project)?.ids ?? [])
 const rkBlocked = computed(() => rk.plan?.items.filter((i) => i.problem) ?? [])
@@ -255,15 +303,17 @@ function pickRekeyProject(path: string) {
 async function applyRekey() {
   rk.busy = true; rk.error = ''
   try {
-    const r = await api<{ files: string[]; values: number; password_file_updated: boolean }>('/secrets/vault/rekey', {
+    const r = await api<{ files: string[]; values: number; password_file_updated: boolean; typed: boolean }>('/secrets/vault/rekey', {
       body: { project: rk.project, vault_id: rk.vaultId, password: rk.pw, update_password_file: rk.update, apply: true },
     })
-    const where = r.password_file_updated ? `The new password is in ${rk.plan?.password_file}.` : 'Put the new password where ansible reads it before the next run.'
+    const where = r.password_file_updated ? `The new password is in ${rk.plan?.password_file}.`
+      : r.typed ? 'The console now uses the new password; anyone else who types it needs the new one.'
+        : 'Put the new password where ansible reads it before the next run.'
     closeRekey()
     await afterVaultWrite(`Re-encrypted ${r.values} value${r.values === 1 ? '' : 's'} in ${r.files.length} file${r.files.length === 1 ? '' : 's'}. ${where} Older commits still open with the old password.`)
   } catch (e) { rk.error = conflictMsg(e) } finally { rk.busy = false }
 }
-onBeforeUnmount(() => { closeVaultEdit(); closeNew(); closeRekey() })
+onBeforeUnmount(() => { closeVaultEdit(); closeNew(); closeRekey(); closeUnlock() })
 </script>
 
 <template>
@@ -366,6 +416,12 @@ onBeforeUnmount(() => { closeVaultEdit(); closeNew(); closeRekey() })
             </span>
           </div>
           <template v-if="tab === 'secrets'">
+            <div v-for="i in typedIds" :key="i.project + i.label" class="vlock" :class="{ on: i.unlocked }">
+              <span class="small">{{ i.unlocked ? 'Vault unlocked' : 'Vault locked' }}<template v-if="vaultProjects.length > 1"> · <span class="mono">{{ i.project }}</span></template><template v-if="i.label !== 'default'"> · vault ID <span class="mono">{{ i.label }}</span></template></span>
+              <span class="small muted">{{ i.unlocked ? 'the password is in memory until you lock it or the service stops' : 'no password file: type the password to use the vault in the console and in runs' }}</span>
+              <button v-if="i.unlocked" class="btn xs" type="button" @click="lockVault(i.project, i.label)">Lock</button>
+              <button v-else class="btn xs" type="button" @click="openUnlock(i.project, i.label)">Unlock…</button>
+            </div>
             <p v-if="secLoading && !sec" class="pad muted">Checking which secrets can be decrypted…</p>
             <div v-for="s in secrets" :key="s.id" class="srow">
               <span class="mono">{{ s.name }}</span>
@@ -374,6 +430,7 @@ onBeforeUnmount(() => { closeVaultEdit(); closeNew(); closeRekey() })
               <span class="act">
                 <button v-if="s.revealable && reveal?.key !== s.id" class="btn xs" type="button" @click="revealSecret(s)">Reveal</button>
                 <button v-else-if="reveal?.key === s.id" class="btn xs" type="button" @click="reveal = null">Hide</button>
+                <button v-else-if="s.state === 'locked'" class="btn xs" type="button" @click="unlockFor(s)">Unlock…</button>
                 <span v-else class="small muted">{{ s.message }}</span>
                 <button v-if="s.revealable && isVault(s)" class="btn xs" type="button" @click="openVaultEdit(s)">Edit</button>
               </span>
@@ -519,12 +576,33 @@ onBeforeUnmount(() => { closeVaultEdit(); closeNew(); closeRekey() })
           </label>
           <p v-if="rk.pw2 && rk.pw !== rk.pw2" class="err small">The passwords don't match.</p>
           <label v-if="rk.plan.password_file" class="chk2"><input v-model="rk.update" type="checkbox" />Write the new password to <span class="mono">{{ rk.plan.password_file }}</span></label>
+          <p v-else-if="rk.plan.typed" class="small muted">The console switches to the new password. Anyone else who types it needs the new one.</p>
           <p v-else class="small warn">groundwork can't update the password ({{ rk.plan.no_update }}). Put the new one where ansible reads it right after.</p>
         </template>
         <p v-if="rk.error" class="err" role="alert">{{ rk.error }}</p>
         <div class="dact">
           <button class="btn" type="button" @click="closeRekey">Cancel</button>
           <button class="btn primary" type="submit" :disabled="rk.busy || !rkReady">{{ rk.busy ? 'Re-encrypting…' : 'Rekey' }}</button>
+        </div>
+      </form>
+    </Modal>
+
+    <Modal v-if="ul.open" labelledby="ul-title" @close="closeUnlock">
+      <form class="card dlg" @submit.prevent="submitUnlock">
+        <h2 id="ul-title">Unlock ansible-vault</h2>
+        <p class="small muted">groundwork checks the password against a value it encrypts, then keeps it in memory, never on disk, until you lock the vault or the service stops. Runs, reveals and edits use it.</p>
+        <label v-if="ulChoices.length > 1" class="field">Vault
+          <select class="inp" :value="JSON.stringify([ul.project, ul.vaultId])" @change="pickUnlock(($event.target as HTMLSelectElement).value)">
+            <option v-for="i in ulChoices" :key="i.project + i.label" :value="JSON.stringify([i.project, i.label])">{{ i.project }} · {{ i.label }}</option>
+          </select>
+        </label>
+        <label class="field">Vault password
+          <input v-model="ul.pw" class="inp" type="password" autocomplete="off" spellcheck="false" autofocus />
+        </label>
+        <p v-if="ul.error" class="err" role="alert">{{ ul.error }}</p>
+        <div class="dact">
+          <button class="btn" type="button" @click="closeUnlock">Cancel</button>
+          <button class="btn primary" type="submit" :disabled="ul.busy || !ul.pw">{{ ul.busy ? 'Checking…' : 'Unlock' }}</button>
         </div>
       </form>
     </Modal>
@@ -600,6 +678,9 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .finding { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 18px; border-top: 1px solid var(--fail-line); background: var(--fail-bg); }
 .finding a { color: var(--text); text-decoration: none; }
 .fmsg { color: var(--text-soft); flex: 1 1 240px; }
+.vlock { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 10px 18px; border-top: 1px solid var(--warn-line); background: color-mix(in srgb, var(--warn) 6%, transparent); }
+.vlock.on { border-top-color: var(--bg-hover); background: transparent; }
+.vlock .btn { margin-left: auto; }
 .audit { display: flex; flex-direction: column; gap: 4px; padding: 12px 18px; border-top: 1px solid var(--line); }
 .detail { flex: 1 1 300px; max-width: 100%; box-sizing: border-box; border-left: 1px solid var(--line); padding: 20px; display: flex; flex-direction: column; gap: 18px; background: var(--bg-sunken); overflow: auto; }
 .col { display: flex; flex-direction: column; gap: 6px; }

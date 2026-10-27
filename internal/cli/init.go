@@ -19,9 +19,9 @@ import (
 )
 
 type initFlags struct {
-	preset, project, backend, bucket, region, gcpProject, s3Endpoint, layout, inventory string
-	envs, roles, checks                                                                 []string
-	vault, noPreCommit, noCI, detect, dryRun, yes, gitCommit                            bool
+	preset, project, backend, bucket, region, gcpProject, s3Endpoint, layout, inventory, vaultPasswordFile string
+	envs, roles, checks                                                                                    []string
+	vault, noPreCommit, noCI, detect, dryRun, yes, gitCommit                                               bool
 }
 
 func newInit() *cobra.Command {
@@ -66,6 +66,7 @@ Nothing is written until you confirm (or pass --yes); --dry-run writes nothing.`
 	fl.StringSliceVar(&f.roles, "roles", []string{"common"}, "starter Ansible roles")
 	fl.StringSliceVar(&f.checks, "checks", []string{"fmt", "validate", "tflint", "ansible-lint", "yamllint"}, "checks to configure")
 	fl.BoolVar(&f.vault, "vault", false, "add ansible-vault example files")
+	fl.StringVar(&f.vaultPasswordFile, "vault-password-file", "", "ansible-vault password file for groundwork.yaml, e.g. ~/.vault-pass (default: none, type the password in the console)")
 	fl.BoolVar(&f.noPreCommit, "no-pre-commit", false, "skip .pre-commit-config.yaml")
 	fl.BoolVar(&f.noCI, "no-ci", false, "skip the GitHub Actions workflow")
 	fl.BoolVar(&f.gitCommit, "git-commit", false, "commit the scaffolded files")
@@ -92,7 +93,7 @@ func confirm(out io.Writer, in *bufio.Reader, q string) bool {
 func runScaffold(out io.Writer, in *bufio.Reader, root string, f *initFlags) error {
 	form := scaffold.Form{
 		Preset: f.preset, Project: f.project, Backend: f.backend, Bucket: f.bucket, Region: f.region,
-		GCPProject: f.gcpProject, S3Endpoint: f.s3Endpoint, Envs: f.envs, Layout: f.layout, Inventory: f.inventory, Roles: f.roles, Vault: f.vault,
+		GCPProject: f.gcpProject, S3Endpoint: f.s3Endpoint, Envs: f.envs, Layout: f.layout, Inventory: f.inventory, Roles: f.roles, Vault: f.vault, VaultPasswordFile: f.vaultPasswordFile,
 		Checks: f.checks, PreCommit: !f.noPreCommit, CI: !f.noCI,
 	}
 	if form.Project == "" {

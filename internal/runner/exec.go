@@ -12,6 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/rapando/groundwork/internal/ansible"
+	"github.com/rapando/groundwork/internal/proc"
 	"github.com/rapando/groundwork/internal/safego"
 	"github.com/rapando/groundwork/internal/store"
 	"github.com/rapando/groundwork/internal/terraform"
@@ -27,6 +29,7 @@ type execOpts struct {
 	env      []string     // extra KEY=VALUE
 	dir      string       // working directory (default: repo root)
 	events   func([]byte) // receives lines written to file descriptor 3 (ansible callback)
+	vault    bool         // an ansible command: give it the vault passwords typed in the console
 }
 
 type execResult struct {
@@ -59,7 +62,24 @@ func (r *Runner) execute(j *job, o execOpts) (execResult, error) {
 		cmd.ExtraFiles = []*os.File{evW} // fd 3 in the child
 		defer evR.Close()
 	}
-	cmd.Env = append(append(os.Environ(), tfEnv...), o.env...)
+	env := o.env
+	if o.vault && r.TypedVault != nil {
+		v := r.TypedVault(r.abs(j.target.Project), 3+len(cmd.ExtraFiles))
+		for _, pw := range v.Passwords {
+			if j.red != nil {
+				j.red.AddSecret(pw)
+			}
+		}
+		pipes, err := proc.SecretPipes(v.Passwords)
+		if err != nil {
+			return execResult{}, err
+		}
+		defer proc.ClosePipes(pipes)
+		cmd.ExtraFiles = append(cmd.ExtraFiles, pipes...)
+		cmd.Args = append([]string{cmd.Args[0]}, ansible.WithArgs(o.argv[1:], v.Args)...)
+		env = append(append([]string{}, env...), v.Env...)
+	}
+	cmd.Env = append(append(os.Environ(), tfEnv...), env...)
 	setProcAttr(cmd)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

@@ -257,6 +257,7 @@ func (a *API) rekeyVault(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var oldPW []byte
+	var written []vars.Rekeyed
 	if req.UpdatePasswordFile {
 		if oldPW, err = os.ReadFile(plan.PasswordFile); err == nil {
 			err = writePrivate(plan.PasswordFile, []byte(req.Password+"\n"))
@@ -266,7 +267,6 @@ func (a *API) rekeyVault(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	var written []vars.Rekeyed
 	for _, f := range next {
 		if _, err := files.Write(a.Root, f.File, f.Next, files.SHA(f.Old), false); err != nil {
 			// put back what was written, so the old password still opens everything
@@ -285,8 +285,75 @@ func (a *API) rekeyVault(w http.ResponseWriter, r *http.Request) {
 	for i, f := range written {
 		changed[i] = f.File
 	}
+	if plan.Typed {
+		s.Keyring.Set(dir, req.VaultID, req.Password) // every file now opens with the new password only
+	}
 	a.Checks.RunNow(changed)
-	writeJSON(w, 200, map[string]any{"files": changed, "values": len(plan.Items), "password_file_updated": req.UpdatePasswordFile})
+	writeJSON(w, 200, map[string]any{"files": changed, "values": len(plan.Items), "password_file_updated": req.UpdatePasswordFile, "typed": plan.Typed})
+}
+
+type vaultUnlockReq struct {
+	Project  string `json:"project"`
+	VaultID  string `json:"vault_id"`
+	Password string `json:"password"`
+}
+
+// ansibleProjectDir resolves a configured Ansible project, or answers 404.
+func (a *API) ansibleProjectDir(w http.ResponseWriter, project string) (string, bool) {
+	cfg, _ := a.config()
+	if cfg == nil || !slices.ContainsFunc(cfg.Ansible.Projects, func(p config.AnsibleProject) bool { return path.Clean(p.Path) == path.Clean(project) }) {
+		writeError(w, 404, "not_found", "no Ansible project "+project, nil)
+		return "", false
+	}
+	return filepath.Join(a.Root, filepath.FromSlash(path.Clean(project))), true
+}
+
+// unlockVault keeps a typed vault password in memory (never on disk) once it
+// opens a value of that vault ID, until it is locked or the service stops.
+func (a *API) unlockVault(w http.ResponseWriter, r *http.Request) {
+	var req vaultUnlockReq
+	if !decode(w, r, &req) || !validVaultID(w, req.VaultID) {
+		return
+	}
+	noStore(w)
+	dir, ok := a.ansibleProjectDir(w, req.Project)
+	if !ok {
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), time.Minute)
+	defer cancel()
+	checked, err := a.secretStore().Unlock(ctx, dir, req.VaultID, req.Password)
+	if errors.Is(err, vars.ErrWrongPassword) {
+		writeError(w, 422, "wrong_password", err.Error(), nil)
+		return
+	}
+	if err != nil {
+		vaultError(w, err)
+		return
+	}
+	name, where := "vault unlocked", path.Clean(req.Project)
+	if req.VaultID != "" && req.VaultID != "default" {
+		name = "vault ID " + req.VaultID + " unlocked"
+	}
+	if where == "." {
+		where = "repository root"
+	}
+	_ = a.Store.RecordReveal("vault-unlock", name, where) // who typed a password, and when, sits with the reveals
+	writeJSON(w, 200, map[string]any{"checked": checked})
+}
+
+// lockVault forgets a typed vault password.
+func (a *API) lockVault(w http.ResponseWriter, r *http.Request) {
+	var req vaultUnlockReq
+	if !decode(w, r, &req) || !validVaultID(w, req.VaultID) {
+		return
+	}
+	dir, ok := a.ansibleProjectDir(w, req.Project)
+	if !ok {
+		return
+	}
+	a.secretStore().Lock(dir, req.VaultID)
+	writeJSON(w, 200, map[string]any{"locked": true})
 }
 
 // writePrivate replaces a file atomically with mode 0600.

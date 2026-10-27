@@ -30,8 +30,13 @@ func ValidateArgs(bin, dir string) []string {
 }
 
 // PlanArgs writes the plan to planFile. -detailed-exitcode: 0 no changes, 1 error, 2 changes.
-func PlanArgs(bin, dir, planFile string, varFiles []string) []string {
+// PlanArgs plans into planFile; destroy plans the removal of everything in
+// the state (`plan -destroy`), applied like any other saved plan.
+func PlanArgs(bin, dir, planFile string, varFiles []string, destroy bool) []string {
 	a := append(chdir(bin, dir), "plan", "-input=false", "-no-color", "-json", "-out="+planFile, "-detailed-exitcode", "-lock-timeout=0s")
+	if destroy {
+		a = append(a, "-destroy")
+	}
 	for _, v := range varFiles {
 		a = append(a, "-var-file="+v)
 	}

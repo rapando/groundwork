@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/rapando/groundwork/internal/proc"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -18,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rapando/groundwork/internal/proc"
 	"gopkg.in/yaml.v3"
 )
 
@@ -50,6 +50,7 @@ type Secrets struct {
 	Projects []VaultProject
 	Environ  func() []string
 	LookPath func(string) (string, error)
+	Keyring  *Keyring // typed vault passwords
 
 	mu    sync.Mutex
 	cache map[string]checkResult // file sha → result
@@ -58,7 +59,7 @@ type Secrets struct {
 type checkResult struct{ state, msg string }
 
 func NewSecrets(root string, projects []VaultProject) *Secrets {
-	return &Secrets{Root: root, Projects: projects, Environ: os.Environ, LookPath: exec.LookPath, cache: map[string]checkResult{}}
+	return &Secrets{Root: root, Projects: projects, Environ: os.Environ, LookPath: exec.LookPath, Keyring: NewKeyring(), cache: map[string]checkResult{}}
 }
 
 // credential env vars: names are shown, values never.
@@ -266,32 +267,14 @@ func (s *Secrets) project(abs string) VaultProject {
 	return best
 }
 
-func (s *Secrets) hasVaultPassword(vp VaultProject) bool {
-	if vp.PasswordFile != "" {
-		return true
-	}
-	for _, kv := range s.Environ() {
-		if strings.HasPrefix(kv, "ANSIBLE_VAULT_PASSWORD_FILE=") || strings.HasPrefix(kv, "ANSIBLE_VAULT_IDENTITY_LIST=") {
-			return true
-		}
-	}
-	if vp.Config != "" {
-		if b, err := os.ReadFile(vp.Config); err == nil {
-			t := string(b)
-			return strings.Contains(t, "vault_password_file") || strings.Contains(t, "vault_identity_list")
-		}
-	}
-	return false
-}
-
 func (s *Secrets) vaultState(ctx context.Context, sec *Secret, abs string, content []byte, check bool, decrypt func() (string, error)) {
 	if _, err := s.LookPath("ansible-vault"); err != nil {
 		sec.State, sec.Message = "tool-missing", "ansible-vault isn't installed"
 		return
 	}
 	vp := s.project(abs)
-	if !s.hasVaultPassword(vp) {
-		sec.State, sec.Message = "no-password", "Set vault_password_file for this Ansible project in groundwork.yaml"
+	if s.locked(vp, sec.VaultID) {
+		sec.State, sec.Message = "locked", "Type the vault password to unlock"
 		return
 	}
 	sec.Revealable = true
@@ -299,7 +282,7 @@ func (s *Secrets) vaultState(ctx context.Context, sec *Secret, abs string, conte
 	if !check {
 		return
 	}
-	r := s.cached(ctx, contentKey("vault", content, vp.PasswordFile), func() checkResult {
+	r := s.cached(ctx, contentKey("vault", content, fmt.Sprintf("%s\x00%d", vp.PasswordFile, s.Keyring.Generation())), func() checkResult {
 		if _, err := decrypt(); err != nil {
 			if strings.Contains(err.Error(), "Decryption failed") || strings.Contains(err.Error(), "no vault secrets") {
 				return checkResult{"wrong-password", "The vault password doesn't open this value"}
@@ -322,7 +305,7 @@ func (s *Secrets) sopsState(ctx context.Context, sec *Secret, abs string, conten
 		return
 	}
 	r := s.cached(ctx, contentKey("sops", content, ""), func() checkResult {
-		if _, err := s.run(ctx, filepath.Dir(abs), nil, nil, "sops", "--decrypt", "--", abs); err != nil {
+		if _, err := s.run(ctx, filepath.Dir(abs), nil, nil, nil, "sops", "--decrypt", "--", abs); err != nil {
 			return checkResult{"cannot-decrypt", err.Error()}
 		}
 		return checkResult{"can-decrypt", ""}
@@ -332,13 +315,14 @@ func (s *Secrets) sopsState(ctx context.Context, sec *Secret, abs string, conten
 }
 
 // run executes a decryption tool. Its stdout is the secret: it's returned and
-// never logged. Errors carry the first line of stderr only.
-func (s *Secrets) run(ctx context.Context, dir string, env []string, stdin []byte, argv ...string) (string, error) {
-	return s.runWith(ctx, dir, append(s.Environ(), env...), stdin, argv...)
+// never logged. Errors carry the first line of stderr only. pws are passed as
+// pipes at /dev/fd/3, /dev/fd/4, …
+func (s *Secrets) run(ctx context.Context, dir string, env []string, stdin []byte, pws []string, argv ...string) (string, error) {
+	return s.runWith(ctx, dir, append(s.Environ(), env...), stdin, pws, argv...)
 }
 
 // runWith is run with the tool's whole environment given.
-func (s *Secrets) runWith(ctx context.Context, dir string, environ []string, stdin []byte, argv ...string) (string, error) {
+func (s *Secrets) runWith(ctx context.Context, dir string, environ []string, stdin []byte, pws []string, argv ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	bin, err := s.LookPath(argv[0])
@@ -349,6 +333,12 @@ func (s *Secrets) runWith(ctx context.Context, dir string, environ []string, std
 	proc.GroupContext(cmd) // a timeout kills the tool and its children, not just the tool
 	cmd.Dir = dir
 	cmd.Env = environ
+	pipes, err := proc.SecretPipes(pws)
+	if err != nil {
+		return "", err
+	}
+	defer proc.ClosePipes(pipes)
+	cmd.ExtraFiles = pipes
 	if stdin != nil {
 		cmd.Stdin = bytes.NewReader(stdin)
 	}
@@ -368,28 +358,31 @@ func (s *Secrets) runWith(ctx context.Context, dir string, environ []string, std
 	return stdout.String(), nil
 }
 
-func (s *Secrets) vaultArgs(vp VaultProject) (env []string, args []string) {
+// vaultArgs is how ansible-vault opens vp's vault: its ansible.cfg, its
+// password file and the typed passwords (as pipes from /dev/fd/3).
+func (s *Secrets) vaultArgs(vp VaultProject) (env, args, pws []string) {
 	if vp.Config != "" {
 		env = append(env, "ANSIBLE_CONFIG="+vp.Config)
 	}
 	if vp.PasswordFile != "" {
 		args = append(args, "--vault-password-file="+vp.PasswordFile)
 	}
-	return env, args
+	t := s.typedFlags(vp, 3)
+	return append(env, t.Env...), append(args, t.Args...), t.Passwords
 }
 
 func (s *Secrets) vaultView(ctx context.Context, abs string) (string, error) {
 	vp := s.project(abs)
-	env, args := s.vaultArgs(vp)
+	env, args, pws := s.vaultArgs(vp)
 	argv := append(append([]string{"ansible-vault", "view"}, args...), "--", abs)
-	return s.run(ctx, vp.Dir, append(env, "PAGER=cat"), nil, argv...)
+	return s.run(ctx, vp.Dir, append(env, "PAGER=cat"), nil, pws, argv...)
 }
 
 func (s *Secrets) vaultDecrypt(ctx context.Context, abs, ciphertext string) (string, error) {
 	vp := s.project(abs)
-	env, args := s.vaultArgs(vp)
+	env, args, pws := s.vaultArgs(vp)
 	argv := append(append([]string{"ansible-vault", "decrypt"}, args...), "--output=-")
-	return s.run(ctx, vp.Dir, env, []byte(ciphertext), argv...)
+	return s.run(ctx, vp.Dir, env, []byte(ciphertext), pws, argv...)
 }
 
 // ErrNotRevealable: the secret can't be revealed (unknown, env, or locked).
@@ -428,7 +421,7 @@ func (s *Secrets) Reveal(ctx context.Context, id string) (Secret, string, error)
 		}
 	case "sops":
 		path, _ := json.Marshal([]string{sec.Name})
-		v, err := s.run(ctx, filepath.Dir(abs), nil, nil, "sops", "--decrypt", "--extract", string(path), "--", abs)
+		v, err := s.run(ctx, filepath.Dir(abs), nil, nil, nil, "sops", "--decrypt", "--extract", string(path), "--", abs)
 		return *sec, strings.TrimRight(v, "\n"), err
 	}
 	return *sec, "", ErrNotRevealable

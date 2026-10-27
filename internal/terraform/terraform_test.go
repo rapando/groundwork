@@ -180,7 +180,7 @@ func TestSummaryContainsNoValues(t *testing.T) {
 }
 
 func TestArgvIsNeverAShellString(t *testing.T) {
-	a := PlanArgs("terraform", "/r/a b", "/p/plan", []string{"/r/env/dev.tfvars; rm -rf /"})
+	a := PlanArgs("terraform", "/r/a b", "/p/plan", []string{"/r/env/dev.tfvars; rm -rf /"}, false)
 	want := []string{"terraform", "-chdir=/r/a b", "plan", "-input=false", "-no-color", "-json", "-out=/p/plan", "-detailed-exitcode", "-lock-timeout=0s", "-var-file=/r/env/dev.tfvars; rm -rf /"}
 	if strings.Join(a, "\x00") != strings.Join(want, "\x00") {
 		t.Fatalf("%q", a)

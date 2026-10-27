@@ -37,13 +37,13 @@ The Secrets tab lists encrypted values and credential variables. Nothing is decr
 | ansible-vault, inline | `key: !vault \|` values | `ansible-vault decrypt` of that value |
 | Environment | a fixed list of credential variables (`AWS_ACCESS_KEY_ID`, `ARM_CLIENT_SECRET`, `GOOGLE_CREDENTIALS`, `HCLOUD_TOKEN`, `VAULT_TOKEN`, …) set in the service's environment | never: names only |
 
-Vault commands run in the Ansible project with its `ansible.cfg`. Set the password with `vault_password_file:` on the project in `groundwork.yaml` (relative to the project, `~/…` or absolute; never with `..`); `ANSIBLE_VAULT_PASSWORD_FILE` or `vault_password_file` in `ansible.cfg` also work. Ansible *executes* a password file that has the execute bit set, and `groundwork.yaml` is part of the repository, so groundwork refuses an executable file unless the project sets `ansible.allow_vault_script: true`. States: **can decrypt**, **wrong password**, **no password** (none configured), **tool missing**.
+Vault commands run in the Ansible project with its `ansible.cfg`. Set the password with `vault_password_file:` on the project in `groundwork.yaml` (relative to the project, `~/…` or absolute; never with `..`); `ANSIBLE_VAULT_PASSWORD_FILE` or `vault_password_file` in `ansible.cfg` also work. Ansible *executes* a password file that has the execute bit set, and `groundwork.yaml` is part of the repository, so groundwork refuses an executable file unless the project sets `ansible.allow_vault_script: true`. With no password file, you [type the password in the console](#typing-the-vault-password) instead. States: **can decrypt**, **wrong password**, **locked** (the password hasn't been typed yet), **tool missing**.
 
 **Reveal** decrypts one value on request. The value is sent in that one response (`Cache-Control: no-store`), shown for 30 seconds, and never written to groundwork's database, logs or cache. Each reveal is recorded in an audit list with the secret's name, file and time, never its value. Sensitive Terraform variables can be revealed from the detail panel the same way.
 
 ### Managing ansible-vault
 
-When an Ansible project has a vault password, the Secrets tab manages its vault data. Plaintext only passes through `ansible-vault`'s standard input and output: it is never written to disk, logged or stored.
+When an Ansible project has a vault password (a password file, or one you typed), the Secrets tab manages its vault data. Plaintext only passes through `ansible-vault`'s standard input and output: it is never written to disk, logged or stored.
 
 | Action | What it does |
 |---|---|
@@ -58,6 +58,19 @@ A file encrypted as a whole also shows an **Edit decrypted** button on the Code 
 **Rekey and the password file.** Rekey can write the new password to the password file for that vault ID. It writes only a regular, non-executable file of one line, since the path comes from the repository's `groundwork.yaml` or `ansible.cfg`. Every file is written, or, if one fails, the files already written and the password file are put back. Older commits still open with the old password.
 
 **Vault IDs.** With `vault_identity_list` in `ansible.cfg` (or `ANSIBLE_VAULT_IDENTITY_LIST`), each value shows the vault ID in its header. Edits and rekeys keep a value's ID, and new secrets ask which ID to use when there is more than one. The project's `vault_password_file` counts as the `default` ID.
+
+### Typing the vault password
+
+A password file isn't required. When an Ansible project has no `vault_password_file` (in `groundwork.yaml`, `ANSIBLE_VAULT_PASSWORD_FILE` or `ansible.cfg`), the Secrets tab shows **Vault locked** with an **Unlock…** button, and its vault values show **locked**. The same goes for a `label@prompt` entry in `vault_identity_list`, one per vault ID.
+
+- **Unlock** checks the password against a value encrypted with that vault ID and refuses a wrong one. If nothing is encrypted with it yet, the password can't be checked, and new secrets are encrypted with it.
+- The service keeps the password **in memory only**, until you click **Lock** or the service stops (a restart or an upgrade locks every vault). It is never written to disk, the database or a log, and never put in an argument or environment variable: ansible reads it from a pipe (`--vault-password-file=/dev/fd/N`).
+- While unlocked, everything that opens the vault uses it: reveals and edits, new secrets, the inventory, and dry runs, playbook runs and ad-hoc commands. If a task prints the password, the run log masks it.
+- A run of a playbook that needs the vault while it is locked fails with **Vault is locked**, whose fix links to the unlock dialog.
+- Each unlock is recorded in the audit list next to the reveals (who unlocked which vault, and when; never the password).
+- **Rekey** of a typed vault ID re-encrypts everything with the new password and the console switches to it. Anyone else who uses the vault needs the new one.
+
+`groundwork doctor` warns, instead of failing, about a project that uses ansible-vault without a password file, since the console asks for it. Doctor runs in your shell, so it can't see whether the service has the vault unlocked.
 
 Decrypting a file back to plaintext on disk isn't offered: use Edit, so the secret never sits unencrypted in the working tree.
 

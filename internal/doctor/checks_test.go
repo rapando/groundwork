@@ -159,7 +159,7 @@ func TestDoctorFailures(t *testing.T) {
 	if c := m["ssh-agent"]; c.Status != "warn" || !strings.Contains(c.Detail, "no SSH agent") {
 		t.Errorf("%+v", c)
 	}
-	if c := m["vault:ansible"]; c.Status != "fail" {
+	if c := m["vault:ansible"]; c.Status != "warn" || !strings.Contains(c.Hint, "Variables → Secrets") {
 		t.Errorf("%+v", c)
 	}
 	if c := m["git"]; c.Status != "warn" {

@@ -512,7 +512,12 @@ func (n *Notifier) build(run *store.Run, ev string, sum runner.Summary, cause *s
 func subject(run *store.Run, t runner.Target) string {
 	switch run.Kind {
 	case runner.KindPlan:
-		if run.Stage == "apply" {
+		switch {
+		case t.Destroy && run.Stage == "apply":
+			return fmt.Sprintf("Destroy #%d", run.ID)
+		case t.Destroy:
+			return fmt.Sprintf("Destroy plan #%d", run.ID)
+		case run.Stage == "apply":
 			return fmt.Sprintf("Apply #%d", run.ID)
 		}
 		return fmt.Sprintf("Plan #%d", run.ID)
@@ -552,7 +557,12 @@ func Label(kind, stage string, t runner.Target) string {
 	}
 	switch kind {
 	case runner.KindPlan:
-		if stage == "apply" {
+		switch {
+		case t.Destroy && stage == "apply":
+			return bin + " destroy"
+		case t.Destroy:
+			return bin + " plan -destroy"
+		case stage == "apply":
 			return bin + " apply"
 		}
 		return bin + " plan"

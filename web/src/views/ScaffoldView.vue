@@ -11,10 +11,11 @@ const store = useWorkspace()
 
 // region: what the provider calls a location, with an example; null = no region field
 // storage: S3-compatible object storage the state can live in, with an example endpoint
+// in the order offered; the first is the default
 const providers = [
+  { id: 'vultr', label: 'Vultr', backend: 'local', region: ['Region', 'ams'], storage: ['Vultr Object Storage', 'https://ams1.vultrobjects.com'] },
   { id: 'aws-envs', label: 'AWS', backend: 's3', region: ['Default region', 'eu-west-1'], storage: null },
   { id: 'gcp-envs', label: 'Google Cloud', backend: 'gcs', region: ['Default region', 'europe-west1'], storage: null },
-  { id: 'vultr', label: 'Vultr', backend: 'local', region: ['Region', 'ams'], storage: ['Vultr Object Storage', 'https://ams1.vultrobjects.com'] },
   { id: 'digitalocean', label: 'DigitalOcean', backend: 'local', region: ['Region', 'fra1'], storage: ['DigitalOcean Spaces', 'https://fra1.digitaloceanspaces.com'] },
   { id: 'hetzner', label: 'Hetzner Cloud', backend: 'local', region: ['Network zone', 'eu-central'], storage: ['Hetzner Object Storage', 'https://fsn1.your-objectstorage.com'] },
   { id: 'linode', label: 'Linode (Akamai)', backend: 'local', region: ['Region', 'eu-central'], storage: ['Linode Object Storage', 'https://eu-central-1.linodeobjects.com'] },
@@ -24,12 +25,16 @@ const providers = [
 const provider = computed(() => providers.find((p) => p.id === form.preset) ?? providers[0])
 
 const form = reactive<ScaffoldForm>({
-  preset: 'aws-envs', project: '', backend: 's3', bucket: '', region: '', gcp_project: '', s3_endpoint: '',
+  preset: providers[0].id, project: '', backend: providers[0].backend, bucket: '', region: '', gcp_project: '', s3_endpoint: '',
   envs: ['dev', 'staging', 'prod'], layout: 'dirs', inventory: 'terraform',
-  roles: ['common', 'nginx'], vault: true,
+  roles: ['common', 'nginx'], vault: true, vault_password_file: '',
   checks: ['fmt', 'validate', 'tflint', 'ansible-lint', 'yamllint'], pre_commit: true, ci: true,
 })
 const rolesText = ref('common, nginx')
+// the vault password: typed in the console (no file) or read from a file
+const vaultPw = ref<'typed' | 'file'>('typed')
+const vaultFile = ref('~/.vault-pass')
+watch([vaultPw, vaultFile], ([mode, file]) => { form.vault_password_file = mode === 'file' ? file : '' }, { immediate: true })
 const newEnv = ref('')
 const bucketTouched = ref(false)
 const gitCommit = ref(false)
@@ -268,6 +273,19 @@ No groundwork.yaml in {{ store.ws?.root }} — starting setup</pre>
               <span v-if="err('roles')" class="err">{{ err('roles') }}</span>
             </label>
           </div>
+          <fieldset>
+            <legend class="lbl">ansible-vault password</legend>
+            <div class="grid g240">
+              <label class="opt" :class="{ on: vaultPw === 'typed' }"><input v-model="vaultPw" type="radio" name="vaultpw" value="typed" />Type it in groundwork</label>
+              <label class="opt" :class="{ on: vaultPw === 'file' }"><input v-model="vaultPw" type="radio" name="vaultpw" value="file" />Password file</label>
+            </div>
+            <p v-if="vaultPw === 'typed'" class="small muted vnote">No file is written or configured. Unlock the vault on Variables → Secrets; groundwork keeps the password in memory until you lock it or the service stops.</p>
+            <label v-else class="field vnote">Password file, relative to <span class="mono">ansible/</span>, under <span class="mono">~/</span> or absolute
+              <input v-model="vaultFile" class="inp mono" :class="{ bad: err('vault_password_file') }" type="text" spellcheck="false" autocomplete="off" />
+              <span v-if="err('vault_password_file')" class="err">{{ err('vault_password_file') }}</span>
+              <span class="small muted">Set as <span class="mono">vault_password_file</span> in groundwork.yaml. groundwork doesn't create it: put the password in it, one line, <span class="mono">chmod 600</span>.</span>
+            </label>
+          </fieldset>
           <label class="check"><input v-model="form.vault" type="checkbox" />Add ansible-vault example files (group_vars/&lt;env&gt;/vault.yml.example)</label>
         </section>
 
@@ -324,7 +342,7 @@ No groundwork.yaml in {{ store.ws?.root }} — starting setup</pre>
             <button class="btn primary grow" type="button" :disabled="busy || hasErrors || !preview" @click="create">Create files</button>
             <button class="btn" type="button" :disabled="busy || hasErrors || !preview" @click="download">Download as zip</button>
           </div>
-          <span class="muted small">Same as <span class="mono">groundwork init --preset {{ form.preset }}</span></span>
+          <span class="muted small">Same as <span class="mono">groundwork init --preset {{ form.preset }}<template v-if="form.vault_password_file"> --vault-password-file {{ form.vault_password_file }}</template></span></span>
         </div>
       </aside>
     </template>
@@ -352,6 +370,7 @@ legend { padding: 0; margin-bottom: 10px; }
 .opt.tall input { margin-top: 3px; }
 .stack { display: flex; flex-direction: column; gap: 4px; }
 .small { font-size: 13px; margin: 0; }
+.vnote { margin: 10px 0 0; }
 .check { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .dimmed { opacity: .6; }
 .card.tight { gap: 12px; padding: 18px; }
