@@ -2,8 +2,8 @@
 import { computed } from 'vue'
 import type { PlanChange } from '../api/types'
 
-// One tile per planned change, grouped by module. The left edge is the
-// action; the fill is how far the apply has got with it.
+// One row per planned change, grouped by module. The symbol and left edge
+// are the action; the pill is how far the apply has got with it.
 const props = defineProps<{ changes: PlanChange[]; states: Record<string, { text: string; cls: string }> }>()
 const emit = defineEmits<{ (e: 'open', address: string): void }>()
 
@@ -40,22 +40,18 @@ const pct = (cls: string) => (props.changes.length ? (count(cls) / props.changes
       </span>
     </div>
     <div v-for="g in groups" :key="g.module" class="mod">
-      <span class="ml mono">{{ g.module }}</span>
-      <div class="tiles">
-        <button v-for="c in g.list" :key="c.address" type="button" class="tile" :class="['a-' + c.action, 's-' + (states[c.address]?.cls ?? 'idle')]"
-          :title="`Show the log lines for ${c.address}`" @click="emit('open', c.address)">
-          <span class="ty mono"><span class="sym">{{ SYM[c.action] }}</span> {{ short(c).type }}</span>
-          <span class="nm mono">{{ short(c).name }}</span>
-          <span class="ft">
-            <span class="small muted">{{ NOTE[c.action] ?? c.action }}<template v-if="c.action === 'replace' && c.replace_paths?.length">: {{ c.replace_paths.map((p) => p.join('.')).join(', ') }}</template></span>
-            <span class="pill" :class="'st-' + (states[c.address]?.cls ?? 'idle')">{{ states[c.address]?.text ?? 'planned' }}</span>
-          </span>
-        </button>
-      </div>
+      <div class="mh"><span class="ml mono">{{ g.module }}</span><span class="mono mc">{{ g.list.length }} {{ g.list.length === 1 ? 'resource' : 'resources' }}</span></div>
+      <button v-for="c in g.list" :key="c.address" type="button" class="tile" :class="['a-' + c.action, 's-' + (states[c.address]?.cls ?? 'idle')]"
+        :title="`Show the log lines for ${c.address}`" @click="emit('open', c.address)">
+        <span class="sym mono" aria-hidden="true">{{ SYM[c.action] }}</span>
+        <span class="addr mono"><span class="ty">{{ short(c).type }}</span> <span class="nm">{{ short(c).name }}</span></span>
+        <span class="note">{{ NOTE[c.action] ?? c.action }}<template v-if="c.action === 'replace' && c.replace_paths?.length">: {{ c.replace_paths.map((p) => p.join('.')).join(', ') }}</template></span>
+        <span class="pill" :class="'st-' + (states[c.address]?.cls ?? 'idle')">{{ states[c.address]?.text ?? 'planned' }}</span>
+      </button>
     </div>
     <div class="legend small">
       <span><i class="sw a-create" />create</span><span><i class="sw a-update" />update</span><span><i class="sw a-replace" />replace</span><span><i class="sw a-delete" />destroy</span>
-      <span class="muted">Faded tiles haven't started. Select a tile to see its log lines.</span>
+      <span class="muted">Select a resource to see its log lines.</span>
     </div>
   </div>
 </template>
@@ -69,25 +65,23 @@ const pct = (cls: string) => (props.changes.length ? (count(cls) / props.changes
 .bar { flex: 1 1 160px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; display: flex; }
 .bar i { display: block; height: 100%; transition: width .3s; }
 .b-ok { background: var(--ok); } .b-run { background: var(--running); } .b-fail { background: var(--fail); }
-.mod { position: relative; border: 1.5px dashed var(--line-hover); border-radius: 10px; padding: 30px 12px 12px; }
-.ml { position: absolute; top: 8px; left: 12px; font-size: 13px; color: var(--text-label); }
-.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
-.tile { all: unset; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 9px 11px; border: 1px solid var(--line-strong); border-left: 4px solid var(--line-hover); border-radius: 8px; background: var(--bg-card); cursor: pointer; transition: opacity .2s, background .2s; }
-.tile:hover { border-color: var(--line-hover); }
-.tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.ty { font-size: 12px; color: var(--text-faint); overflow-wrap: anywhere; }
-.nm { font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
-.ft { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px; }
-.a-create { border-left-color: var(--ok); } .a-update { border-left-color: var(--running); }
-.a-replace { border-left-color: var(--warn); } .a-delete { border-left-color: var(--fail); } .a-read { border-left-color: var(--text-label); }
-.a-create .sym { color: var(--ok); } .a-update .sym { color: var(--running); } .a-replace .sym { color: var(--warn); } .a-delete .sym { color: var(--fail); }
-.sym { font-weight: 700; }
-.s-idle { opacity: .66; border-style: dashed; border-left-style: solid; }
-.s-run { box-shadow: 0 0 0 2px var(--running-line); animation: pulse 1.6s ease-in-out infinite; }
-.s-fail { background: var(--fail-bg); border-color: var(--fail-line); }
-.s-ok { background: color-mix(in srgb, var(--ok) 5%, var(--bg-card)); }
-@keyframes pulse { 50% { box-shadow: 0 0 0 5px var(--running-line); } }
-@media (prefers-reduced-motion: reduce) { .s-run { animation: none; } }
+.mod { border: 1px solid var(--line); border-radius: 10px; background: var(--bg-card); overflow: hidden; }
+.mh { display: flex; justify-content: space-between; gap: 12px; padding: 9px 16px; background: var(--bg-raised); border-bottom: 1px solid var(--line); }
+.ml { font-size: 13px; color: var(--text-label); }
+.mc { font-size: 13px; color: var(--text-faint); }
+.tile { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 16px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; width: 100%; padding: 10px 16px 10px 13px; border-left: 3px solid transparent; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .2s; }
+.tile:last-child { border-bottom: 0; }
+.tile:hover { background: var(--bg-hover); }
+.tile:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.addr { font-size: 13.5px; min-width: 0; overflow-wrap: anywhere; }
+.ty { color: var(--text-faint); }
+.nm { font-weight: 700; }
+.note { font-size: 13px; color: var(--text-muted); text-align: right; }
+.sym { font-weight: 700; text-align: center; }
+.a-create .sym { color: var(--ok); } .a-update .sym { color: var(--running); } .a-replace .sym { color: var(--warn); } .a-delete .sym { color: var(--fail); } .a-read .sym { color: var(--text-label); }
+.s-run { border-left-color: var(--running); background: var(--running-bg); }
+.s-fail { border-left-color: var(--fail); background: var(--fail-bg); }
+.s-ok { border-left-color: var(--ok); }
 .pill { font: 600 12px var(--font-mono); padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
 .st-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); } .st-fail { color: var(--fail); background: color-mix(in srgb, var(--fail) 10%, transparent); }
 .st-run { color: var(--running); background: color-mix(in srgb, var(--running) 12%, transparent); } .st-idle { color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 10%, transparent); }
@@ -95,4 +89,5 @@ const pct = (cls: string) => (props.changes.length ? (count(cls) / props.changes
 .legend > span { display: inline-flex; align-items: center; gap: 6px; }
 .sw { width: 10px; height: 10px; border-radius: 2px; }
 .sw.a-create { background: var(--ok); } .sw.a-update { background: var(--running); } .sw.a-replace { background: var(--warn); } .sw.a-delete { background: var(--fail); }
+@media (max-width: 640px) { .tile { grid-template-columns: 16px minmax(0, 1fr) auto; } .note { display: none; } }
 </style>

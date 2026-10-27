@@ -263,6 +263,23 @@ async function cancelRun() {
   confirming.value = false
   try { await runs.cancel(run.value.id) } catch (e) { flash(e instanceof Error ? e.message : String(e)) }
 }
+// the approval banner says in words what approving does
+const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
+const approvalLine = computed(() => {
+  const p = plan.value
+  if (!p) return ''
+  const parts: string[] = []
+  if (p.create) parts.push(`creates ${plural(p.create, 'resource')}`)
+  if (p.update) parts.push(`changes ${p.update}`)
+  if (p.replace) parts.push(`replaces ${p.replace}`)
+  if (p.delete) parts.push(`destroys ${p.delete}`)
+  if (!parts.length) return 'This plan changes nothing'
+  const last = p.delete || p.replace ? '' : ' and destroys nothing'
+  return 'This plan ' + (parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0]) + last
+})
+const danger = computed(() => !!plan.value && (plan.value.delete > 0 || plan.value.replace > 0))
+// the end of the log, under the changes, while there is room for it
+const tail = computed(() => (level.value || query.value ? [] : log.lines.value.filter((l) => l.text.trim()).slice(-6)))
 const downloadHref = computed(() => (id.value ? `${apiBase}/runs/${id.value}/log/download` : '#'))
 </script>
 
@@ -275,8 +292,8 @@ const downloadHref = computed(() => (id.value ? `${apiBase}/runs/${id.value}/log
           <span class="mono muted small">{{ runs.list.length }} shown</span>
         </div>
         <div class="filters" role="group" aria-label="Filter runs">
-          <button v-for="f in [['all', 'All'], ['active', 'Active'], ['approval', 'Needs approval'], ['failed', 'Failed']]" :key="f[0]"
-            class="btn sm chip" :class="{ on: filter === f[0] }" type="button" :aria-pressed="filter === f[0]" @click="filter = f[0] as typeof filter">{{ f[1] }}</button>
+          <button v-for="f in [['all', 'All'], ['active', 'Active'], ['approval', 'Approval'], ['failed', 'Failed']]" :key="f[0]"
+            class="seg" :class="{ on: filter === f[0] }" type="button" :aria-pressed="filter === f[0]" @click="filter = f[0] as typeof filter">{{ f[1] }}</button>
         </div>
         <div class="rlist">
           <RouterLink v-for="r in shown" :key="r.id" :to="'/runs/' + r.id" class="rr" :class="{ on: r.id === id }">
@@ -308,7 +325,7 @@ const downloadHref = computed(() => (id.value ? `${apiBase}/runs/${id.value}/log
               <div class="actions">
                 <RunNotifyMenu v-if="active" :run-id="run.id" />
                 <a class="btn sm" :href="downloadHref" download>Download log</a>
-                <button v-if="active" class="btn sm danger" type="button" :aria-expanded="confirming" @click="confirming = true">{{ waiting ? 'Discard plan' : 'Cancel run' }}</button>
+                <button v-if="active && !(waiting && !isAnsible)" class="btn sm danger" type="button" :aria-expanded="confirming" @click="confirming = true">{{ waiting ? 'Discard plan' : 'Cancel run' }}</button>
                 <DropMenu label="More actions">
                   <template #button><span aria-hidden="true">⋯</span></template>
                   <button role="menuitem" type="button" @click="copyCommand">Copy command</button>
@@ -320,6 +337,17 @@ const downloadHref = computed(() => (id.value ? `${apiBase}/runs/${id.value}/log
             <InlineConfirm v-if="confirming && active" :message="cancelMessage" :confirm-label="waiting ? 'Discard the plan' : 'Cancel the run'"
               :cancel-label="waiting ? 'Keep the plan' : 'Keep running'" danger @confirm="cancelRun" @cancel="confirming = false" />
             <StagePipeline :stages="detail!.stages" :plan="plan" />
+            <section v-if="waiting && !isAnsible && plan" class="approval" :class="{ danger }" aria-label="Approval">
+              <div class="atext">
+                <b>{{ approvalLine }}</b>
+                <span class="small">Approving applies exactly this saved plan to {{ run.target.env }}<template v-if="detail!.target.approval_required">, once you type <span class="mono">{{ run.target.env }}</span></template>. If the state or the code changes first, you'll be asked to re-plan.</span>
+              </div>
+              <span class="mono counts"><span class="c-ok">+{{ plan.create }}</span> <span class="c-run">~{{ plan.update }}</span> <span class="c-warn">±{{ plan.replace }}</span> <span class="c-fail">−{{ plan.delete }}</span></span>
+              <span class="aacts">
+                <RouterLink class="btn primary" :to="`/runs/${run.id}/plan`">Review plan and approve →</RouterLink>
+                <button class="btn danger" type="button" :aria-expanded="confirming" @click="confirming = true">Discard</button>
+              </span>
+            </section>
             <p v-if="notice" class="ok small" role="status">{{ notice }}</p>
             <FailureCause v-if="failed" :run="run" :error="detail!.summary.error!" :issue="issue" :stopped-at="stoppedAt" :applied="applied" :before-apply="beforeApply" :now="now" @log="showErrors" />
             <p v-else-if="detail!.summary.error" class="banner fail" role="alert">{{ detail!.summary.error }}</p>
@@ -369,16 +397,19 @@ const downloadHref = computed(() => (id.value ? `${apiBase}/runs/${id.value}/log
             <section v-else class="changes" aria-label="Planned changes">
               <div class="between">
                 <h2>Changes</h2>
-                <span v-if="plan" class="mono small">
+                <span v-if="plan && !waiting" class="mono small">
                   <span style="color: var(--ok)">+{{ plan.create }}</span> <span style="color: var(--running)">~{{ plan.update }}</span>
                   <span style="color: var(--warn)">±{{ plan.replace }}</span> <span style="color: var(--fail)">−{{ plan.delete }}</span>
                 </span>
               </div>
-              <RouterLink v-if="run.status === 'waiting_approval'" class="btn primary self" :to="`/runs/${run.id}/plan`">Review plan and approve →</RouterLink>
               <RunResourceMap v-if="plan?.changes.length" :changes="plan.changes" :states="states" @open="openLog" />
               <p v-else-if="!plan" class="muted small">{{ run.status === 'queued' || run.status === 'running' ? 'Planning…' : 'No plan for this run.' }}</p>
               <p v-else class="muted small">Nothing to change.</p>
               <RouterLink v-if="plan?.changes.length" class="small" :to="`/runs/${run.id}/plan`">View full plan diff →</RouterLink>
+              <section v-if="tail.length && plan" class="tail" aria-label="Last log lines">
+                <div class="between th"><h2>Last log lines</h2><button class="link small" type="button" @click="tab = 'log'">Open log →</button></div>
+                <pre class="mono">{{ tail.map((l) => l.text).join('\n') }}</pre>
+              </section>
             </section>
           </div>
 
@@ -416,7 +447,11 @@ const downloadHref = computed(() => (id.value ? `${apiBase}/runs/${id.value}/log
 h1 { margin: 0; font-size: 20px; font-weight: 700; }
 h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .small { font-size: 13px; }
-.filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 6px; }
+.filters { display: flex; gap: 2px; margin: 0 6px; padding: 3px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--bg-card); }
+.seg { all: unset; flex: 1; text-align: center; padding: 4px 6px; border-radius: 5px; font-size: 13px; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
+.seg:hover { color: var(--text); }
+.seg.on { background: var(--bg-active); color: var(--text); font-weight: 500; }
+.seg:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .chip { height: 28px; font-size: 13px; padding: 0 10px; }
 .chip.on { background: var(--bg-active); }
 .chip.warn { color: var(--warn); } .chip.fail { color: var(--fail-strong); }
@@ -466,6 +501,17 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .link { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font: inherit; }
 .pad { padding: 24px; margin: 0; }
 .phase { display: flex; gap: 4px; }
+.approval { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; padding: 16px 18px; border: 1px solid var(--warn-line); border-radius: 10px; background: var(--warn-bg); }
+.approval.danger { border-color: var(--fail-line); background: var(--fail-bg); }
+.atext { flex: 1 1 320px; display: flex; flex-direction: column; gap: 4px; }
+.atext b { font-size: 15.5px; font-weight: 600; }
+.atext .small { color: var(--text-soft); }
+.counts { font-size: 15px; display: flex; gap: 10px; }
+.c-ok { color: var(--ok); } .c-run { color: var(--running); } .c-warn { color: var(--warn); } .c-fail { color: var(--fail); }
+.aacts { display: flex; gap: 8px; }
+.tail { border: 1px solid var(--line); border-radius: 10px; background: var(--bg-card); overflow: hidden; }
+.tail .th { padding: 9px 16px; border-bottom: 1px solid var(--line); align-items: center; }
+.tail pre { margin: 0; padding: 12px 16px; font-size: 13px; line-height: 1.7; background: var(--bg-inset); color: var(--text-code); white-space: pre-wrap; overflow-wrap: anywhere; }
 .agate { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--warn-line); border-radius: 8px; background: var(--warn-bg); }
 .gt { font-weight: 600; }
 @media (max-width: 900px) { .split { flex-wrap: wrap; } .runs { max-width: 100%; border-right: 0; } .logpane { min-height: 320px; } }
