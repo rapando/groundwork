@@ -192,7 +192,12 @@ defineExpose({ load })
         <caption class="sr">Which events reach which channel</caption>
         <thead>
           <tr>
-            <th scope="col">Event</th><th v-for="c in CHANNELS" :key="c.key" scope="col">{{ c.label }}</th>
+            <th scope="col">Event</th><th v-for="c in CHANNELS" :key="c.key" scope="col">{{ c.label }}
+              <template v-if="c.key === 'desktop'">
+                <a v-if="desktopPermission === 'denied'" class="perm blocked" href="#browser-title">blocked here</a>
+                <button v-else-if="desktopPermission === 'default'" class="perm" type="button" @click="requestDesktop()">allow</button>
+              </template>
+            </th>
             <th v-if="project" scope="col" class="from">From</th>
           </tr>
         </thead>
@@ -268,6 +273,9 @@ defineExpose({ load })
 .matrix { width: 100%; border-collapse: collapse; font-size: 14px; }
 .matrix th, .matrix td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: center; }
 .matrix thead th { font-size: 12.5px; font-weight: 600; color: var(--text-label); text-transform: uppercase; letter-spacing: .07em; }
+.perm { all: unset; display: block; margin-top: 2px; font: 400 12.5px var(--font-ui); text-transform: none; letter-spacing: 0; color: var(--accent); cursor: pointer; text-decoration: underline; }
+.perm.blocked { color: var(--warn); }
+.perm:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .matrix th:first-child, .matrix .from { text-align: left; }
 .matrix tbody tr:last-child > * { border-bottom: 0; }
 .matrix tbody th { font-weight: 400; display: flex; flex-direction: column; gap: 2px; }
