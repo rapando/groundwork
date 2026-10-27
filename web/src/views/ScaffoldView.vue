@@ -352,6 +352,14 @@ No groundwork.yaml in {{ store.ws?.root }} — starting setup</pre>
 <style scoped>
 .main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
 .side { flex: 1 1 340px; max-width: 100%; display: flex; flex-direction: column; gap: 14px; position: sticky; top: 24px; }
+/* wide screens: the side column fits the window, the file list takes what's left and Create files stays in view */
+@media (min-width: 960px) {
+  .side { max-height: calc(100vh - 48px); }
+  .side > .card:first-child { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+  .side > .card:first-child .tree { flex: 1 1 auto; max-height: none; min-height: 120px; }
+  .side > .card:last-child { flex: none; }
+}
+.term { white-space: pre-wrap; overflow-wrap: anywhere; }
 .head { display: flex; flex-direction: column; gap: 8px; }
 h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.01em; }
 h2 { margin: 0; font-size: 15px; font-weight: 600; }
