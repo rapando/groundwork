@@ -3,13 +3,14 @@ import { computed } from 'vue'
 import { useWorkspace } from '../stores/workspace'
 import BrandMark from './BrandMark.vue'
 import ThemeToggle from './ThemeToggle.vue'
+import { shortPath } from '../composables/shortPath'
 
 defineProps<{ title: string }>()
 const store = useWorkspace()
 const meta = computed(() => {
   const w = store.ws
   if (!w) return ''
-  return `${w.root} · ${w.git ? 'git repo' : 'not a git repo'}`
+  return `${shortPath(w.root)} · ${w.git ? 'git repo' : 'not a git repo'}`
 })
 </script>
 
@@ -20,7 +21,7 @@ const meta = computed(() => {
       <a class="mono name" href="/" title="All projects">groundwork</a>
       <span class="sep">/</span>
       <span class="muted">{{ title }}</span>
-      <span class="mono meta">{{ meta }}</span>
+      <span class="mono meta" :title="store.ws?.root">{{ meta }}</span>
       <ThemeToggle />
     </header>
     <main class="body"><slot /></main>
@@ -33,7 +34,7 @@ const meta = computed(() => {
 .name { font-weight: 700; color: var(--text); text-decoration: none; }
 .name:hover { color: var(--accent-hover); }
 .sep { color: var(--text-faint); }
-.meta { margin-left: auto; font-size: 13px; color: var(--text-label); word-break: break-all; }
+.meta { margin-left: auto; font-size: 13px; color: var(--text-label); overflow-wrap: anywhere; }
 .body { max-width: 1280px; margin: 0 auto; padding: 32px; display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
 @media (max-width: 640px) { .body { padding: 20px 16px; } .top { padding: 14px 16px; } }
 </style>

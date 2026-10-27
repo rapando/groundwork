@@ -139,6 +139,8 @@ async function start() {
     saving.value = false
   }
 }
+// break long paths only after a slash: "ops/ansible/" + "inventory/" + "dev.yml"
+const slashParts = (t: string) => t.split(/(?<=\/)/)
 </script>
 
 <template>
@@ -162,6 +164,27 @@ async function start() {
 
         <pre class="term" tabindex="0" aria-label="Scan output"><template v-for="(l, i) in terminal" :key="i"><span v-if="l.mark" :class="l.cls">{{ l.mark }}</span><span v-if="l.mark"> </span><span :class="l.cls === 'muted' ? 'muted' : ''">{{ l.text }}</span>
 </template></pre>
+
+        <section v-if="report.envs.length" class="card" aria-labelledby="map">
+          <div>
+            <h2 id="map">Environments</h2>
+            <span class="muted small">Matched by name across Terraform and Ansible.</span>
+          </div>
+          <div class="scroll" tabindex="0" aria-label="Environments table">
+            <table class="mono">
+              <thead><tr><th>environment</th><th>terraform</th><th>ansible inventory</th><th>status</th></tr></thead>
+              <tbody>
+                <tr v-for="e in report.envs" :key="e.name">
+                  <td class="b">{{ e.name }}</td>
+                  <td><template v-for="(seg, i) in slashParts(envTf(e).join(', ') || '—')" :key="i">{{ seg }}<wbr /></template></td>
+                  <td><template v-for="(seg, i) in slashParts((e.ansible ?? []).join(', ') || '—')" :key="i">{{ seg }}<wbr /></template></td>
+                  <td class="nw" :class="envStatus(e).cls">{{ envStatus(e).text }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <label class="check"><input v-model="prodApproval" type="checkbox" />Require approval before applying to prod</label>
+        </section>
 
         <section aria-label="Detected projects" class="stack">
           <h2>What groundwork will manage</h2>
@@ -201,37 +224,11 @@ async function start() {
           </article>
         </section>
 
-        <section v-if="report.envs.length" class="card" aria-labelledby="map">
-          <div>
-            <h2 id="map">Environments</h2>
-            <span class="muted small">Matched by name across Terraform and Ansible.</span>
-          </div>
-          <div class="scroll" tabindex="0" aria-label="Environments table">
-            <table class="mono">
-              <thead><tr><th>environment</th><th>terraform</th><th>ansible</th><th>status</th></tr></thead>
-              <tbody>
-                <tr v-for="e in report.envs" :key="e.name">
-                  <td class="b">{{ e.name }}</td>
-                  <td>{{ envTf(e).join(', ') || '—' }}</td>
-                  <td>{{ (e.ansible ?? []).join(', ') || '—' }}</td>
-                  <td :class="envStatus(e).cls">{{ envStatus(e).text }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <label class="check"><input v-model="prodApproval" type="checkbox" />Require approval before applying to prod</label>
-        </section>
       </div>
 
       <aside class="side" aria-label="Config preview">
         <div class="card tight">
-          <div class="between">
-            <h2>groundwork.yaml</h2>
-            <span class="mono small ok">only new file</span>
-          </div>
-          <pre class="mono yaml" tabindex="0" aria-label="groundwork.yaml preview">{{ yaml }}</pre>
-        </div>
-        <div class="card tight">
+          <h2>Ready to start managing</h2>
           <span class="lbl">Also add (optional)</span>
           <label v-for="r in report.terraform_roots.filter((r) => !excluded.has(r.path))" :key="'t' + r.path" class="check">
             <input type="checkbox" @change="toggleLint('tflint', r.path, ($event.target as HTMLInputElement).checked)" />.tflint.hcl in {{ r.path }}
@@ -248,6 +245,13 @@ async function start() {
           </div>
           <span class="muted small">Same as <span class="mono">groundwork init --detect</span></span>
         </div>
+        <div class="card tight">
+          <div class="between">
+            <h2>groundwork.yaml</h2>
+            <span class="mono small ok">only new file</span>
+          </div>
+          <pre class="mono yaml" tabindex="0" aria-label="groundwork.yaml preview">{{ yaml }}</pre>
+        </div>
       </aside>
     </template>
     <p v-else class="muted">Scanning…</p>
@@ -257,6 +261,8 @@ async function start() {
 <style scoped>
 .main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
 .side { flex: 1 1 360px; max-width: 100%; display: flex; flex-direction: column; gap: 14px; }
+@media (min-width: 960px) { .side { position: sticky; top: 20px; } }
+.term { white-space: pre-wrap; overflow-wrap: anywhere; }
 .head { display: flex; flex-direction: column; gap: 8px; }
 h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.01em; }
 h2 { margin: 0; font-size: 15px; font-weight: 600; }
@@ -276,9 +282,10 @@ h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .dim { border-style: dashed; }
 .small { font-size: 13px; margin: 0; }
 .scroll { overflow-x: auto; }
-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 13.5px; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 th { text-align: left; color: var(--text-label); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--line); }
-td { padding: 8px; border-bottom: 1px solid var(--line); }
+td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.nw { white-space: nowrap; }
 .b { font-weight: 700; }
 .check { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .card.tight { gap: 12px; padding: 18px; }
