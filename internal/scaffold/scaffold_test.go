@@ -393,3 +393,63 @@ func TestSkillListsEveryPreset(t *testing.T) {
 		}
 	}
 }
+
+// Vultr is the default preset, offered first.
+func TestVultrIsTheDefaultPreset(t *testing.T) {
+	if Presets[0] != "vultr" || Presets[1] != "aws-envs" || Presets[2] != "gcp-envs" {
+		t.Fatalf("order %v", Presets)
+	}
+	f := Form{Project: "acme", Region: "ams"}
+	f.Normalize()
+	if f.Preset != "vultr" || f.Backend != "local" {
+		t.Fatalf("%+v", f)
+	}
+	if errs := f.Validate(); len(errs) != 0 {
+		t.Fatal(errs)
+	}
+}
+
+// The vault password is typed in the console unless the form names a file,
+// which then goes into groundwork.yaml.
+func TestScaffoldVaultPassword(t *testing.T) {
+	f := baseForm()
+	files, err := Render(&f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c := ConfigFor(&f); c.Ansible.Projects[0].VaultPasswordFile != "" {
+		t.Fatal("no file unless asked")
+	}
+	if cfg := fileNamed(t, files, "ansible/ansible.cfg"); !strings.Contains(cfg, "Variables → Secrets → Unlock") || strings.Contains(cfg, "\nvault_password_file") {
+		t.Fatalf("ansible.cfg:\n%s", cfg)
+	}
+
+	f.VaultPasswordFile = "~/.vault-pass"
+	files, err = Render(&f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c := ConfigFor(&f); c.Ansible.Projects[0].VaultPasswordFile != "~/.vault-pass" {
+		t.Fatalf("%+v", c.Ansible.Projects[0])
+	}
+	if cfg := fileNamed(t, files, "ansible/ansible.cfg"); !strings.Contains(cfg, "~/.vault-pass") {
+		t.Fatalf("ansible.cfg:\n%s", cfg)
+	}
+	for _, bad := range []string{"../../etc/passwd", " ~/.vault-pass", "a\nb"} {
+		f.VaultPasswordFile = bad
+		if errs := f.Validate(); len(errs) == 0 || errs[0].Field != "vault_password_file" {
+			t.Errorf("%q accepted: %v", bad, errs)
+		}
+	}
+}
+
+func fileNamed(t *testing.T, files []File, p string) string {
+	t.Helper()
+	for _, f := range files {
+		if f.Path == p {
+			return f.Content
+		}
+	}
+	t.Fatalf("no %s", p)
+	return ""
+}

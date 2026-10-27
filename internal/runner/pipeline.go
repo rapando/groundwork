@@ -311,7 +311,7 @@ func (r *Runner) runPlanPhase(j *job) {
 			r.removePlan(j.id)
 		}
 	}()
-	res, err := r.tfStage(j, "plan", terraform.PlanArgs(t.Binary, dir, planFile, r.absAll(t.VarFiles)), true)
+	res, err := r.tfStage(j, "plan", terraform.PlanArgs(t.Binary, dir, planFile, r.absAll(t.VarFiles), t.Destroy), true)
 	if err != nil {
 		r.failure(j, err, res.exit)
 		return

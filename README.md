@@ -22,12 +22,12 @@ groundwork
 ## What it does
 
 - **One service, many projects**: every repository you import gets its own checks, runs, file watching and drift schedule, behind one console. Import a folder in place, or a git URL that groundwork clones with your own git and SSH keys ([service and projects](docs/service.md)).
-- **Detects** Terraform roots, modules and Ansible projects, in a dedicated infrastructure repo or in an application repo that keeps them in a subfolder, and writes a `groundwork.yaml` you can review. An empty repo gets a scaffold instead, with presets for AWS, Google Cloud, Vultr, DigitalOcean, Hetzner, Linode, Docker and on-prem ([setup](docs/setup.md)).
+- **Detects** Terraform roots, modules and Ansible projects, in a dedicated infrastructure repo or in an application repo that keeps them in a subfolder, and writes a `groundwork.yaml` you can review. An empty repo gets a scaffold instead, with presets for Vultr (the default), AWS, Google Cloud, DigitalOcean, Hetzner, Linode, Docker and on-prem, and a choice of typing the ansible-vault password in the console or using a password file ([setup](docs/setup.md)).
 - **Checks on every save**: `fmt`, `validate`, tflint, checkov, yamllint, ansible-lint, playbook syntax and a plaintext-secret scan, with problems inline in the editor ([checks](docs/checks.md)).
-- **Plans, then applies only what you approved**: plan review with masked sensitive values and danger flags, typed confirmation for production, and the exact saved plan applied. A plan that went stale (code, state or time) can't be applied ([runs](docs/runs.md)).
+- **Plans, then applies only what you approved**: plan review with masked sensitive values and danger flags, typed confirmation for production, and the exact saved plan applied. A plan that went stale (code, state or time) can't be applied. **Destroy…** tears an environment down the same way: a reviewed `plan -destroy`, approved by typing the environment's name ([runs](docs/runs.md#destroy)).
 - **Ansible**: inventory with reachability and facts, variable provenance per host, dry run → approve → run, ad-hoc commands ([ansible](docs/ansible.md)).
 - **Graph and drift**: resource dependency graph, an architecture view that follows unsaved edits, refresh-only drift detection with copy / ignore / revert, optionally on a schedule with [notifications](docs/notifications.md) ([graph](docs/graph.md)).
-- **Variables and secrets**: per-environment variable matrix with sources, SOPS and ansible-vault values revealed on request, ansible-vault values and files created, edited and rekeyed without plaintext touching the disk, plaintext secrets moved into the vault ([variables](docs/variables.md)).
+- **Variables and secrets**: per-environment variable matrix with sources, SOPS and ansible-vault values revealed on request, ansible-vault values and files created, edited and rekeyed without plaintext touching the disk, the vault password read from a file or typed in the console and kept in memory only, plaintext secrets moved into the vault ([variables](docs/variables.md)). See [Ansible vault](#ansible-vault) below.
 - **Notifications**: hear about failed runs (with the matched cause), plans waiting for approval, long runs that finished and drift, in the console, on the desktop or through a Slack-compatible webhook, per event and environment, with a per-run override ([notifications](docs/notifications.md)).
 - **Troubleshooting**: failures matched to known causes (stale state locks, expired credentials, unreachable hosts, …) with guided fixes, and a Doctor for your tools, cloud credentials, the Docker daemon, SSH agent and S3 state backends ([troubleshooting](docs/troubleshooting.md)).
 
@@ -78,6 +78,41 @@ See [install](docs/install.md) for manual downloads, checksums, the install scri
 | `groundwork drift [--env prod]` | refresh-only drift check of every environment |
 | `groundwork auth status \| reset` | show the console's sign-in methods, or remove them if you are locked out |
 | `groundwork version` | |
+
+## Ansible vault
+
+groundwork manages ansible-vault secrets on the project's **Variables → Secrets** tab. Plaintext never touches the disk, and every time someone opens a value it's recorded in an audit list.
+
+**1. Give groundwork the vault password**, in one of two ways:
+
+- **Type it in the console** (the scaffold's default). With no password file configured, the Secrets tab shows **Vault locked**. Click **Unlock…** and type the password. groundwork checks it against an encrypted value, then keeps it in the service's memory until you click **Lock** or the service stops. Ansible reads it from a pipe, never from a file, an argument or an environment variable.
+- **Or use a password file**, set on the project in `groundwork.yaml`:
+
+  ```yaml
+  ansible:
+    projects:
+      - path: ansible
+        vault_password_file: ~/.vault-pass   # a plain file; scripts are refused unless allow_vault_script: true
+  ```
+
+  When scaffolding, choose **Password file** under *ansible-vault password*, or pass `groundwork init --vault-password-file ~/.vault-pass`. `ANSIBLE_VAULT_PASSWORD_FILE`, and `vault_password_file` or `vault_identity_list` in `ansible.cfg`, work too. A `label@prompt` vault ID is typed in the console like the default one. `groundwork doctor` checks the file.
+
+**2. Manage secrets on Variables → Secrets:**
+
+- **New secret** adds an encrypted variable (`name: !vault |`) to a vars file, creates an encrypted file, or encrypts an existing file in place.
+- **Edit** decrypts a value into an editor and saves it re-encrypted. Opening it counts as a reveal and is recorded.
+- **Move to vault** appears on a plaintext-secret finding from the built-in scanner. It encrypts that value in place. The old value is still in git history, so rotate it.
+- **Rekey…** re-encrypts every value of a vault ID with a new password. Everyone who uses the vault needs the new password.
+
+**3. Use the secrets in your playbooks** as usual, e.g. `{{ db_password }}`. Dry runs, playbook runs, ad-hoc commands and the inventory all open the vault with the password file or the password you typed. A run that needs a locked vault fails with a fix that links to **Unlock**.
+
+Don't run `ansible-vault decrypt` on files in the repository: it leaves the secret unencrypted in your working tree. For Terraform secrets, ansible-vault isn't the tool. Instead:
+
+1. Mark the variable `sensitive = true`.
+2. Remove the value from the tfvars file.
+3. Pass it as `TF_VAR_<name>` in the service's environment.
+
+See [variables](docs/variables.md#managing-ansible-vault) for the details.
 
 ## Safety
 

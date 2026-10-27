@@ -24,8 +24,8 @@ export const useRuns = defineStore('runs', {
       await this.refresh()
       return r.run
     },
-    async plan(root: string, env: string): Promise<RunBrief> {
-      const r = await api<{ run: RunBrief }>('/runs', { body: { kind: 'tf.plan', root, env } })
+    async plan(root: string, env: string, destroy = false): Promise<RunBrief> {
+      const r = await api<{ run: RunBrief }>('/runs', { body: { kind: 'tf.plan', root, env, destroy } })
       await this.refresh()
       return r.run
     },
@@ -79,6 +79,7 @@ export function kindLabel(r: Pick<RunBrief, 'kind' | 'stage' | 'apply' | 'status
   if (r.kind === 'tf.init') return 'terraform init'
   if (r.kind === 'tf.drift') return 'terraform plan -refresh-only'
   const applying = r.apply || r.stage === 'apply' || (r.stage === 'approve' && r.status !== 'waiting_approval' && r.status !== 'cancelled')
+  if (t?.destroy) return applying ? 'terraform destroy' : 'terraform plan -destroy'
   return applying ? 'terraform apply' : 'terraform plan'
 }
 

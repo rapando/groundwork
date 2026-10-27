@@ -30,11 +30,15 @@ test('empty repo: scaffold screen validates, previews, creates', async ({ page }
   await expect(page).toHaveURL(/\/setup\/scaffold$/)
   await expect(page.getByRole('heading', { name: 'Scaffold an IaC repo' })).toBeVisible()
 
-  // region is required for AWS: the preview is withheld and the field shows why
-  await expect(page.getByText('enter an AWS region')).toBeVisible()
+  // Vultr is offered first and chosen by default
+  await expect(page.getByRole('group', { name: 'Provider' }).getByRole('radio').first()).toHaveAccessibleName('Vultr')
+  await expect(page.getByRole('radio', { name: 'Vultr' })).toBeChecked()
+
+  // region is required: the preview is withheld and the field shows why
+  await expect(page.getByText('enter a Vultr region such as ams')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Create files' })).toBeDisabled()
 
-  await page.getByPlaceholder('e.g. eu-west-1').fill('eu-west-1')
+  await page.getByPlaceholder('e.g. ams').fill('ams')
   await expect(page.getByText(/^\+\d+ files/)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Create files' })).toBeEnabled()
 
@@ -48,9 +52,16 @@ test('empty repo: scaffold screen validates, previews, creates', async ({ page }
   await page.getByText('Workspaces', { exact: true }).click()
   await expect(page.getByRole('button', { name: 'dev.tfvars' })).toBeVisible()
 
+  // the vault password is typed in the console unless a file is chosen
+  await expect(page.getByRole('radio', { name: 'Type it in groundwork' })).toBeChecked()
+  await page.getByRole('radio', { name: 'Password file' }).check()
+  await expect(page.getByLabel(/^Password file, relative to/)).toHaveValue('~/.vault-pass')
+
   await page.getByRole('button', { name: 'Create files' }).click()
   await expect(page.getByRole('heading', { name: 'Repository scaffolded' })).toBeVisible()
-  expect(readFileSync(path.join(gw.dir, 'groundwork.yaml'), 'utf8')).toContain('workspace: prod')
+  const cfg = readFileSync(path.join(gw.dir, 'groundwork.yaml'), 'utf8')
+  expect(cfg).toContain('workspace: prod')
+  expect(cfg).toContain('vault_password_file: ~/.vault-pass')
   expect(existsSync(path.join(gw.dir, 'terraform/modules/network/main.tf'))).toBe(true)
 
   await page.getByRole('button', { name: 'Open console' }).click()

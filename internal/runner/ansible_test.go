@@ -14,6 +14,7 @@ import (
 	"github.com/rapando/groundwork/internal/config"
 	"github.com/rapando/groundwork/internal/events"
 	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/internal/vars"
 )
 
 type ansRig struct {
@@ -247,5 +248,39 @@ func TestCancelAnsibleMidPlay(t *testing.T) {
 	g.wait(t, id, store.StatusCancelled)
 	if time.Since(start) > 10*time.Second {
 		t.Fatalf("cancel took %s", time.Since(start))
+	}
+}
+
+// A vault password typed in the console reaches the playbook through a pipe,
+// and is masked if a task prints it.
+func TestAnsibleUsesTypedVaultPassword(t *testing.T) {
+	g := newAnsRig(t)
+	dir := filepath.Join(g.root, "ops")
+	pwFile := filepath.Join(t.TempDir(), "pw")
+	os.WriteFile(pwFile, []byte("typed-Pw-42\n"), 0o600)
+	vf := filepath.Join(dir, "vault.yml")
+	os.WriteFile(vf, []byte("vault_word: opened-it\n"), 0o600)
+	if out, err := exec.Command("ansible-vault", "encrypt", "--vault-password-file="+pwFile, vf).CombinedOutput(); err != nil {
+		t.Fatalf("%v %s", err, out)
+	}
+	os.WriteFile(filepath.Join(dir, "vaulted.yml"), []byte("---\n- hosts: web-1\n  gather_facts: false\n  vars_files: [vault.yml]\n  tasks:\n"+
+		"    - ansible.builtin.debug: {msg: \"word={{ vault_word }}\"}\n    - ansible.builtin.debug: {msg: \"pw=typed-Pw-42\"}\n"), 0o644)
+
+	locked := g.submit(t, SubmitRequest{Kind: KindAnsCheck, Env: "dev", Playbook: "vaulted.yml"})
+	g.wait(t, locked, store.StatusFailed)
+
+	s := vars.NewSecrets(g.root, []vars.VaultProject{{Dir: dir}})
+	s.Keyring.Set(dir, "default", "typed-Pw-42")
+	g.r.TypedVault = s.TypedVault
+	id := g.submit(t, SubmitRequest{Kind: KindAnsCheck, Env: "dev", Playbook: "vaulted.yml"})
+	g.wait(t, id, store.StatusSucceeded)
+	p, _ := g.r.ReadLog(id, 0, 500, "", "")
+	var lines []string
+	for _, l := range p.Lines {
+		lines = append(lines, l.Text)
+	}
+	all := strings.Join(lines, "\n")
+	if !strings.Contains(all, "word=opened-it") || strings.Contains(all, "typed-Pw-42") {
+		t.Fatalf("want the vaulted value and the password masked:\n%s", all)
 	}
 }

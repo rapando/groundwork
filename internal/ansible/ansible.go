@@ -191,6 +191,23 @@ func InventoryHostArgs(inventory, playbookDir, host, vault string) []string {
 	return append(append([]string{"ansible-inventory"}, invArgs(inventory)...), append(vaultArgs(vault), "--host="+host, "--playbook-dir="+playbookDir)...)
 }
 
+// WithArgs adds flags to an argv built here, before its closing `--` (so
+// they stay flags), or at the end when it has none.
+func WithArgs(argv, flags []string) []string {
+	if len(flags) == 0 {
+		return argv
+	}
+	i := len(argv)
+	for j := len(argv) - 1; j >= 0; j-- {
+		if argv[j] == "--" {
+			i = j
+			break
+		}
+	}
+	out := append(append([]string{}, argv[:i]...), flags...)
+	return append(out, argv[i:]...)
+}
+
 func vaultArgs(vault string) []string {
 	if vault == "" {
 		return nil
@@ -405,6 +422,12 @@ func (inv *Inventory) Address(host string) string {
 // Query runs a read-only ansible command (ansible-inventory) in the project
 // directory and returns its stdout.
 func Query(ctx context.Context, projectDir, ansibleHome string, argv []string) ([]byte, error) {
+	return QueryVault(ctx, projectDir, ansibleHome, argv, nil, nil)
+}
+
+// QueryVault is Query with vault passwords passed as pipes from /dev/fd/3
+// (argv already names them) and extra environment.
+func QueryVault(ctx context.Context, projectDir, ansibleHome string, argv, env, passwords []string) ([]byte, error) {
 	bin, err := exec.LookPath(argv[0])
 	if err != nil {
 		return nil, fmt.Errorf("%s not found on PATH (pipx install ansible-core)", argv[0])
@@ -415,7 +438,13 @@ func Query(ctx context.Context, projectDir, ansibleHome string, argv []string) (
 	proc.GroupContext(cmd) // a timeout kills the tool and its children, not just the tool
 	cmd.Dir = projectDir
 	_ = os.MkdirAll(ansibleHome, 0o755)
-	cmd.Env = append(os.Environ(), "ANSIBLE_HOME="+ansibleHome, "ANSIBLE_NOCOLOR=1", "ANSIBLE_FORCE_COLOR=0")
+	cmd.Env = append(append(os.Environ(), "ANSIBLE_HOME="+ansibleHome, "ANSIBLE_NOCOLOR=1", "ANSIBLE_FORCE_COLOR=0"), env...)
+	pipes, err := proc.SecretPipes(passwords)
+	if err != nil {
+		return nil, err
+	}
+	defer proc.ClosePipes(pipes)
+	cmd.ExtraFiles = pipes
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()

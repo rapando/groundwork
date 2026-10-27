@@ -156,7 +156,7 @@ const symClass = (c: PlanChange | ResourceDiff) => 'a-' + c.action
         <div class="between">
           <div class="titles">
             <div class="row">
-              <h1 class="mono">#{{ id }} plan · {{ review.target.env }}</h1>
+              <h1 class="mono">#{{ id }} {{ review.target.destroy ? 'destroy plan' : 'plan' }} · {{ review.target.env }}</h1>
               <StatusPill :status="review.status" />
             </div>
             <span class="muted sub">
@@ -173,6 +173,7 @@ const symClass = (c: PlanChange | ResourceDiff) => 'a-' + c.action
             <button v-if="review.status === 'waiting_approval'" class="btn sm" type="button" @click="discard">Discard</button>
           </div>
         </div>
+        <p v-if="review.target.destroy" class="dbanner" role="note">This plan destroys every resource in <span class="mono">{{ review.target.root }}</span> for <b>{{ review.target.env }}</b>. Approving it needs the environment's name typed, whatever the approval setting.</p>
         <div class="tiles">
           <div class="tile"><span class="mono n" style="color: var(--ok)">+{{ review.plan.create }}</span><span class="small muted">to add</span></div>
           <div class="tile"><span class="mono n" style="color: var(--running)">~{{ review.plan.update }}</span><span class="small muted">to change</span></div>
@@ -291,6 +292,7 @@ const symClass = (c: PlanChange | ResourceDiff) => 'a-' + c.action
 </template>
 
 <style scoped>
+.dbanner { margin: 12px 0 0; padding: 10px 14px; border: 1px solid var(--fail-line); border-radius: 8px; background: var(--fail-bg); color: var(--text); font-size: 14px; }
 .pad { padding: 24px; margin: 0; } .pad0 { padding: 6px; margin: 0; }
 .small { font-size: 13px; }
 .phead { padding: 20px 24px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 16px; }

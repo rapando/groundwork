@@ -41,41 +41,21 @@ func ValidVaultID(s string) bool { return vaultIDRe.MatchString(s) }
 type VaultID struct {
 	Label  string `json:"label"`
 	Source string `json:"source,omitempty"` // password file (absolute), "prompt" or a script
+	// Prompt: the password is typed in the console; Unlocked: it has been.
+	Prompt   bool `json:"prompt,omitempty"`
+	Unlocked bool `json:"unlocked,omitempty"`
 }
 
 // VaultIDs lists the identities ansible-vault sees for files under abs: the
 // password file (label "default") plus vault_identity_list from the
-// environment or ansible.cfg.
+// environment or ansible.cfg, or a typed "default" when neither gives one.
 func (s *Secrets) VaultIDs(abs string) []VaultID {
 	vp := s.project(abs)
 	var out []VaultID
-	seen := map[string]bool{}
-	add := func(label, src string) {
-		if !seen[label] {
-			seen[label] = true
-			out = append(out, VaultID{Label: label, Source: src})
-		}
-	}
-	if pw := s.defaultPasswordFile(vp); pw != "" {
-		add("default", pw)
-	}
-	list := s.env("ANSIBLE_VAULT_IDENTITY_LIST")
-	if list == "" {
-		list = cfgValue(vp.Config, "vault_identity_list")
-	}
-	for _, e := range strings.Split(list, ",") {
-		e = strings.TrimSpace(e)
-		if e == "" {
-			continue
-		}
-		label, src, ok := strings.Cut(e, "@")
-		if !ok {
-			label, src = "default", e
-		}
-		if src != "prompt" && !filepath.IsAbs(src) && !strings.HasPrefix(src, "~") {
-			src = filepath.Join(vp.Dir, src)
-		}
-		add(label, expandHome(src))
+	for _, id := range s.identities(vp) {
+		v := VaultID{Label: id.label, Source: id.src, Prompt: id.prompt()}
+		v.Unlocked = v.Prompt && s.usable(vp, id)
+		out = append(out, v)
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Label == "default" && out[j].Label != "default" })
 	return out
@@ -156,33 +136,36 @@ func (s *Secrets) encryptLabel(abs, label string) (string, error) {
 	return "", nil
 }
 
-func (s *Secrets) ready(abs string) error {
+func (s *Secrets) ready(abs, label string) error {
 	if _, err := s.LookPath("ansible-vault"); err != nil {
 		return errors.New("ansible-vault isn't installed")
 	}
-	if !s.hasVaultPassword(s.project(abs)) {
-		return errors.New("no vault password configured: set vault_password_file for this Ansible project in groundwork.yaml")
+	if s.locked(s.project(abs), label) {
+		return ErrLocked
 	}
 	return nil
 }
 
+// ErrLocked: the vault password is typed in the console and hasn't been yet.
+var ErrLocked = errors.New("the vault is locked: type its password on Variables → Secrets")
+
 // Encrypt returns plaintext encrypted as a whole vault file, with the
 // project's vault settings and the given vault ID ("" = the default).
 func (s *Secrets) Encrypt(ctx context.Context, abs string, plaintext []byte, label string) ([]byte, error) {
-	if err := s.ready(abs); err != nil {
-		return nil, err
-	}
 	label, err := s.encryptLabel(abs, label)
 	if err != nil {
 		return nil, err
 	}
+	if err := s.ready(abs, label); err != nil {
+		return nil, err
+	}
 	vp := s.project(abs)
-	env, args := s.vaultArgs(vp)
+	env, args, pws := s.vaultArgs(vp)
 	if label != "" {
 		args = append(args, "--encrypt-vault-id="+label)
 	}
 	argv := append(append([]string{"ansible-vault", "encrypt"}, args...), "--output=-", "-")
-	out, err := s.run(ctx, vp.Dir, env, plaintext, argv...)
+	out, err := s.run(ctx, vp.Dir, env, plaintext, pws, argv...)
 	return []byte(out), err
 }
 
@@ -193,20 +176,20 @@ func (s *Secrets) EncryptString(ctx context.Context, abs, key, value string) (st
 }
 
 func (s *Secrets) encryptString(ctx context.Context, abs, key, value, label string) (string, error) {
-	if err := s.ready(abs); err != nil {
-		return "", err
-	}
 	label, err := s.encryptLabel(abs, label)
 	if err != nil {
 		return "", err
 	}
+	if err := s.ready(abs, label); err != nil {
+		return "", err
+	}
 	vp := s.project(abs)
-	env, args := s.vaultArgs(vp)
+	env, args, pws := s.vaultArgs(vp)
 	if label != "" {
 		args = append(args, "--encrypt-vault-id="+label)
 	}
 	argv := append(append([]string{"ansible-vault", "encrypt_string"}, args...), "--stdin-name="+key)
-	out, err := s.run(ctx, vp.Dir, env, []byte(value), argv...)
+	out, err := s.run(ctx, vp.Dir, env, []byte(value), pws, argv...)
 	if err != nil {
 		return "", err
 	}
@@ -352,6 +335,8 @@ type RekeyPlan struct {
 	// groundwork can write the new one there ("" otherwise, with the reason).
 	PasswordFile string `json:"password_file,omitempty"`
 	NoUpdate     string `json:"no_update,omitempty"`
+	// Typed: the password is typed in the console, which keeps the new one.
+	Typed bool `json:"typed,omitempty"`
 }
 
 func sameLabel(a, b string) bool {
@@ -395,7 +380,8 @@ func (s *Secrets) PlanRekey(ctx context.Context, dir, label string) RekeyPlan {
 	case src == "":
 		plan.NoUpdate = "no password file is configured for this vault ID"
 	case src == "prompt":
-		plan.NoUpdate = "this vault ID asks for its password"
+		plan.Typed = true
+		plan.NoUpdate = "its password is typed in the console"
 	case err != nil:
 		plan.NoUpdate = err.Error()
 	case !st.Mode().IsRegular() || st.Mode().Perm()&0o111 != 0:
@@ -447,31 +433,15 @@ func (s *Secrets) Rekey(ctx context.Context, plan RekeyPlan, label, password str
 		}
 		byFile[it.File] = append(byFile[it.File], it)
 	}
-	tmp, err := os.MkdirTemp("", "groundwork-rekey-*")
+	// encrypt with the new password only: no ansible.cfg identities, no env
+	// ones; the password goes through a pipe, never a file
+	environ, cleanup, err := s.isolatedEnv()
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(tmp)
-	pw, cfg := filepath.Join(tmp, "password"), filepath.Join(tmp, "ansible.cfg")
-	if err := os.WriteFile(pw, []byte(password+"\n"), 0o600); err != nil {
-		return nil, err
-	}
-	if err := os.WriteFile(cfg, nil, 0o600); err != nil {
-		return nil, err
-	}
-	// encrypt with the new password only: no ansible.cfg identities, no env ones
-	var environ []string
-	for _, kv := range s.Environ() {
-		k, _, _ := strings.Cut(kv, "=")
-		if k != "ANSIBLE_CONFIG" && k != "ANSIBLE_VAULT_PASSWORD_FILE" && k != "ANSIBLE_VAULT_IDENTITY_LIST" {
-			environ = append(environ, kv)
-		}
-	}
-	environ = append(environ, "ANSIBLE_CONFIG="+cfg)
-	idArg := "--vault-password-file=" + pw
-	if label != "" && label != "default" {
-		idArg = "--vault-id=" + label + "@" + pw
-	}
+	defer cleanup()
+	idArg := vaultIDArg(label, "/dev/fd/3")
+	pws := []string{password}
 
 	var out []Rekeyed
 	for _, file := range order {
@@ -489,7 +459,7 @@ func (s *Secrets) Rekey(ctx context.Context, plan RekeyPlan, label, password str
 				if err != nil {
 					return nil, err
 				}
-				ct, err := s.runWith(ctx, s.project(abs).Dir, environ, []byte(plain), "ansible-vault", "encrypt", idArg, "--output=-", "-")
+				ct, err := s.runWith(ctx, s.project(abs).Dir, environ, []byte(plain), pws, "ansible-vault", "encrypt", idArg, "--output=-", "-")
 				if err != nil {
 					return nil, err
 				}
@@ -504,7 +474,7 @@ func (s *Secrets) Rekey(ctx context.Context, plan RekeyPlan, label, password str
 				if err != nil {
 					return nil, err
 				}
-				block, err := s.runWith(ctx, s.project(abs).Dir, environ, []byte(plain), "ansible-vault", "encrypt_string", idArg, "--stdin-name="+iv.key)
+				block, err := s.runWith(ctx, s.project(abs).Dir, environ, []byte(plain), pws, "ansible-vault", "encrypt_string", idArg, "--stdin-name="+iv.key)
 				if err != nil {
 					return nil, err
 				}

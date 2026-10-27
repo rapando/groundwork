@@ -4,6 +4,8 @@
 package proc
 
 import (
+	"errors"
+	"os"
 	"os/exec"
 	"syscall"
 )
@@ -42,4 +44,41 @@ func Alive(pgid int) bool {
 		return false
 	}
 	return syscall.Kill(-pgid, 0) == nil
+}
+
+// SecretPipes returns one pipe per value, each already holding its value and
+// closed for writing, so a child can read it from /dev/fd/N (pass the files
+// in cmd.ExtraFiles) and the value never touches the disk or the environment.
+// The caller closes the files once the child has started. A value must fit in
+// the pipe's buffer (a few KiB is always safe), or the write would block.
+func SecretPipes(values []string) ([]*os.File, error) {
+	var out []*os.File
+	fail := func(err error) ([]*os.File, error) {
+		ClosePipes(out)
+		return nil, err
+	}
+	for _, v := range values {
+		if len(v) > 4096 {
+			return fail(errors.New("secret is too long for a pipe"))
+		}
+		r, w, err := os.Pipe()
+		if err != nil {
+			return fail(err)
+		}
+		_, err = w.WriteString(v + "\n")
+		w.Close()
+		if err != nil {
+			r.Close()
+			return fail(err)
+		}
+		out = append(out, r)
+	}
+	return out, nil
+}
+
+// ClosePipes closes what SecretPipes returned.
+func ClosePipes(fs []*os.File) {
+	for _, f := range fs {
+		f.Close()
+	}
 }

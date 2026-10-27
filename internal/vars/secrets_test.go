@@ -2,6 +2,7 @@ package vars
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -134,13 +135,67 @@ func TestVaultRoundTrip(t *testing.T) {
 			t.Fatalf("wrong password: %+v", x)
 		}
 	}
-	// no password configured at all
+	// no password configured at all: locked until the password is typed
 	s3 := NewSecrets(root, []VaultProject{{Dir: proj}})
 	s3.Environ = func() []string { return []string{"PATH=" + os.Getenv("PATH")} }
-	for _, x := range s3.List(ctx, true) {
-		if x.Name == "db_password" && x.State != "no-password" {
-			t.Fatalf("no password: %+v", x)
-		}
+	if ids := s3.VaultIDs(vars); len(ids) != 1 || ids[0].Label != "default" || !ids[0].Prompt || ids[0].Unlocked {
+		t.Fatalf("ids %+v", ids)
+	}
+	if x := secretNamed(t, s3, "db_password"); x.State != "locked" || x.Revealable {
+		t.Fatalf("no password: %+v", x)
+	}
+	if _, err := s3.EncryptString(ctx, vars, "k", "v"); !errors.Is(err, ErrLocked) {
+		t.Fatalf("encrypt while locked: %v", err)
+	}
+	if _, err := s3.Unlock(ctx, proj, "", "not-it"); !errors.Is(err, ErrWrongPassword) {
+		t.Fatalf("wrong typed password: %v", err)
+	}
+	if checked, err := s3.Unlock(ctx, proj, "default", "correct-horse"); err != nil || !checked {
+		t.Fatalf("unlock: %v %v", checked, err)
+	}
+	if ids := s3.VaultIDs(vars); !ids[0].Unlocked {
+		t.Fatalf("ids %+v", ids)
+	}
+	if x := secretNamed(t, s3, "db_password"); x.State != "can-decrypt" {
+		t.Fatalf("unlocked: %+v", x)
+	}
+	if v := revealed(t, s3, "db_password"); v != "Plain-Text-Pw1" {
+		t.Fatalf("reveal %q", v)
+	}
+	if f := s3.TypedVault(proj, 4); len(f.Args) != 1 || f.Args[0] != "--vault-password-file=/dev/fd/4" || len(f.Passwords) != 1 || f.Passwords[0] != "correct-horse" {
+		t.Fatalf("flags %+v", f)
+	}
+	s3.Lock(proj, "default")
+	if x := secretNamed(t, s3, "db_password"); x.State != "locked" {
+		t.Fatalf("locked again: %+v", x)
+	}
+}
+
+// A `label@prompt` identity in ansible.cfg is typed in the console: ansible
+// gets the identity list with that entry pointing at a pipe, or without it
+// while locked, and never prompts.
+func TestPromptIdentityIsTyped(t *testing.T) {
+	root := t.TempDir()
+	proj := filepath.Join(root, "ansible")
+	cfg := writeFile(t, root, "ansible/ansible.cfg", "[defaults]\nvault_identity_list = dev@.dev_pass, prod@prompt\n", 0o644)
+	s := NewSecrets(root, []VaultProject{{Dir: proj, Config: cfg}})
+	s.Environ = func() []string { return nil }
+	ids := s.VaultIDs(filepath.Join(proj, "x"))
+	if len(ids) != 2 || ids[0].Prompt || !ids[1].Prompt || ids[1].Label != "prod" {
+		t.Fatalf("ids %+v", ids)
+	}
+	dev := "dev@" + filepath.Join(proj, ".dev_pass")
+	if f := s.TypedVault(proj, 3); len(f.Env) != 1 || f.Env[0] != "ANSIBLE_VAULT_IDENTITY_LIST="+dev || len(f.Passwords) != 0 {
+		t.Fatalf("locked: %+v", f)
+	}
+	s.Keyring.Set(proj, "prod", "pw")
+	if f := s.TypedVault(proj, 3); f.Env[0] != "ANSIBLE_VAULT_IDENTITY_LIST="+dev+",prod@/dev/fd/3" || len(f.Passwords) != 1 || len(f.Args) != 0 {
+		t.Fatalf("unlocked: %+v", f)
+	}
+	vp := s.project(filepath.Join(proj, "x"))
+	s.Keyring.Forget(proj, "prod")
+	if !s.locked(vp, "prod") || s.locked(vp, "dev") || s.locked(vp, "") {
+		t.Fatal("prod is locked; dev and unlabelled values open with dev's password file")
 	}
 }
 

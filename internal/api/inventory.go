@@ -89,7 +89,7 @@ func (a *API) ansibleHome() string { return filepath.Join(a.Root, ".groundwork",
 func (a *API) loadInventory(ctx context.Context, s invScope) (*ansible.Inventory, error) {
 	dir := filepath.Join(a.Root, filepath.FromSlash(s.Project))
 	key := s.Project + "#" + s.Env
-	fp := projectFingerprint(dir)
+	fp := projectFingerprint(dir) + fmt.Sprintf(" vault %d", a.keyring.Generation()) // unlocking can reveal vaulted vars
 	if e, ok := invCache.Load(key); ok && e.(invCacheEntry).fp == fp {
 		return e.(invCacheEntry).inv, nil
 	}
@@ -102,7 +102,7 @@ func (a *API) loadInventory(ctx context.Context, s invScope) (*ansible.Inventory
 	if s.vaultErr != nil {
 		return nil, s.vaultErr
 	}
-	out, err := ansible.Query(ctx, dir, a.ansibleHome(), ansible.InventoryListArgs(s.Inventory, dir, s.Vault))
+	out, err := a.queryVault(ctx, dir, ansible.InventoryListArgs(s.Inventory, dir, s.Vault))
 	if err != nil {
 		return nil, vaultHint(err, s)
 	}
@@ -116,13 +116,20 @@ func (a *API) loadInventory(ctx context.Context, s invScope) (*ansible.Inventory
 
 // vaultHint says what to change in groundwork.yaml when ansible couldn't
 // decrypt a vault: groundwork can't answer --ask-vault-pass.
+// queryVault runs an ansible query in an Ansible project with the vault
+// passwords typed in the console.
+func (a *API) queryVault(ctx context.Context, dir string, argv []string) ([]byte, error) {
+	v := a.secretStore().TypedVault(dir, 3)
+	return ansible.QueryVault(ctx, dir, a.ansibleHome(), ansible.WithArgs(argv, v.Args), v.Env, v.Passwords)
+}
+
 func vaultHint(err error, s invScope) error {
 	msg := err.Error()
 	if !strings.Contains(msg, "no vault secrets") && !strings.Contains(msg, "Decryption failed") {
 		return err
 	}
 	if s.Vault == "" {
-		return fmt.Errorf("%s. Set vault_password_file for Ansible project %s in groundwork.yaml", strings.TrimSuffix(msg, "."), s.Project)
+		return fmt.Errorf("%s. Unlock the vault on Variables → Secrets, or set vault_password_file for Ansible project %s in groundwork.yaml", strings.TrimSuffix(msg, "."), s.Project)
 	}
 	return fmt.Errorf("%s. Check vault_password_file (%s) for Ansible project %s in groundwork.yaml", strings.TrimSuffix(msg, "."), s.Vault, s.Project)
 }
@@ -361,7 +368,7 @@ func (a *API) getInventoryHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	dir := filepath.Join(a.Root, filepath.FromSlash(s.Project))
-	out, err := ansible.Query(r.Context(), dir, a.ansibleHome(), ansible.InventoryHostArgs(s.Inventory, dir, host, s.Vault))
+	out, err := a.queryVault(r.Context(), dir, ansible.InventoryHostArgs(s.Inventory, dir, host, s.Vault))
 	if err != nil {
 		writeError(w, 502, "ansible_failed", vaultHint(err, s).Error(), nil)
 		return

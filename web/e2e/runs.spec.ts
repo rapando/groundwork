@@ -263,3 +263,34 @@ test('a streaming log follows the newest line; scrolling up pauses, the bottom r
   })
   await expect(follow).toBeChecked()
 })
+
+test('destroy is a plan: confirmed, reviewed, then approved by typing the environment', async ({ page }) => {
+  gw = await start('iac-only', { init: true })
+  await overview(page, gw.url)
+
+  await card(page, 'dev').getByRole('button', { name: 'Destroy…' }).click()
+  const confirm = card(page, 'dev').getByRole('group', { name: 'Plan the destruction of everything in dev?' })
+  await expect(confirm).toContainText('Nothing is destroyed yet')
+  await confirm.getByRole('button', { name: 'Keep it' }).click()
+  await expect(confirm).toHaveCount(0)
+
+  await card(page, 'dev').getByRole('button', { name: 'Destroy…' }).click()
+  await confirm.getByRole('button', { name: 'Plan destroy' }).click()
+  await expect(page).toHaveURL(/\/runs\/\d+$/)
+  await expect(page.getByRole('heading', { name: /terraform plan -destroy/ })).toBeVisible()
+  await waitForApproval(page)
+
+  await page.getByRole('link', { name: 'Review plan and approve →' }).click()
+  await expect(page.getByRole('heading', { name: /destroy plan · dev/ })).toBeVisible()
+  await expect(page.getByRole('note').filter({ hasText: 'destroys every resource' })).toBeVisible()
+  // even dev, which needs no typing for a plan, needs its name typed for a destroy
+  const apply = page.getByRole('button', { name: /^Apply plan #/ })
+  await expect(apply).toBeDisabled()
+  await page.getByLabel('Type dev to confirm').fill('dev')
+  const ack = page.getByRole('checkbox', { name: /^I understand/ })
+  if (await ack.count()) await ack.check()
+  await expect(apply).toBeEnabled()
+  await apply.click()
+  await expect(page).toHaveURL(/\/runs\/\d+$/)
+  await expect(page.getByRole('heading', { name: /terraform destroy/ })).toBeVisible({ timeout: 20_000 })
+})

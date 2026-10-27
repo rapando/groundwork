@@ -661,7 +661,7 @@ func checkVault(_ context.Context, in Input) []Check {
 			if os.Getenv("ANSIBLE_VAULT_PASSWORD_FILE") != "" {
 				c.Status, c.Detail = "ok", "from ANSIBLE_VAULT_PASSWORD_FILE"
 			} else {
-				c.Status, c.Detail, c.Hint = "fail", p.Path+" uses ansible-vault but no vault_password_file is set", "add vault_password_file to the project in groundwork.yaml"
+				c.Status, c.Detail, c.Hint = "warn", p.Path+" uses ansible-vault but no vault_password_file is set, so the console asks for the password", "type it on Variables → Secrets (kept in memory until you lock it or the service stops), or add vault_password_file to the project in groundwork.yaml"
 			}
 			out = append(out, c)
 			continue

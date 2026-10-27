@@ -406,6 +406,13 @@ func TestFormatting(t *testing.T) {
 			t.Errorf("%s: %q", k, got)
 		}
 	}
+	destroy := runner.Target{Destroy: true}
+	if Label(runner.KindPlan, "plan", destroy) != "terraform plan -destroy" || Label(runner.KindPlan, "apply", destroy) != "terraform destroy" {
+		t.Error("a destroy plan is labelled as one")
+	}
+	if subject(&store.Run{ID: 4, Kind: runner.KindPlan, Stage: "apply"}, destroy) != "Destroy #4" || subject(&store.Run{ID: 4, Kind: runner.KindPlan}, destroy) != "Destroy plan #4" {
+		t.Error("a destroy's notification says so")
+	}
 	for _, k := range []string{runner.KindDrift, runner.KindInit, runner.KindUnlock, runner.KindAnsCheck, runner.KindAnsAdhoc, runner.KindAnsPing, runner.KindAnsFacts, "x"} {
 		if s := subject(&store.Run{ID: 3, Kind: k}, runner.Target{}); !strings.Contains(s, "3") && !strings.Contains(s, "playbook") {
 			t.Errorf("%s: %q", k, s)

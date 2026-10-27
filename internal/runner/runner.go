@@ -30,6 +30,7 @@ import (
 	"github.com/rapando/groundwork/internal/safego"
 	"github.com/rapando/groundwork/internal/store"
 	"github.com/rapando/groundwork/internal/terraform"
+	"github.com/rapando/groundwork/internal/vars"
 )
 
 const (
@@ -67,6 +68,7 @@ type Target struct {
 	ApprovalRequired bool     `json:"approval_required"`
 	Binary           string   `json:"binary,omitempty"`
 	Upgrade          bool     `json:"upgrade,omitempty"`
+	Destroy          bool     `json:"destroy,omitempty"`     // tf.plan: plans and applies the destruction of everything in the state
 	RunTimeout       string   `json:"run_timeout,omitempty"` // from groundwork.yaml at submit time; shown in the run detail
 
 	// Ansible
@@ -103,6 +105,7 @@ type SubmitRequest struct {
 	Args        string `json:"args"`
 	ConfirmText string `json:"confirm_text"`
 	LockID      string `json:"lock_id"` // tf.unlock
+	Destroy     bool   `json:"destroy"` // tf.plan: plan -destroy (always approved by typing the environment)
 }
 
 var lockIDRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`)
@@ -199,6 +202,9 @@ type Runner struct {
 	// OnPanic is told when a job goroutine panics (the run is failed and the
 	// service keeps going); the API raises an issue from it.
 	OnPanic safego.Hook
+	// TypedVault returns the vault passwords typed in the console for the
+	// Ansible project at dir, as flags and pipes from fd firstFD (nil: none).
+	TypedVault func(dir string, firstFD int) vars.VaultFlags
 	// Hooks are test seams.
 	Hooks struct {
 		BeforeStart func(kind string) // called on the job goroutine before it starts
@@ -306,7 +312,11 @@ func (r *Runner) Submit(req SubmitRequest) (*store.Run, error) {
 			}
 			argv = terraform.ForceUnlockArgs(t.Binary, r.abs(t.Root), req.LockID)
 		case KindPlan:
-			argv = terraform.PlanArgs(t.Binary, r.abs(t.Root), "<run>/tfplan", r.absAll(t.VarFiles))
+			if req.Destroy {
+				// destroying an environment always takes its name typed at approval
+				t.Destroy, t.ApprovalRequired = true, true
+			}
+			argv = terraform.PlanArgs(t.Binary, r.abs(t.Root), "<run>/tfplan", r.absAll(t.VarFiles), t.Destroy)
 		case KindDrift:
 			argv = terraform.DriftArgs(t.Binary, r.abs(t.Root), "<run>/drift.tfplan", r.absAll(t.VarFiles))
 		}
@@ -565,7 +575,7 @@ func (r *Runner) Replan(id int64) (*store.Run, error) {
 	if t.isAnsible() {
 		return r.Submit(SubmitRequest{Kind: KindAnsPlaybook, Project: t.Project, Env: t.Env, Playbook: t.Playbook, Limit: t.Limit, Tags: t.Tags, SkipTags: t.SkipTags})
 	}
-	return r.Submit(SubmitRequest{Kind: KindPlan, Root: t.Root, Env: t.Env})
+	return r.Submit(SubmitRequest{Kind: KindPlan, Root: t.Root, Env: t.Env, Destroy: t.Destroy})
 }
 
 // ResourceDiff returns the masked attribute diff of one resource in a run's plan.

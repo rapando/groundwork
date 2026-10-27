@@ -20,9 +20,9 @@ groundwork init --preset aws-envs --region eu-west-1 --yes          # after the 
 
 | Preset | Required flags | State backends (`--backend`) | Credentials at plan time |
 |---|---|---|---|
+| `vultr` | `--region ams` (offered first, the console's default) | `local` (default), `http`, `s3` + `--s3-endpoint https://ams1.vultrobjects.com` | `VULTR_API_KEY` |
 | `aws-envs` | `--region eu-west-1` | `s3` (default; bucket + DynamoDB lock), `local`, `http` | AWS profile, SSO or keys |
 | `gcp-envs` | `--gcp-project acme-prod-123 --region europe-west1` | `gcs` (default), `local`, `http` | `gcloud auth application-default login` |
-| `vultr` | `--region ams` | `local` (default), `http`, `s3` + `--s3-endpoint https://ams1.vultrobjects.com` | `VULTR_API_KEY` |
 | `digitalocean` | `--region fra1` | `local`, `http`, `s3` + `--s3-endpoint https://fra1.digitaloceanspaces.com` | `DIGITALOCEAN_TOKEN` |
 | `hetzner` | `--region eu-central` (a network zone) | `local`, `http`, `s3` + `--s3-endpoint https://fsn1.your-objectstorage.com` | `HCLOUD_TOKEN` |
 | `linode` | `--region eu-central` | `local`, `http`, `s3` + `--s3-endpoint https://eu-central-1.linodeobjects.com` | `LINODE_TOKEN` |
@@ -48,6 +48,7 @@ For `s3` on the token providers, Terraform reads the object storage's access key
 | `--roles common,nginx` | `common` | starter Ansible roles |
 | `--checks fmt,validate,tflint,ansible-lint,yamllint` | that list | also `checkov` |
 | `--vault` | off | adds `vault.yml.example` files (never real secrets) |
+| `--vault-password-file ~/.vault-pass` | none | sets `vault_password_file` in `groundwork.yaml`; without it the user types the vault password in the console (Variables → Secrets → Unlock). Don't create the file or write a password into it |
 | `--no-pre-commit`, `--no-ci` | | skip `.pre-commit-config.yaml` / `.github/workflows/plan.yml` |
 | `--git-commit` | off | commit the scaffolded files |
 

@@ -86,6 +86,8 @@ export interface ScaffoldForm {
   inventory: 'terraform' | 'static'
   roles: string[]
   vault: boolean
+  /** ansible-vault password file for groundwork.yaml; '' = typed in the console */
+  vault_password_file: string
   checks: string[]
   pre_commit: boolean
   ci: boolean
@@ -205,6 +207,8 @@ export interface RunTarget {
   approval_required: boolean
   binary?: string
   var_files?: string[]
+  /** a destroy plan (terraform plan -destroy) */
+  destroy?: boolean
   project?: string
   inventory?: string
   playbook?: string
@@ -679,6 +683,10 @@ export interface SecretItem {
 export interface VaultID {
   label: string
   source?: string
+  /** the password is typed in the console (no password file) */
+  prompt?: boolean
+  /** typed, and kept in the service's memory */
+  unlocked?: boolean
 }
 export interface VaultProject {
   path: string
@@ -696,6 +704,8 @@ export interface RekeyPlan {
   items: RekeyItem[]
   password_file?: string
   no_update?: string
+  /** the password is typed in the console, which switches to the new one */
+  typed?: boolean
 }
 export interface RevealAudit {
   id: number

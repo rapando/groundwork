@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../components/AppShell.vue'
+import InlineConfirm from '../components/InlineConfirm.vue'
 import StatusPill from '../components/StatusPill.vue'
 import TourOverlay, { type TourStep } from '../components/TourOverlay.vue'
 import { api } from '../api/client'
@@ -67,16 +68,18 @@ const fmtTime = (iso?: string) => (iso ? new Date(iso).toLocaleString([], { week
 
 const error = ref('')
 const starting = ref('')
-async function plan(t: EnvTarget) {
+async function plan(t: EnvTarget, destroy = false) {
   starting.value = t.root + t.env
   error.value = ''
   try {
-    const r = await runs.plan(t.root, t.env)
+    const r = await runs.plan(t.root, t.env, destroy)
     router.push('/runs/' + r.id)
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
-  } finally { starting.value = '' }
+  } finally { starting.value = ''; destroying.value = '' }
 }
+// a destroy starts with a plan to review; this only confirms making that plan
+const destroying = ref('')
 
 const envPill: Record<string, [string, string]> = {
   ok: ['succeeded', 'in sync'], pending: ['waiting_approval', 'changes pending'], failed: ['failed', 'last run failed'],
@@ -165,9 +168,14 @@ const hasTerraform = computed(() => (ws.ws?.config?.terraform?.roots ?? []).leng
               <span class="small muted">{{ lastLine(t) }}</span>
               <span class="acts">
                 <RouterLink v-if="t.pending" class="small" :to="'/runs/' + t.pending.run_id + '/plan'">Review &amp; approve →</RouterLink>
+                <button class="btn sm dg" type="button" :disabled="t.running || starting === t.root + t.env" @click="destroying = t.root + t.env">Destroy…</button>
                 <button class="btn sm" type="button" :disabled="t.running || starting === t.root + t.env" @click="plan(t)">{{ t.running ? 'Running…' : 'Plan' }}</button>
               </span>
             </div>
+            <InlineConfirm v-if="destroying === t.root + t.env" danger class="dconf" :message="`Plan the destruction of everything in ${t.env}?`" confirm-label="Plan destroy"
+              :busy="starting === t.root + t.env" @confirm="plan(t, true)" @cancel="destroying = ''">
+              <p class="small muted">Nothing is destroyed yet. You review the plan, then type <span class="mono">{{ t.env }}</span> to approve it.</p>
+            </InlineConfirm>
           </div>
         </article>
       </section>
@@ -280,6 +288,9 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .stats > div { display: flex; flex-direction: column; gap: 2px; }
 .lbl { font-size: 12px; color: var(--text-label); text-transform: uppercase; letter-spacing: .06em; }
 .num { font-size: 18px; }
+.btn.dg { color: var(--fail); border-color: var(--fail-line); }
+.dconf { margin-top: 10px; }
+.dconf p { margin: 0; }
 .foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); flex-wrap: wrap; }
 .acts { display: flex; align-items: center; gap: 12px; }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 16px; align-items: start; }
