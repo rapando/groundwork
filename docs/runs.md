@@ -30,8 +30,8 @@ The red error banner becomes a card that explains the failure:
 
 - If [Troubleshoot](troubleshooting.md) matched the error to a known cause, the card leads with it (marked **known cause**) and lists the facts that decide the next step. For a state-lock error these come from Terraform's lock info: who holds the lock, since when ("since 14:21 (9 min)") and for what operation, so a stale lock can be told from a live CI job. It also says where the run stopped (the failed resource, or the failed hosts for Ansible) and what already changed: "applied 1 of 3 · nothing was rolled back" for an apply, nothing for a plan that never reached it.
 - **Plan again** (the primary action; **Dry run again** for a playbook) starts a new plan for the same target. The cause's first fix, such as **Release the lock…**, opens a confirmation on the page with Troubleshoot's pre-checks, the command it runs and, where needed, the environment name to type.
-- **Show in log** opens the Log tab filtered to errors. **Raw error** expands the original text.
-- Without a known cause, the card shows the error's first line, cleaned of exit codes and repeated "Error:" prefixes, with the same **Show in log** and **Raw error**.
+- **Show in log** opens the Log tab filtered to errors. A run that failed before it had a plan opens on its Log tab, with error lines highlighted, and its Changes tab is greyed out ("no plan").
+- Without a known cause, the card shows the error's first line, cleaned of exit codes and repeated "Error:" prefixes, with the same **Show in log**.
 
 ## Plan, review, approval, apply
 

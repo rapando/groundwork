@@ -27,9 +27,6 @@ const emit = defineEmits<{ (e: 'log'): void }>()
 const router = useRouter()
 
 const headline = computed(() => cleanError(props.error))
-const raw = ref(false)
-// the run's error line, then the log lines the cause was matched on (the lock ID and holder live there)
-const rawText = computed(() => [props.error, props.issue?.excerpt].filter(Boolean).join('\n\n'))
 
 // ---- facts ----
 const lock = computed(() => {
@@ -118,10 +115,11 @@ async function copy(text: string) {
       <span v-if="issue" class="pill">known cause</span>
     </div>
     <p v-if="issue && headline" class="mono small muted line">{{ headline }}</p>
-    <div v-if="facts.length" class="kv">
-      <template v-for="[k, v] in facts" :key="k"><span class="k">{{ k }}</span><span class="mono v">{{ v }}</span></template>
-    </div>
+    <dl v-if="facts.length" class="kv">
+      <div v-for="[k, v] in facts" :key="k" class="fact"><dt class="k">{{ k }}</dt><dd class="mono v">{{ v }}</dd></div>
+    </dl>
     <p v-if="guidance" class="guide">{{ guidance }}</p>
+    <p v-if="!issue" class="small muted m0">The log below has every line of the error.</p>
     <p v-if="issue?.status === 'resolved'" class="small ok">Fixed: {{ issue.resolution }}</p>
 
     <div class="row">
@@ -132,7 +130,6 @@ async function copy(text: string) {
         <button v-else-if="first.step.action!.kind === 'copy'" class="btn sm" type="button" @click="copy(first.step.action!.text || first.step.action!.command || '')">{{ copied ? 'Copied' : first.step.action!.label }}</button>
       </template>
       <button class="btn sm" type="button" @click="emit('log')">Show in log</button>
-      <button class="btn sm" type="button" :aria-expanded="raw" aria-controls="fc-raw" @click="raw = !raw">Raw error</button>
       <RouterLink v-if="issue" class="small link" :to="'/troubleshoot/' + issue.id">Open in Troubleshoot →</RouterLink>
     </div>
 
@@ -151,7 +148,6 @@ async function copy(text: string) {
       </label>
     </InlineConfirm>
     <p v-if="actError" class="err" role="alert">{{ actError }}</p>
-    <pre v-if="raw" id="fc-raw" class="raw mono">{{ rawText }}</pre>
   </section>
 </template>
 
@@ -162,9 +158,10 @@ async function copy(text: string) {
 .pill { font: 600 12px var(--font-mono); padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; color: var(--fail-strong); background: color-mix(in srgb, var(--fail) 12%, transparent); }
 .small { font-size: 13px; }
 .line { margin: 0; overflow-wrap: anywhere; }
-.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; font-size: 13.5px; }
-.k { color: var(--text-muted); }
-.v { color: var(--text); overflow-wrap: anywhere; }
+.kv { display: flex; flex-wrap: wrap; gap: 8px 32px; margin: 0; font-size: 13.5px; }
+.fact { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.k { font-size: 12.5px; font-weight: 600; color: var(--text-label); text-transform: uppercase; letter-spacing: .06em; }
+.v { margin: 0; color: var(--text); overflow-wrap: anywhere; }
 .guide { margin: 0; font-size: 14px; color: var(--text-soft); max-width: 760px; }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .btn.danger { border-color: var(--fail-line); color: var(--fail-strong); }
@@ -173,5 +170,4 @@ async function copy(text: string) {
 .checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .cmd { font-size: 13px; background: var(--bg-inset); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; overflow-x: auto; white-space: nowrap; color: var(--text-code); }
 .field .inp { width: 240px; max-width: 100%; height: 34px; }
-.raw { margin: 0; padding: 10px 12px; font-size: 13px; line-height: 1.6; background: var(--bg-inset); border: 1px solid var(--line); border-radius: 6px; color: var(--fail-strong); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; }
 </style>

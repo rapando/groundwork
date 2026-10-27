@@ -95,5 +95,6 @@ onBeforeUnmount(() => ro?.disconnect())
 .m { white-space: pre; }
 .lg.wrap .m { white-space: pre-wrap; overflow-wrap: anywhere; }
 .warn .m { color: var(--warn); } .error .m { color: var(--fail-strong); } .debug .m { color: var(--text-faint); }
+.lg.error { background: var(--fail-bg); }
 .empty { margin: 0; padding: 16px; }
 </style>

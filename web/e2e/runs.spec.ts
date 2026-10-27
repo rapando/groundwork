@@ -144,16 +144,16 @@ test('a failed plan explains itself: the known cause, the lock holder and the ne
   await expect(cause.getByRole('button', { name: 'Plan again' })).toBeVisible()
   await expect(page.getByRole('tab', { name: /Log/ })).toContainText(/\d+ error/)
 
-  // the raw error stays one click away
-  await cause.getByRole('button', { name: 'Raw error' }).click()
-  await expect(cause.getByText('eb4ca245-50b1-5658-c0c3-a4c69baa2888')).toBeVisible()
+  // with no plan to draw, the page opens on the log, where the raw error is
+  await expect(page.getByRole('tab', { name: /Log/ })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('tab', { name: /Changes/ })).toHaveAttribute('aria-disabled', 'true')
+  await expect(page.getByRole('log').getByText(/eb4ca245-50b1-5658-c0c3-a4c69baa2888/)).toBeVisible()
   await page.screenshot({ path: path.join(SHOTS, 'run-failed.png'), fullPage: true })
 
   // "Show in log" opens the log on its errors
   await cause.getByRole('button', { name: 'Show in log' }).click()
   await expect(page.getByRole('tab', { name: /Log/ })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('button', { name: /^Error/ })).toHaveAttribute('aria-pressed', 'true')
-  await page.getByRole('tab', { name: /Changes/ }).click()
 
   // releasing the lock asks on the page, with the typed environment
   await cause.getByRole('button', { name: 'Release the lock…' }).click()

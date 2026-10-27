@@ -173,14 +173,15 @@ const doneCount = computed(() => Object.values(states.value).filter((s) => s.cls
 
 // ---- tabs: what changes (the default) and the log ----
 type Tab = 'changes' | 'log'
-// init has nothing to draw, so it opens on its log
-const defaultTab = computed<Tab>(() => (run.value?.kind === 'tf.init' ? 'log' : 'changes'))
+// a run that ended without a plan (an init, or a plan that failed) has nothing to draw: it opens on its log
+const noChanges = computed(() => !!run.value && !isAnsible.value && !plan.value && !active.value)
+const defaultTab = computed<Tab>(() => (run.value?.kind === 'tf.init' || noChanges.value ? 'log' : 'changes'))
 const tab = computed<Tab>({
-  get: () => (route.query.tab === 'log' || route.query.tab === 'changes' ? route.query.tab : defaultTab.value),
+  get: () => (route.query.tab === 'log' || (route.query.tab === 'changes' && !noChanges.value) ? route.query.tab : defaultTab.value),
   set: (v) => { router.replace({ query: { ...route.query, tab: v === defaultTab.value ? undefined : v } }) },
 })
 function tabKey(e: KeyboardEvent) {
-  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  if ((e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || noChanges.value) return
   tab.value = tab.value === 'log' ? 'changes' : 'log'
   document.getElementById('tab-' + tab.value)?.focus()
 }
@@ -363,8 +364,9 @@ const downloadHref = computed(() => (id.value ? `${apiBase}/runs/${id.value}/log
           </header>
 
           <div class="tabs" role="tablist" aria-label="Run detail">
-            <button id="tab-changes" class="tab" role="tab" type="button" :aria-selected="tab === 'changes'" aria-controls="panel-changes" :tabindex="tab === 'changes' ? 0 : -1" @click="tab = 'changes'" @keydown="tabKey">
-              Changes<span v-if="changesCount" class="n mono">{{ changesCount }}</span></button>
+            <button id="tab-changes" class="tab" role="tab" type="button" :aria-selected="tab === 'changes'" aria-controls="panel-changes" :tabindex="tab === 'changes' ? 0 : -1"
+              :aria-disabled="noChanges" @click="noChanges || (tab = 'changes')" @keydown="tabKey">
+              Changes<span v-if="changesCount" class="n mono">{{ changesCount }}</span><span v-else-if="noChanges" class="n">no plan</span></button>
             <button id="tab-log" class="tab" role="tab" type="button" :aria-selected="tab === 'log'" aria-controls="panel-log" :tabindex="tab === 'log' ? 0 : -1" @click="tab = 'log'" @keydown="tabKey">
               Log<span v-if="warnCount" class="n mono w">{{ warnCount }} warn</span><span v-if="errCount" class="n mono e">{{ errCount }} error</span></button>
           </div>
@@ -483,6 +485,7 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .tab { all: unset; display: inline-flex; align-items: center; gap: 8px; padding: 10px 12px 9px; margin-bottom: -1px; border-bottom: 2px solid transparent; font-size: 14px; font-weight: 500; color: var(--text-muted); cursor: pointer; }
 .tab:hover { color: var(--text); }
 .tab[aria-selected='true'] { color: var(--text); border-bottom-color: var(--accent); }
+.tab[aria-disabled='true'] { color: var(--text-disabled); cursor: default; }
 .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
 .n { font-size: 13px; color: var(--text-faint); }
 .n.w { color: var(--warn); } .n.e { color: var(--fail-strong); }
