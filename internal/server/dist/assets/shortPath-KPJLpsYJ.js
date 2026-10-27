@@ -1,0 +1,1 @@
+function e(e,t=48){let n=e.replace(/^\/(?:Users|home)\/[^/]+(?=\/|$)/,`~`).replace(/^(?:\/private)?\/var\/folders\/[^/]+\/[^/]+\//,`…/`);if(n.length<=t)return n;let r=n.split(`/`),i=r.pop()??``;for(;r.length&&r[r.length-1]!==`…`&&`…/${r[r.length-1]}/${i}`.length<=t;)i=`${r.pop()}/${i}`;return n=`…/${i}`,n}export{e as t};

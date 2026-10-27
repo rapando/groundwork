@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { shortPath } from '../composables/shortPath'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '../components/AppShell.vue'
@@ -65,6 +66,14 @@ function setScope(project: string, env: string) {
 const scopeCounts = computed(() => (data.value?.scopes ?? []).map((s) => ({ ...s, current: s.project === scope.value?.project && s.env === scope.value?.env })))
 
 const hosts = computed<InvHost[]>(() => (data.value?.hosts ?? []).filter((h) => group.value === 'all' || h.groups.includes(group.value)))
+// os and last play stay hidden until some host has one (after Gather facts, or a playbook run)
+const showOs = computed(() => hosts.value.some((h) => h.os))
+const showPlay = computed(() => hosts.value.some((h) => h.last_play))
+const hostCols = computed(() => ['28px', 'minmax(130px, 1.2fr)', '120px', 'minmax(100px, 1fr)', ...(showOs.value ? ['minmax(120px, 1fr)'] : []), '150px', ...(showPlay.value ? ['150px'] : [])].join(' '))
+const hostGroups = (h: InvHost) => h.groups.filter((g) => g !== 'all' && g !== 'ungrouped').join(', ') || '—'
+// overridden values stay folded under their winner until asked for
+const openOver = reactive(new Set<string>())
+const toggleOver = (n: string) => (openOver.has(n) ? openOver.delete(n) : openOver.add(n))
 const allChecked = computed(() => hosts.value.length > 0 && hosts.value.every((h) => checked.has(h.name)))
 function toggleAll(on: boolean) { hosts.value.forEach((h) => (on ? checked.add(h.name) : checked.delete(h.name))) }
 const targetHosts = computed(() => [...checked])
@@ -282,25 +291,29 @@ const levelShort = (l: string) => l.replace('inventory ', 'inv ').replace('playb
         <button v-if="canRemoveGroup" class="link small pl rmg" type="button" @click="preview({ op: 'remove_group', group })">Remove group {{ group }}</button>
         <p v-if="!editable && data.edit_note" class="small muted pl note">Editing hosts and groups: {{ data.edit_note }}</p>
         <span class="lbl pl top">Files</span>
-        <RouterLink v-for="f in data.files" :key="f" class="grp mono file" :to="codeHref(f)">{{ f }}</RouterLink>
+        <RouterLink v-for="f in data.files" :key="f" class="grp mono file" :to="codeHref(f)" :title="f">{{ shortPath(f, 26) }}</RouterLink>
       </section>
 
       <div class="main">
         <section class="hosts" aria-label="Hosts">
-          <div class="hr head">
+          <div class="hr head" :style="{ gridTemplateColumns: hostCols }">
             <span><input type="checkbox" :checked="allChecked" aria-label="Select all" @change="toggleAll(($event.target as HTMLInputElement).checked)" /></span>
-            <span>host</span><span>address</span><span>os</span><span>reachable</span><span>last play</span>
+            <span>host</span><span>address</span><span>groups</span><span v-if="showOs">os</span><span>reachable</span><span v-if="showPlay">last play</span>
           </div>
-          <div v-for="h in hosts" :key="h.name" class="hr" :class="{ sel: h.name === selected }">
+          <div v-for="h in hosts" :key="h.name" class="hr" :class="{ sel: h.name === selected }" :style="{ gridTemplateColumns: hostCols }">
             <span><input type="checkbox" :checked="checked.has(h.name)" :aria-label="`Select ${h.name}`" @change="($event.target as HTMLInputElement).checked ? checked.add(h.name) : checked.delete(h.name)" /></span>
             <button type="button" class="hname mono" @click="selectHost(h.name)">{{ h.name }}</button>
             <span class="mono muted">{{ h.address }}</span>
-            <span class="muted">{{ h.os || '—' }}</span>
+            <span class="mono muted small">{{ hostGroups(h) }}</span>
+            <span v-if="showOs" class="muted">{{ h.os || '—' }}</span>
             <span class="pill" :class="'st-' + reach(h).cls" :title="h.reachable?.msg || (h.reachable?.reachable ? 'ping response time (includes connection setup)' : '')">{{ reach(h).text }}</span>
-            <RouterLink v-if="h.last_play" class="mono small play" :to="'/runs/' + h.last_play.run_id" :class="{ fail: h.last_play.failures || h.last_play.unreachable }">{{ play(h) }}</RouterLink>
-            <span v-else class="muted small">—</span>
+            <template v-if="showPlay">
+              <RouterLink v-if="h.last_play" class="mono small play" :to="'/runs/' + h.last_play.run_id" :class="{ fail: h.last_play.failures || h.last_play.unreachable }">{{ play(h) }}</RouterLink>
+              <span v-else class="muted small">—</span>
+            </template>
           </div>
           <p v-if="!hosts.length" class="pad muted">No hosts in this group.</p>
+          <p v-else-if="!showOs || !showPlay" class="small muted hnote">{{ !showOs && !showPlay ? 'OS appears once facts are gathered, and last play after a playbook run.' : !showOs ? 'OS appears once facts are gathered.' : 'Last play appears after a playbook run.' }}</p>
         </section>
 
         <section v-if="selected" class="detail" aria-label="Host detail">
@@ -322,33 +335,38 @@ const levelShort = (l: string) => l.replace('inventory ', 'inv ').replace('playb
           </div>
           <div class="vars">
             <div class="lrow">
-              <span class="lbl">Variables on this host · winner first</span>
+              <span class="lbl">Variables on this host · the value that wins</span>
               <button v-if="canEditVars && detail" class="link small" type="button" @click="openForm('var')">+ Add variable</button>
             </div>
             <p v-if="detailError" class="err small">{{ detailError }}</p>
             <div class="scroll">
               <table v-if="detail" class="mono vt">
-                <thead><tr><th>variable</th><th>value</th><th>from</th></tr></thead>
-                <tbody v-for="v in detail.vars.rows" :key="v.name">
+                <thead><tr><th>variable</th><th>value</th><th>from</th><th><span class="sr-only">actions</span></th></tr></thead>
+                <tbody v-for="v in detail.vars.rows" :key="v.name" :class="{ opened: openOver.has(v.name) }">
                   <tr class="first">
+                    <td class="vname"><template v-for="(part, k) in v.name.split('_')" :key="k"><template v-if="k">_<wbr></template>{{ part }}</template></td>
+                    <td :class="{ secret: v.secret }"><span class="val" :title="v.value">{{ v.value }}</span></td>
                     <td>
-                      {{ v.name }}
-                      <span v-if="canEditVars && varSource(v)" class="vacts">
-                        <button class="link" type="button" :aria-label="`Edit ${v.name}`" @click="editVar(v)">Edit</button>
-                        <button class="link" type="button" :aria-label="`Remove ${v.name}`" @click="unsetVar(v)">Remove</button>
-                      </span>
-                    </td>
-                    <td :class="{ secret: v.secret }">{{ v.value }}</td>
-                    <td>
-                      <RouterLink v-if="v.winner && v.status !== 'unknown'" :to="codeHref(v.winner.file)" class="src" :title="v.winner.level">{{ v.winner.file }}</RouterLink>
+                      <RouterLink v-if="v.winner && v.status !== 'unknown'" :to="codeHref(v.winner.file)" class="src" :title="v.winner.file">{{ shortPath(v.winner.file, 26) }}</RouterLink>
                       <span v-if="v.status === 'unknown'" class="badge warn" title="groundwork's resolution disagrees with ansible-inventory, or the value comes from a source it can't read">can't determine source</span>
                       <span v-else-if="v.status === 'role-default'" class="badge" title="Only set in role defaults: applies in plays that use the role">role default</span>
-                      <span v-if="v.winner && v.status !== 'unknown'" class="lvl">{{ levelShort(v.winner.level) }}</span>
+                      <span v-if="(v.winner && v.status !== 'unknown') || v.overridden?.length" class="lvl">
+                        <template v-if="v.winner && v.status !== 'unknown'">{{ levelShort(v.winner.level) }}</template>
+                        <button v-if="v.overridden?.length" class="link over" type="button" :aria-expanded="openOver.has(v.name)" @click="toggleOver(v.name)">overrides {{ v.overridden.length }} {{ openOver.has(v.name) ? '▾' : '▸' }}</button>
+                      </span>
+                    </td>
+                    <td class="vacts">
+                      <template v-if="canEditVars && varSource(v)">
+                        <button class="ib" type="button" :aria-label="`Edit ${v.name}`" title="Edit" @click="editVar(v)">✎</button>
+                        <button class="ib dg" type="button" :aria-label="`Remove ${v.name}`" title="Remove" @click="unsetVar(v)">✕</button>
+                      </template>
                     </td>
                   </tr>
-                  <tr v-for="o in v.overridden" :key="o.file + o.level" class="ov">
-                    <td></td><td>{{ o.value }}</td><td>{{ o.file }} <span class="lvl">{{ levelShort(o.level) }}</span></td>
-                  </tr>
+                  <template v-if="openOver.has(v.name)">
+                    <tr v-for="o in v.overridden" :key="o.file + o.level" class="ov">
+                      <td></td><td><span class="val" :title="o.value">{{ o.value }}</span></td><td colspan="2"><span :title="o.file">{{ shortPath(o.file, 26) }}</span> <span class="lvl">{{ levelShort(o.level) }}</span></td>
+                    </tr>
+                  </template>
                 </tbody>
               </table>
             </div>
@@ -486,7 +504,7 @@ h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .grp { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 5px; color: var(--text-code); font-size: 13.5px; cursor: pointer; text-decoration: none; word-break: break-all; }
 .grp:hover { background: var(--bg-hover); } .grp.on { background: var(--bg-active); color: var(--text); }
 .grp:focus-visible { outline: 2px solid var(--accent); }
-.grp.file { color: var(--text-muted); font-size: 13px; }
+.grp.file { color: var(--text-muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cnt { margin-left: auto; color: var(--text-label); white-space: nowrap; }
 .cnt.warn { color: var(--warn); }
 .main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; overflow: auto; }
@@ -510,7 +528,18 @@ h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .vars { flex: 2 1 420px; min-width: 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
 .scroll { overflow-x: auto; }
 .vt { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 13.5px; table-layout: fixed; }
-.vt th:nth-child(1) { width: 30%; } .vt th:nth-child(2) { width: 32%; }
+.vt th:nth-child(1) { width: 28%; } .vt th:nth-child(2) { width: 28%; } .vt th:nth-child(4) { width: 52px; }
+.val { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.src { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.over { display: block; font-size: 13px; color: var(--text-muted); }
+.vname { overflow-wrap: normal; word-break: normal; }
+.ib { all: unset; width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 4px; color: var(--text-muted); cursor: pointer; font-size: 13px; }
+.ib:hover { background: var(--bg-hover); color: var(--text); }
+.ib.dg:hover { color: var(--fail); }
+.ib:focus-visible { outline: 2px solid var(--accent); }
+tbody.opened tr.first td { background: var(--bg-raised); }
+.hnote { margin: 0; padding: 8px 16px; border-top: 1px solid var(--bg-hover); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .vt td { overflow-wrap: anywhere; }
 .vt th { font-weight: 500; padding: 6px 0; color: var(--text-label); text-align: left; }
 .vt tr.first td { border-top: 1px solid var(--line); padding: 8px 8px 8px 0; vertical-align: top; }
@@ -534,6 +563,6 @@ h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .rmg { text-align: left; margin-top: 6px; }
 .note { margin: 10px 0 0; }
 .hacts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-.vacts { display: flex; gap: 10px; margin-top: 2px; font-family: var(--font-ui); font-size: 13px; }
+.vt td.vacts { text-align: right; white-space: nowrap; }
 @media (max-width: 900px) { .cols { flex-wrap: wrap; } .groups { max-width: 100%; } }
 </style>

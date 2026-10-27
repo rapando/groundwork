@@ -35,8 +35,11 @@ test('ping marks reachability; variables show their winning source', async ({ pa
   const nw = detail.locator('tbody', { hasText: 'nginx_workers' })
   await expect(nw.locator('tr.first')).toContainText('3')
   await expect(nw.locator('tr.first')).toContainText('group_vars/web.yml')
+  // the values it beat stay folded until asked for
+  await expect(nw.locator('tr.ov')).toHaveCount(0)
+  await nw.getByRole('button', { name: /overrides 3/ }).click()
   await expect(nw.locator('tr.ov')).toHaveCount(3) // inventory group_vars, inventory file, role default
-  await expect(nw.locator('tr.ov').first()).toContainText('inventory/group_vars/web.yml')
+  await expect(nw.locator('tr.ov').first().locator('[title="inventory/group_vars/web.yml"]')).toBeVisible()
   await page.screenshot({ path: path.join(SHOTS, 'inventory.png'), fullPage: true })
 })
 
@@ -148,7 +151,7 @@ test('structured edits: add, change and remove hosts, groups and variables, each
   await apply('+app_port: 8080')
   const row = vars.locator('tr.first', { hasText: 'app_port' })
   await expect(row).toContainText('8080')
-  await expect(row).toContainText('environments/dev/host_vars/web-3.yml')
+  await expect(row.getByRole('link', { name: /host_vars\/web-3.yml/ })).toHaveAttribute('title', 'environments/dev/host_vars/web-3.yml')
   await row.getByRole('button', { name: 'Edit app_port' }).click()
   await page.getByRole('dialog').getByLabel('Value (YAML)').fill('9090')
   await page.getByRole('button', { name: 'Preview' }).click()

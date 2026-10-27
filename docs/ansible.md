@@ -18,7 +18,7 @@ Pick an environment (one per entry in `inventories:` for the project in `groundw
 8. inventory `host_vars/<host>`
 9. playbook `host_vars/<host>`
 
-Both `group_vars/web.yml` and `group_vars/web/*.yml` forms are read; YAML and INI inventories are understood. The winning value is then compared with `ansible-inventory --host`. If they disagree, or Ansible reports a variable groundwork can't place (dynamic inventory plugins, scripts), the row says **can't determine source** and shows Ansible's value rather than guessing. Variables set only in role defaults are marked as such: they apply in plays that use the role.
+Each variable shows the value that wins and where it comes from; **overrides N ▸** under it unfolds the values it beat, struck through, with their sources. Both `group_vars/web.yml` and `group_vars/web/*.yml` forms are read; YAML and INI inventories are understood. The winning value is then compared with `ansible-inventory --host`. If they disagree, or Ansible reports a variable groundwork can't place (dynamic inventory plugins, scripts), the row says **can't determine source** and shows Ansible's value rather than guessing. Variables set only in role defaults are marked as such: they apply in plays that use the role.
 
 Values of secret-looking variables (names containing `pass`, `secret`, `token`, `api_key`, `private_key` or `credential`) are masked; `!vault` values show as encrypted; vault-encrypted files are listed, not opened: reveal or edit them from the [Variables screen](variables.md#managing-ansible-vault).
 
