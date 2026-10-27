@@ -35,12 +35,16 @@ const visible = computed(() => {
 
 // Following stops only when the reader scrolls up: a scroll event that lands
 // short of the bottom because new lines arrived meanwhile must not end it.
-// Scrolling back to the bottom resumes it.
+// Scrolling back to the bottom resumes it, also when new lines rendered
+// between the scroll and its event (the box was at the bottom just before).
+let wasAtBottom = false
+const gapOf = (el: HTMLElement) => el.scrollHeight - el.scrollTop - el.clientHeight
 function onScroll() {
   const el = box.value!
   const up = el.scrollTop < top.value - 2
   top.value = el.scrollTop
-  const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 8
+  const atBottom = gapOf(el) < 8 || (!up && wasAtBottom)
+  wasAtBottom = false
   if (up && !atBottom && props.follow) emit('update:follow', false)
   else if (atBottom && !props.follow) emit('update:follow', true)
 }
@@ -50,7 +54,12 @@ function toBottom() {
   if (el) el.scrollTop = el.scrollHeight
 }
 
-watch(() => rows.value.length, async () => { if (props.follow) { await nextTick(); toBottom() } })
+// runs before the new lines render, so it still sees whether the box is at the bottom
+watch(() => rows.value.length, async () => {
+  const el = box.value
+  if (el && !props.follow && gapOf(el) < 8) wasAtBottom = true
+  if (props.follow) { await nextTick(); toBottom() }
+})
 watch(() => props.follow, async (f) => { if (f) { await nextTick(); toBottom() } })
 let ro: ResizeObserver | undefined
 onMounted(() => {
