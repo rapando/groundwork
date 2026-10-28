@@ -87,6 +87,69 @@ Add `hashicorp/random` to `required_providers` in `versions.tf`. Then use it in 
 - groundwork's [host variables view](ansible.md) masks it only if its name looks secret (contains `pass`, `secret`, `token`, …). Run logs don't mask it: use `no_log: true` on tasks that could print it.
 - Ansible sees it only after an apply, since the script reads the current state.
 
+### Saving generated passwords in ansible-vault
+
+Instead of passing them as host variables, you can copy the passwords Terraform generates into an ansible-vault file. Ansible then reads them like any other secret: playbooks don't need access to the Terraform state, and the values appear on [Variables → Secrets](variables.md). Put them in their own output, named the way they'll be named in Ansible:
+
+```hcl
+resource "random_password" "mysql" {
+  length  = 32
+  special = false
+}
+
+resource "random_password" "redis" {
+  length  = 32
+  special = false
+}
+
+resource "random_password" "rabbitmq" {
+  length  = 32
+  special = false
+}
+
+output "ansible_secrets" {
+  description = "Generated passwords, saved to ansible-vault after an apply."
+  sensitive   = true
+  value = {
+    vault_mysql_password    = random_password.mysql.result
+    vault_redis_password    = random_password.redis.result
+    vault_rabbitmq_password = random_password.rabbitmq.result
+  }
+}
+```
+
+After an apply, pipe the output straight into `ansible-vault`, from the repository root:
+
+```sh
+terraform -chdir=terraform/envs/dev output -json ansible_secrets \
+  | ansible-vault encrypt --vault-password-file ~/.vault-pass-<project> \
+      --output ansible/group_vars/dev/vault_terraform.yml
+```
+
+JSON is valid YAML, so the encrypted file is an ordinary vars file. The plaintext only passes through the pipe and is never written to disk. With the `workspaces` layout, use `-chdir=terraform` and set `TF_WORKSPACE=dev`. Without a password file, leave out `--vault-password-file` and `ansible-vault` asks for the password.
+
+The inventory script puts every host in a group named after the environment, so `group_vars/dev/` applies to all of them. Map the vault names to the names your playbooks use in a plain file next to it, `ansible/group_vars/dev/vars.yml`:
+
+```yaml
+mysql_password: "{{ vault_mysql_password }}"
+redis_password: "{{ vault_redis_password }}"
+rabbitmq_password: "{{ vault_rabbitmq_password }}"
+```
+
+Then use them as usual:
+
+```yaml
+- community.mysql.mysql_user:
+    name: app
+    password: "{{ mysql_password }}"
+    priv: "app.*:ALL"
+  no_log: true
+```
+
+- Write to a file of its own (`vault_terraform.yml` here), not the `vault.yml` you edit by hand: the command replaces the whole file.
+- Each run produces new ciphertext even when the values are the same, so run it only when the passwords change. To rotate one, run `terraform apply -replace=random_password.mysql`, rerun the command, then run the playbook.
+- The passwords stay in the Terraform state in plain text: keep the state backend private.
+
 ### The ansible-vault password
 
 Setup asks for the vault password before it writes anything, and **Create files** stays disabled until you've typed it twice.
