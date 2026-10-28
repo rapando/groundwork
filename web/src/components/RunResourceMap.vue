@@ -19,6 +19,18 @@ function short(c: PlanChange) {
   if (a.startsWith(c.type + '.')) a = a.slice(c.type.length + 1)
   return { type: (data ? 'data.' : '') + c.type, name: a }
 }
+// What forces a replacement, by attribute: ports.0.ip and ports.3.protocol are
+// both "ports". The full paths are in the note's tooltip.
+function note(c: PlanChange): string {
+  const base = NOTE[c.action] ?? c.action
+  if (c.action !== 'replace' || !c.replace_paths?.length) return base
+  const attrs = [...new Set(c.replace_paths.map((p) => String(p[0])))]
+  return `${base}: ${attrs.join(', ')}`
+}
+function noteTitle(c: PlanChange): string | undefined {
+  if (c.action !== 'replace' || !c.replace_paths?.length) return undefined
+  return 'Forces replacement: ' + c.replace_paths.map((p) => p.join('.')).join(', ')
+}
 const groups = computed(() => {
   const by = new Map<string, PlanChange[]>()
   for (const c of props.changes) by.set(c.module ?? '', [...(by.get(c.module ?? '') ?? []), c])
@@ -45,7 +57,7 @@ const pct = (cls: string) => (props.changes.length ? (count(cls) / props.changes
         :title="`Show the log lines for ${c.address}`" @click="emit('open', c.address)">
         <span class="sym mono" aria-hidden="true">{{ SYM[c.action] }}</span>
         <span class="addr mono"><span class="ty">{{ short(c).type }}</span> <span class="nm">{{ short(c).name }}</span></span>
-        <span class="note">{{ NOTE[c.action] ?? c.action }}<template v-if="c.action === 'replace' && c.replace_paths?.length">: {{ c.replace_paths.map((p) => p.join('.')).join(', ') }}</template></span>
+        <span class="note" :title="noteTitle(c)">{{ note(c) }}</span>
         <span class="pill" :class="'st-' + (states[c.address]?.cls ?? 'idle')">{{ states[c.address]?.text ?? 'planned' }}</span>
       </button>
     </div>
@@ -69,14 +81,15 @@ const pct = (cls: string) => (props.changes.length ? (count(cls) / props.changes
 .mh { display: flex; justify-content: space-between; gap: 12px; padding: 9px 16px; background: var(--bg-raised); border-bottom: 1px solid var(--line); }
 .ml { font-size: 13px; color: var(--text-label); }
 .mc { font-size: 13px; color: var(--text-faint); }
-.tile { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 16px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; width: 100%; padding: 10px 16px 10px 13px; border-left: 3px solid transparent; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .2s; }
+.tile { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 16px minmax(0, max-content) minmax(0, 1fr) auto; gap: 12px; align-items: center; width: 100%; padding: 10px 16px 10px 13px; border-left: 3px solid transparent; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .2s; }
 .tile:last-child { border-bottom: 0; }
 .tile:hover { background: var(--bg-hover); }
 .tile:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .addr { font-size: 13.5px; min-width: 0; overflow-wrap: anywhere; }
 .ty { color: var(--text-faint); }
 .nm { font-weight: 700; }
-.note { font-size: 13px; color: var(--text-muted); text-align: right; }
+/* one line, cut short, so it never takes the name's room */
+.note { font-size: 13px; color: var(--text-muted); text-align: right; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sym { font-weight: 700; text-align: center; }
 .a-create .sym { color: var(--ok); } .a-update .sym { color: var(--running); } .a-replace .sym { color: var(--warn); } .a-delete .sym { color: var(--fail); } .a-read .sym { color: var(--text-label); }
 .s-run { border-left-color: var(--running); background: var(--running-bg); }
