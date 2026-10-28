@@ -7,6 +7,7 @@
 - [Runs: plan, approve, apply](runs.md)
 - [Notifications: failures, approvals, drift; desktop and webhook](notifications.md)
 - [Ansible](ansible.md)
+- [Tutorial: configure your Terraform hosts with Ansible](tutorial-configure-hosts.md)
 - [Graph and drift](graph.md)
 - [Variables and secrets](variables.md)
 - [Troubleshooting, Doctor and scheduled drift](troubleshooting.md)
