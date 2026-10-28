@@ -45,6 +45,8 @@ func (f *fakeExec) Run(_ context.Context, c checks.Cmd) (checks.Output, error) {
 		return checks.Output{ExitCode: 1, Stdout: []byte(`{"valid":false,"diagnostics":[{"severity":"error","summary":"Unsupported argument","detail":"An argument named \"enable_dns_hostname\" is not expected here. Did you mean \"enable_dns_hostnames\"?","range":{"filename":"main.tf","start":{"line":2,"column":3},"end":{"line":2,"column":22}}}]}`)}, nil
 	case strings.Contains(j, " fmt ") && strings.Contains(j, "-check"):
 		return checks.Output{ExitCode: 0}, nil
+	case strings.HasSuffix(j, " fmt -no-color -"):
+		return checks.Output{Stdout: []byte(strings.ReplaceAll(string(c.Stdin), "  =  ", " = "))}, nil
 	}
 	return checks.Output{}, nil
 }
@@ -283,6 +285,22 @@ func TestChecksRunRequiresSetup(t *testing.T) {
 	h := newAPI(t, fixture(t, "iac-only"))
 	if rec := call(t, h, "POST", "/checks/run", map[string]any{}); rec.Code != 409 {
 		t.Fatalf("%d", rec.Code)
+	}
+}
+
+func TestFormatEndpointReturnsTheBufferFormatted(t *testing.T) {
+	e := newConfigured(t)
+	file := filepath.Join(e.root, "terraform/envs/dev/main.tf")
+	before, _ := os.ReadFile(file)
+	rec := call(t, e.h, "POST", "/checks/format", map[string]any{"file": "terraform/envs/dev/main.tf", "content": "a  =  1\n"})
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"content":"a = 1\n"`) {
+		t.Fatalf("%d %s", rec.Code, rec.Body)
+	}
+	if after, _ := os.ReadFile(file); string(after) != string(before) {
+		t.Fatal("formatting a buffer must not write the file")
+	}
+	if rec := call(t, e.h, "POST", "/checks/format", map[string]any{"file": "ansible/playbooks/site.yml", "content": "x: 1"}); rec.Code != 422 {
+		t.Fatalf("non-terraform file: %d", rec.Code)
 	}
 }
 

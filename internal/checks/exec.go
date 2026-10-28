@@ -16,6 +16,7 @@ type Cmd struct {
 	Env     []string // extra KEY=VALUE, appended to the inherited environment
 	Argv    []string
 	Timeout time.Duration
+	Stdin   []byte // nil: no input
 }
 
 type Output struct {
@@ -47,6 +48,9 @@ func (OSExec) Run(ctx context.Context, c Cmd) (Output, error) {
 	cmd.Env = append(os.Environ(), c.Env...)
 	var so, se bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &so, &se
+	if c.Stdin != nil {
+		cmd.Stdin = bytes.NewReader(c.Stdin)
+	}
 	err := cmd.Run()
 	out := Output{Stdout: so.Bytes(), Stderr: se.Bytes()}
 	var ee *exec.ExitError

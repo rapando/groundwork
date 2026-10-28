@@ -74,7 +74,14 @@ type Terraform struct {
 	// RunTimeout bounds one run (plan or apply); a hung provider is killed
 	// and the run fails instead of holding the root's lock forever (default 2h).
 	RunTimeout string `yaml:"run_timeout,omitempty"`
+	// InstallProviders: when a root's required_providers change, install the
+	// new ones in the background (init -backend=false, which updates
+	// .terraform.lock.hcl) and delete the ones no longer required (default true).
+	InstallProviders *bool `yaml:"install_providers,omitempty"`
 }
+
+// InstallProvidersOn reports whether providers are installed as you add them.
+func (t Terraform) InstallProvidersOn() bool { return t.InstallProviders == nil || *t.InstallProviders }
 
 // RunTimeoutDuration returns the configured run timeout (default two hours).
 func (t Terraform) RunTimeoutDuration() time.Duration { return runTimeout(t.RunTimeout) }

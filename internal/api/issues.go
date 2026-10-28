@@ -26,6 +26,7 @@ import (
 // warm-up and the drift schedule. They stop when ctx ends; Wait blocks until
 // they have, so the store isn't closed (or the folder removed) under them.
 func (a *API) Start(ctx context.Context) {
+	a.prov.ctx = ctx
 	engine := a.Issues.Start(ctx)
 	notifier := a.Notifier.Start(ctx)
 	a.bg.Add(4)
@@ -338,11 +339,33 @@ func (a *API) onboarding(w http.ResponseWriter, r *http.Request) {
 		{"doctor", "Run doctor", doctorRan, "/troubleshoot"},
 	}
 	writeJSON(w, 200, map[string]any{
+		"first_use":        a.firstUse(),
 		"tour_completed":   a.kvBool("onboarding.tour_completed"),
 		"checklist_hidden": a.kvBool("onboarding.checklist_hidden"),
 		"tips":             tipsEnabled(),
 		"items":            items,
 	})
+}
+
+// firstUse is true once per machine: the response that first shows the tour
+// and checklist. The browser tab that got it keeps them for its session.
+func (a *API) firstUse() bool {
+	mark := a.FirstUse
+	if mark == nil {
+		mark = func() bool {
+			if a.kvBool("onboarding.seen") {
+				return false
+			}
+			_ = a.Store.SetKV("onboarding.seen", "true")
+			return true
+		}
+	}
+	// finished or hidden before this was per machine: it has been seen
+	if a.kvBool("onboarding.tour_completed") || a.kvBool("onboarding.checklist_hidden") {
+		mark()
+		return false
+	}
+	return mark()
 }
 
 func (a *API) setOnboarding(w http.ResponseWriter, r *http.Request) {

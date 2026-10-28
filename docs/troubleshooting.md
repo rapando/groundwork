@@ -117,7 +117,7 @@ While groundwork is running it checks every Terraform environment on that schedu
 
 ## First run and shortcuts
 
-On a new repo the Overview shows a short tour and a **Getting started** checklist. The checklist ticks itself from what you've actually done (scanned, checks ran, a plan or dry run, the infrastructure view opened, Doctor ran). Replay the tour from the **?** button; hide the checklist for good with **Hide**. To never see tips, set `{"tips": false}` in `~/.config/groundwork/settings.json` (on macOS `~/Library/Application Support/groundwork/settings.json` works too), or start groundwork with `GROUNDWORK_TIPS=off`.
+The first time you use groundwork, the Overview shows a short tour and a **Getting started** checklist. They show once per machine (recorded in `onboarding.json` in groundwork's data directory): the checklist stays in that browser tab until you close it, and later visits and new projects show neither. The checklist ticks itself from what you've actually done (scanned, checks ran, a plan or dry run, the infrastructure view opened, Doctor ran). Replay the tour from the **?** button; hide the checklist for good with **Hide**. To never see tips, set `{"tips": false}` in `~/.config/groundwork/settings.json` (on macOS `~/Library/Application Support/groundwork/settings.json` works too), or start groundwork with `GROUNDWORK_TIPS=off`.
 
 | Keys | |
 |---|---|

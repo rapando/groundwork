@@ -196,6 +196,38 @@ function applyEdit(e: Edit): boolean {
   return true
 }
 
+/**
+ * Replace the whole text with as small changes as possible (format on save),
+ * so the cursor stays where it was and one undo reverts it. Line by line
+ * when the line count is unchanged, as with most formatting; else one span.
+ */
+function replaceDoc(text: string): boolean {
+  const v = view.value
+  if (!v) return false
+  const doc = v.state.doc
+  const span = (a: string, b: string, at: number) => {
+    let s = 0
+    const max = Math.min(a.length, b.length)
+    while (s < max && a.charCodeAt(s) === b.charCodeAt(s)) s++
+    let ea = a.length, eb = b.length
+    while (ea > s && eb > s && a.charCodeAt(ea - 1) === b.charCodeAt(eb - 1)) { ea--; eb-- }
+    return { from: at + s, to: at + ea, insert: b.slice(s, eb) }
+  }
+  const lines = text.split('\n')
+  const changes = []
+  if (lines.length === doc.lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const l = doc.line(i + 1)
+      if (l.text !== lines[i]) changes.push(span(l.text, lines[i], l.from))
+    }
+  } else {
+    const old = doc.toString()
+    if (old !== text) changes.push(span(old, text, 0))
+  }
+  if (changes.length) v.dispatch({ changes })
+  return true
+}
+
 function goTo(line: number, col = 1) {
   const v = view.value
   if (!v || line < 1 || line > v.state.doc.lines) return
@@ -205,7 +237,7 @@ function goTo(line: number, col = 1) {
   v.focus()
 }
 
-defineExpose({ applyEdit, goTo, focus: () => view.value?.focus() })
+defineExpose({ applyEdit, replaceDoc, goTo, focus: () => view.value?.focus() })
 </script>
 
 <template>

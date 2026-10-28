@@ -1,9 +1,12 @@
 package api
 
 import (
-	"github.com/rapando/groundwork/v2/internal/config"
+	"encoding/json"
 	"net/http"
 	"time"
+
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/files"
 )
 
 func (a *API) listChecks(w http.ResponseWriter, r *http.Request) {
@@ -76,6 +79,30 @@ func (a *API) applyFix(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"ok": true})
 }
 
+type formatReq struct {
+	File    string `json:"file"`
+	Content string `json:"content"`
+}
+
+// formatSource formats an editor buffer and returns it, writing nothing: the
+// editor saves the result itself, so format on save is one write.
+func (a *API) formatSource(w http.ResponseWriter, r *http.Request) {
+	var req formatReq
+	r.Body = http.MaxBytesReader(w, r.Body, files.MaxEditSize+4096)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		writeError(w, 400, "bad_request", "invalid JSON body: "+err.Error(), nil)
+		return
+	}
+	out, err := a.Checks.FormatSource(r.Context(), req.File, []byte(req.Content))
+	if err != nil {
+		writeError(w, 422, "format_failed", err.Error(), nil)
+		return
+	}
+	writeJSON(w, 200, map[string]any{"content": string(out)})
+}
+
 // OnFilesChanged is the watcher callback: tell clients, then re-check.
 func (a *API) OnFilesChanged(paths []string) {
 	a.Bus.Publish("file.changed", map[string]any{"paths": paths})
@@ -86,4 +113,5 @@ func (a *API) OnFilesChanged(paths []string) {
 		}
 	}
 	a.Checks.OnChange(paths)
+	a.providersChanged(paths)
 }

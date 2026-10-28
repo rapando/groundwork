@@ -24,6 +24,7 @@ terraform:
   danger: ["*_cache_cluster"]      # extra resource types whose destruction needs a typed acknowledgement
   plan_ttl: 1h              # how long a plan stays approvable
   run_timeout: 2h           # a plan or apply is stopped after this
+  install_providers: true   # install providers as required_providers gains them, remove dropped ones
 
 ansible:
   projects:

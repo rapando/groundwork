@@ -795,6 +795,8 @@ export interface OnboardingItem {
   href: string
 }
 export interface Onboarding {
+  /** true once per machine: the response that first shows the tour and checklist */
+  first_use: boolean
   tour_completed: boolean
   checklist_hidden: boolean
   tips: boolean

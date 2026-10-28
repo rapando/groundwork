@@ -1,6 +1,7 @@
 package checks
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -511,6 +512,31 @@ func (s *Service) FormatFile(ctx context.Context, file string) error {
 		return fmt.Errorf("%s fmt failed: %s", bin, firstLine(out.Stderr))
 	}
 	return nil
+}
+
+// FormatSource returns src formatted by the Terraform formatter, without
+// touching the file (format on save, before the buffer is written). A file
+// that doesn't parse is an error, and the caller saves it as it is.
+func (s *Service) FormatSource(ctx context.Context, file string, src []byte) ([]byte, error) {
+	if !strings.HasSuffix(file, ".tf") && !strings.HasSuffix(file, ".tfvars") {
+		return nil, fmt.Errorf("%s is not a Terraform file", file)
+	}
+	bin := s.tfBinary()
+	if _, err := s.Exec.LookPath(bin); err != nil {
+		return nil, fmt.Errorf("%s not found on PATH (%s)", bin, doctor.Hint(bin))
+	}
+	out, err := s.Exec.Run(ctx, Cmd{Dir: s.Root, Argv: []string{bin, "fmt", "-no-color", "-"}, Stdin: src, Timeout: 30 * time.Second})
+	if err != nil {
+		return nil, err
+	}
+	if out.ExitCode != 0 {
+		return nil, fmt.Errorf("%s fmt failed: %s", bin, firstLine(out.Stderr))
+	}
+	// never trade text for nothing: blank output is only right for blank input
+	if len(bytes.TrimSpace(out.Stdout)) == 0 && len(bytes.TrimSpace(src)) != 0 {
+		return nil, fmt.Errorf("%s fmt printed nothing", bin)
+	}
+	return out.Stdout, nil
 }
 
 func firstLine(b []byte) string {
