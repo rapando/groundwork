@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/rapando/groundwork/internal/config"
+	"github.com/rapando/groundwork/v2/internal/config"
 	"net/http"
 	"time"
 )

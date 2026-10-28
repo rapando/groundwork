@@ -49,7 +49,7 @@ On macOS a binary downloaded with a browser is quarantined because it isn't nota
 ## From source
 
 ```sh
-go install github.com/rapando/groundwork/cmd/groundwork@latest   # or @v1.0.0
+go install github.com/rapando/groundwork/v2/cmd/groundwork@latest   # or @v2.0.0
 ```
 
 This needs Go 1.27 or later. Versions follow [semantic versioning](https://semver.org): only a major bump signals a breaking change; what counts as one is in [compatibility](compatibility.md). See [releasing](releasing.md) for how versions are chosen.
@@ -73,7 +73,7 @@ groundwork runs your tools; it doesn't bundle them. `groundwork doctor` lists wh
 
 | Tool | For |
 |---|---|
-| `terraform` ≥ 1.4 or `tofu` ≥ 1.6 | Terraform roots (set `terraform.binary: tofu` for OpenTofu). 1.4 adds `workspace select -or-create`; tested with 1.16. Scaffolded roots ask for 1.5 or later (1.6, or 1.10 on Hetzner, with S3-compatible state). |
+| `terraform` ≥ 1.4 or `tofu` ≥ 1.6 | Terraform roots (set `terraform.binary: tofu` for OpenTofu). 1.4 adds `workspace select -or-create`; tested with 1.16. |
 | `ansible-core` ≥ 2.14 | Ansible projects; tested with 2.21 |
 | `git` | change tracking, commit recorded with each run |
 | tflint, checkov, yamllint, ansible-lint | optional checks; skipped with a hint when missing |

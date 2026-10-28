@@ -13,8 +13,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/rapando/groundwork/internal/auth"
-	"github.com/rapando/groundwork/internal/events"
+	"github.com/rapando/groundwork/v2/internal/auth"
+	"github.com/rapando/groundwork/v2/internal/events"
 )
 
 const tok = "secret-token"

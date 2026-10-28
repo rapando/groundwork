@@ -1,6 +1,6 @@
 ---
 name: groundwork
-description: Drive groundwork, the local console for Terraform and Ansible, from the command line. It can validate infrastructure code (groundwork check --json), diagnose tools, credentials and state backends (groundwork doctor --json), detect drift, scaffold a new Terraform + Ansible repository for AWS, GCP, Vultr, DigitalOcean, Hetzner, Linode, Docker or on-prem, and hand plans, applies and ansible-vault secrets to a human in the console. Use this skill whenever a repository has a groundwork.yaml, whenever the user mentions groundwork, and whenever you are editing, validating, linting or troubleshooting Terraform/OpenTofu or Ansible code on a machine where the `groundwork` CLI is installed, even if the user doesn't name it. Also use it when asked to set up or scaffold an infrastructure repo, check for drift, add or change an ansible-vault secret, or figure out why terraform/ansible "doesn't work here".
+description: Drive groundwork, the local console for Terraform and Ansible, from the command line. It can validate infrastructure code (groundwork check --json), diagnose tools, credentials and state backends (groundwork doctor --json), detect drift, set up a new repository with its config and an Ansible inventory script that reads Terraform hosts, and hand plans, applies and ansible-vault secrets to a human in the console. Use this skill whenever a repository has a groundwork.yaml, whenever the user mentions groundwork, and whenever you are editing, validating, linting or troubleshooting Terraform/OpenTofu or Ansible code on a machine where the `groundwork` CLI is installed, even if the user doesn't name it. Also use it when asked to set up or scaffold an infrastructure repo, check for drift, add or change an ansible-vault secret, or figure out why terraform/ansible "doesn't work here".
 ---
 
 # groundwork
@@ -26,10 +26,10 @@ ls groundwork.yaml            # is this repository configured?
 
 | Situation | Do this |
 |---|---|
-| `groundwork` not installed | Tell the user. Install: `curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh \| sh`, or `go install github.com/rapando/groundwork/cmd/groundwork@latest`. Don't install software without asking. |
+| `groundwork` not installed | Tell the user. Install: `curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh \| sh`, or `go install github.com/rapando/groundwork/v2/cmd/groundwork@latest`. Don't install software without asking. |
 | `groundwork.yaml` exists | Go straight to `check`, `doctor`, `drift`. |
 | Terraform/Ansible code but no `groundwork.yaml` | `groundwork init --dry-run` shows the detected config; with the user's OK, `groundwork init --yes` writes only `groundwork.yaml`. |
-| Empty repository, or the user wants a new layout | Scaffold with a preset: see [references/scaffold.md](references/scaffold.md). |
+| Empty repository | Set it up: see [references/scaffold.md](references/scaffold.md). groundwork writes only its config and the inventory script; the user writes the Terraform and playbooks. |
 
 `init`, `check`, `doctor` and `drift` work directly in the repository, without the background service. They also work in CI.
 
@@ -136,7 +136,7 @@ The project's `vault_password_file` in `groundwork.yaml` (or `vault_identity_lis
 
 ## Passing data from Terraform to Ansible
 
-With the Terraform inventory (the scaffold default), Ansible's inventory comes from a Terraform output named `ansible_hosts`: a map of group → list of hosts.
+With the Terraform inventory (what setup writes), Ansible's inventory comes from a Terraform output named `ansible_hosts`: a map of group → list of hosts.
 - Each host needs a `name`; `ip` becomes `ansible_host`.
 - **Any other field becomes an Ansible host variable as is** (`ansible_user`, `ansible_port`, `ansible_connection`, or your own such as `db_host`). Prefer this over writing files from Terraform for Ansible to read.
 

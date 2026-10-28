@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/events"
-	"github.com/rapando/groundwork/internal/store"
-	"github.com/rapando/groundwork/internal/workspace"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/events"
+	"github.com/rapando/groundwork/v2/internal/store"
+	"github.com/rapando/groundwork/v2/internal/workspace"
 )
 
 // Runs the real terraform binary (built-in terraform_data resource: no cloud,
@@ -50,7 +50,7 @@ resource "terraform_data" "a" {
 	write("terraform/envs/dev/backend.tf", "terraform {\n  backend \"local\" {}\n}\n")
 
 	rep, _ := workspace.Detect(root, nil)
-	cfg := config.FromReport(rep)
+	cfg := config.FromReport(rep, "terraform")
 	cfg.Terraform.Binary = tfBin() // the binary under test, not the detected default
 	cfg.Checks.Enabled = []string{"fmt", "validate"}
 	st, err := store.Open(filepath.Join(t.TempDir(), "s.db"))
@@ -151,7 +151,7 @@ resource "null_resource" "x" {
 	os.WriteFile(filepath.Join(root, "terraform/shared/data.txt"), []byte("hello"), 0o644)
 
 	rep, _ := workspace.Detect(root, nil)
-	cfg := config.FromReport(rep)
+	cfg := config.FromReport(rep, "terraform")
 	cfg.Terraform.Binary = tfBin() // the binary under test, not the detected default
 	cfg.Checks.Enabled = []string{"validate"}
 	st, _ := store.Open(filepath.Join(t.TempDir(), "s.db"))

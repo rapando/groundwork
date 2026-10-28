@@ -10,8 +10,8 @@ import (
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 
-	"github.com/rapando/groundwork/internal/app"
-	"github.com/rapando/groundwork/internal/service"
+	"github.com/rapando/groundwork/v2/internal/app"
+	"github.com/rapando/groundwork/v2/internal/service"
 )
 
 // variables so tests can fake starting the service

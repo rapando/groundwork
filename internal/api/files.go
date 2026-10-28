@@ -8,9 +8,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/files"
-	"github.com/rapando/groundwork/internal/workspace"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/files"
+	"github.com/rapando/groundwork/v2/internal/workspace"
 )
 
 // Section is a managed area of the repo shown as a group in the file tree.

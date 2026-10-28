@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/drift"
-	"github.com/rapando/groundwork/internal/files"
-	"github.com/rapando/groundwork/internal/notify"
-	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/drift"
+	"github.com/rapando/groundwork/v2/internal/files"
+	"github.com/rapando/groundwork/v2/internal/notify"
+	"github.com/rapando/groundwork/v2/internal/store"
 )
 
 // causeFor links a failed run to the Troubleshoot issue it raised: the

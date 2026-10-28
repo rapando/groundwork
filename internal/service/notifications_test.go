@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/v2/internal/store"
 )
 
 func TestNotificationsAcrossProjects(t *testing.T) {

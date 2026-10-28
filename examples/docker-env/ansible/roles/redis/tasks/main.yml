@@ -1,0 +1,41 @@
+# Refreshing the package index changes nothing installed, so it runs in a
+# dry run too: without it, the dry run can't tell what it would install.
+- name: Update the package index
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  check_mode: false
+  changed_when: false
+
+- name: Install Redis
+  ansible.builtin.apt:
+    name: redis-server
+    state: present
+  register: redis_install
+
+# In a dry run on a new server the package isn't there yet, so there is
+# nothing to configure or start: the dry run stops at "would install".
+- name: Configure and start Redis
+  when: not (ansible_check_mode and redis_install is changed)
+  block:
+    - name: Configure Redis
+      ansible.builtin.lineinfile:
+        path: /etc/redis/redis.conf
+        regexp: "^#?\\s*{{ item.key }}\\s"
+        line: "{{ item.key }} {{ item.value }}"
+      loop:
+        # listen on the container's network (the port is published on 127.0.0.1 only)
+        - {key: bind, value: "0.0.0.0"}
+        - {key: protected-mode, value: "no"}
+        - {key: maxmemory, value: "{{ redis_maxmemory }}"}
+        - {key: maxmemory-policy, value: "{{ redis_maxmemory_policy }}"}
+      loop_control:
+        label: "{{ item.key }}"
+      notify: Restart redis
+
+    - name: Start Redis
+      ansible.builtin.service:
+        name: redis-server
+        state: started
+        # without systemd, the init script's status can't see the server: look for its process
+        pattern: redis-server

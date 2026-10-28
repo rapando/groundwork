@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # End-to-end check of a clean install: install from release archives with
-# install.sh, then on the demo repo (examples/app-with-infra) run init, check,
+# install.sh, then on the demo repo (testdata/repos/app-with-infra) run init, check,
 # doctor, then start the service with the demo as a project and drive
 # plan → approve → apply → drift through that project's API.
 # Fails if anything breaks or the whole thing takes more than 5 minutes.
@@ -32,7 +32,7 @@ gw="$work/bin/groundwork"
 "$gw" version
 
 step "demo repository"
-cp -R "$here/examples/app-with-infra" "$work/demo"
+cp -R "$here/testdata/repos/app-with-infra" "$work/demo"
 cd "$work/demo"
 git init -q && git add -A && git -c user.name=demo -c user.email=demo@example.com commit -qm "demo"
 

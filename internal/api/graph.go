@@ -17,12 +17,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/rapando/groundwork/internal/files"
-	"github.com/rapando/groundwork/internal/graph"
-	"github.com/rapando/groundwork/internal/proc"
-	"github.com/rapando/groundwork/internal/runner"
-	"github.com/rapando/groundwork/internal/store"
-	"github.com/rapando/groundwork/internal/terraform"
+	"github.com/rapando/groundwork/v2/internal/files"
+	"github.com/rapando/groundwork/v2/internal/graph"
+	"github.com/rapando/groundwork/v2/internal/proc"
+	"github.com/rapando/groundwork/v2/internal/runner"
+	"github.com/rapando/groundwork/v2/internal/store"
+	"github.com/rapando/groundwork/v2/internal/terraform"
 )
 
 // varValues: defaults are read by the graph builder; tfvars of the chosen

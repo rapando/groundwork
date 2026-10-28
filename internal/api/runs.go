@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/rapando/groundwork/internal/ansible"
+	"github.com/rapando/groundwork/v2/internal/ansible"
 	"net/http"
 	"sort"
 	"strconv"
@@ -15,10 +15,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/rapando/groundwork/internal/runner"
-	"github.com/rapando/groundwork/internal/safego"
-	"github.com/rapando/groundwork/internal/store"
-	"github.com/rapando/groundwork/internal/terraform"
+	"github.com/rapando/groundwork/v2/internal/runner"
+	"github.com/rapando/groundwork/v2/internal/safego"
+	"github.com/rapando/groundwork/v2/internal/store"
+	"github.com/rapando/groundwork/v2/internal/terraform"
 )
 
 func (a *API) submitRun(w http.ResponseWriter, r *http.Request) {

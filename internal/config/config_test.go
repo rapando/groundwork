@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rapando/groundwork/internal/workspace"
+	"github.com/rapando/groundwork/v2/internal/workspace"
 )
 
 func TestRoundTrip(t *testing.T) {
@@ -17,7 +17,7 @@ func TestRoundTrip(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		c := FromReport(r)
+		c := FromReport(r, "terraform")
 		b, err := c.Marshal()
 		if err != nil {
 			t.Fatal(err)
@@ -30,7 +30,7 @@ func TestRoundTrip(t *testing.T) {
 
 func TestFromReportShapes(t *testing.T) {
 	r, _ := workspace.Detect("../../testdata/repos/embedded", nil)
-	c := FromReport(r)
+	c := FromReport(r, "terraform")
 	if c.Mode != "embedded" || len(c.Terraform.Roots) != 1 {
 		t.Fatalf("%+v", c)
 	}
@@ -44,7 +44,7 @@ func TestFromReportShapes(t *testing.T) {
 	}
 
 	r, _ = workspace.Detect("../../testdata/repos/iac-only", nil)
-	c = FromReport(r)
+	c = FromReport(r, "terraform")
 	if c.Mode != "standalone" || c.Terraform.Roots[1].Env != "prod" ||
 		len(c.Terraform.Modules) != 1 || c.Terraform.Modules[0] != "terraform/modules/*" {
 		t.Fatalf("%+v", c)

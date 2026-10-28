@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rapando/groundwork/internal/terraform"
+	"github.com/rapando/groundwork/v2/internal/terraform"
 )
 
 var (

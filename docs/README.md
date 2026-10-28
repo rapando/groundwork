@@ -2,7 +2,7 @@
 
 - [Install](install.md)
 - [The service and projects](service.md)
-- [Setup: detection, scaffolding and groundwork.yaml](setup.md)
+- [Setup: detection, new repositories and groundwork.yaml](setup.md)
 - [Checks](checks.md)
 - [Runs: plan, approve, apply](runs.md)
 - [Notifications: failures, approvals, drift; desktop and webhook](notifications.md)

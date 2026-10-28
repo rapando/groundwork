@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rapando/groundwork/internal/vars"
+	"github.com/rapando/groundwork/v2/internal/vars"
 )
 
 // scanSecrets is the built-in "secrets" check: plaintext credentials in the

@@ -22,7 +22,7 @@ groundwork
 ## What it does
 
 - **One service, many projects**: every repository you import gets its own checks, runs, file watching and drift schedule, behind one console. Import a folder in place, or a git URL that groundwork clones with your own git and SSH keys ([service and projects](docs/service.md)).
-- **Detects** Terraform roots, modules and Ansible projects, in a dedicated infrastructure repo or in an application repo that keeps them in a subfolder, and writes a `groundwork.yaml` you can review. An empty repo gets a scaffold instead, with presets for Vultr (the default), AWS, Google Cloud, DigitalOcean, Hetzner, Linode, Docker and on-prem, and a choice of typing the ansible-vault password in the console or using a password file ([setup](docs/setup.md)).
+- **Detects** Terraform roots, modules and Ansible projects, in a dedicated infrastructure repo or in an application repo that keeps them in a subfolder, and writes a `groundwork.yaml` you can review. An empty repo gets only what the tools you choose need (Terraform or OpenTofu, Ansible, or both): groundwork's config, and with both, an inventory script that turns your Terraform hosts into Ansible hosts. You write the Terraform and the playbooks. With Ansible, setup asks for the ansible-vault password, kept in memory or in a password file it creates ([setup](docs/setup.md)).
 - **Checks on every save**: `fmt`, `validate`, tflint, checkov, yamllint, ansible-lint, playbook syntax and a plaintext-secret scan, with problems inline in the editor ([checks](docs/checks.md)).
 - **Plans, then applies only what you approved**: plan review with masked sensitive values and danger flags, typed confirmation for production, and the exact saved plan applied. A plan that went stale (code, state or time) can't be applied. **Destroy…** tears an environment down the same way: a reviewed `plan -destroy`, approved by typing the environment's name ([runs](docs/runs.md#destroy)).
 - **Ansible**: inventory with reachability and facts, variable provenance per host, dry run → approve → run, ad-hoc commands ([ansible](docs/ansible.md)).
@@ -47,7 +47,7 @@ macOS and Linux (amd64, arm64).
 ```sh
 curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | sh
 # or, from source (Go 1.27.3+)
-go install github.com/rapando/groundwork/cmd/groundwork@latest
+go install github.com/rapando/groundwork/v2/cmd/groundwork@latest
 ```
 
 The script verifies the download against the release checksums (and their cosign signature, when cosign is installed) and installs to `~/.local/bin` without `sudo`. Then, optionally, start the service at login:
@@ -72,7 +72,7 @@ See [install](docs/install.md) for manual downloads, checksums, the install scri
 | `groundwork projects` · `open [project]` · `remove <project>` | list with status, open in the browser, stop managing (files stay) |
 | `groundwork service install \| uninstall \| start \| stop \| restart \| status \| logs` | run at login, or control the background service and read its log |
 | `groundwork serve [folder…]` | run the service in the foreground (what the login service runs) |
-| `groundwork init [--detect \| --preset <name>] [--dry-run] [--yes]` | write `groundwork.yaml`, or scaffold an empty repo, without the UI |
+| `groundwork init [--tools terraform,ansible] [--detect] [--dry-run] [--yes]` | write `groundwork.yaml`, or set up an empty repo, without the UI |
 | `groundwork check [--json] [--unit <id>] [--fail-on error\|warning]` | run all checks once; non-zero exit on problems (for CI) |
 | `groundwork doctor [--json]` | tools, credentials, Docker daemon, S3 backends and locking, SSH agent, inventory reachability, disk |
 | `groundwork drift [--env prod]` | refresh-only drift check of every environment |
@@ -85,7 +85,7 @@ groundwork manages ansible-vault secrets on the project's **Variables → Secret
 
 **1. Give groundwork the vault password**, in one of two ways:
 
-- **Type it in the console** (the scaffold's default). With no password file configured, the Secrets tab shows **Vault locked**. Click **Unlock…** and type the password. groundwork checks it against an encrypted value, then keeps it in the service's memory until you click **Lock** or the service stops. Ansible reads it from a pipe, never from a file, an argument or an environment variable.
+- **Type it in the console** (setup's default; setup asks for it and unlocks the vault). With no password file configured, the Secrets tab shows **Vault locked**. Click **Unlock…** and type the password. groundwork checks it against an encrypted value, then keeps it in the service's memory until you click **Lock** or the service stops. Ansible reads it from a pipe, never from a file, an argument or an environment variable.
 - **Or use a password file**, set on the project in `groundwork.yaml`:
 
   ```yaml
@@ -95,7 +95,7 @@ groundwork manages ansible-vault secrets on the project's **Variables → Secret
         vault_password_file: ~/.vault-pass   # a plain file; scripts are refused unless allow_vault_script: true
   ```
 
-  When scaffolding, choose **Password file** under *ansible-vault password*, or pass `groundwork init --vault-password-file ~/.vault-pass`. `ANSIBLE_VAULT_PASSWORD_FILE`, and `vault_password_file` or `vault_identity_list` in `ansible.cfg`, work too. A `label@prompt` vault ID is typed in the console like the default one. `groundwork doctor` checks the file.
+  When setting up, choose **Password file** under *ansible-vault password*, or pass `groundwork init --vault-password-file ~/.vault-pass`: groundwork creates the file with the password you type, unless it already exists. `ANSIBLE_VAULT_PASSWORD_FILE`, and `vault_password_file` or `vault_identity_list` in `ansible.cfg`, work too. A `label@prompt` vault ID is typed in the console like the default one. `groundwork doctor` checks the file.
 
 **2. Manage secrets on Variables → Secrets:**
 
@@ -128,13 +128,11 @@ See [variables](docs/variables.md#managing-ansible-vault) for the details.
 
 ## Try it
 
-[`examples/`](examples/) has three small repos: Terraform only, Ansible only, and an app with both. They use local providers, so they work without a cloud account:
+[`examples/docker-env`](examples/docker-env) builds three servers as Docker containers with Terraform, then Ansible installs RabbitMQ, Redis and nginx on them. It needs Docker, Terraform and Ansible, and no cloud account:
 
 ```sh
-cp -R examples/app-with-infra /tmp/demo && git -C /tmp/demo init -q
-cp -R examples/ansible-only /tmp/demo-ansible && git -C /tmp/demo-ansible init -q
-cd /tmp/demo && groundwork                 # opens the first project
-groundwork add /tmp/demo-ansible           # a second project, on the same console
+cp -R examples/docker-env /tmp/docker-env && git -C /tmp/docker-env init -q
+cd /tmp/docker-env && groundwork            # opens it in the console: plan dev, approve, then run the playbook
 ```
 
 ## Development

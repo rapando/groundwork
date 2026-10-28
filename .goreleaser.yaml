@@ -19,8 +19,8 @@ builds:
     flags: [-trimpath]
     ldflags:
       - -s -w
-      - -X github.com/rapando/groundwork/internal/cli.Version={{ .Version }}
-      - -X github.com/rapando/groundwork/internal/cli.Commit={{ .ShortCommit }}
+      - -X github.com/rapando/groundwork/v2/internal/cli.Version={{ .Version }}
+      - -X github.com/rapando/groundwork/v2/internal/cli.Commit={{ .ShortCommit }}
     mod_timestamp: "{{ .CommitTimestamp }}"
 
 archives:
@@ -89,7 +89,7 @@ release:
     name: groundwork
   footer: |
     Install: `curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | sh`,
-    or `go install github.com/rapando/groundwork/cmd/groundwork@{{ .Tag }}`.
+    or `go install github.com/rapando/groundwork/v2/cmd/groundwork@{{ .Tag }}`.
     Verify downloads against checksums.txt; checksums.txt is signed with cosign
     (checksums.txt.sigstore.json) and each archive has an SPDX SBOM.
     See docs/install.md for the verify command.

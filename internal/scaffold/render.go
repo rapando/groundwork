@@ -9,7 +9,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/rapando/groundwork/internal/config"
+	"github.com/rapando/groundwork/v2/internal/config"
 )
 
 //go:embed presets
@@ -27,101 +27,40 @@ type File struct {
 
 type tplData struct {
 	*Form
-	Env          string
-	Index        int
-	Role         string
-	FirstEnv     string
-	ModuleSource string
-	Cloud        Cloud  // set for the token-authenticated presets
-	S3Region     string // signing region for an S3-compatible endpoint
+	FirstEnv string
+	Binary   string // terraform | tofu ("" without one)
+	FromTF   bool   // the inventory comes from Terraform's outputs
 }
 
 type entry struct {
 	src, dst string
-	each     string // "", "env", "role"
 	exec     bool
-	merge    bool
 }
 
+// manifest is everything setup writes besides groundwork.yaml: nothing for
+// Terraform alone, ansible.cfg for Ansible, and the inventory script that
+// joins them when there are both.
 func manifest(f *Form) []entry {
-	tf := "presets/" + f.Preset + "/terraform/"
 	sh := "presets/shared/"
-	m := []entry{
-		{src: sh + "README.md.tmpl", dst: "README.md"},
-		{src: sh + "gitignore.tmpl", dst: ".gitignore", merge: true},
-	}
-	if _, ok := Clouds[f.Preset]; ok {
-		tf = "presets/cloud/terraform/"
-		own := "presets/cloud/" + f.Preset + "/"
-		for _, n := range []string{"main", "outputs"} {
-			m = append(m, entry{src: own + "network_" + n + ".tf.tmpl", dst: "terraform/modules/network/" + n + ".tf"})
+	var m []entry
+	if f.Ansible() {
+		m = append(m, entry{src: sh + "ansible.cfg.tmpl", dst: "ansible/ansible.cfg"})
+		if f.IaC() != "" {
+			m = append(m, entry{src: sh + "tf_outputs.py.tmpl", dst: "ansible/inventory/tf_outputs.py", exec: true})
 		}
-		for _, n := range []string{"variables", "versions"} {
-			m = append(m, entry{src: tf + "network_" + n + ".tf.tmpl", dst: "terraform/modules/network/" + n + ".tf"})
-		}
-	} else if f.Preset != "onprem" {
-		for _, n := range []string{"main", "variables", "outputs", "versions"} {
-			m = append(m, entry{src: tf + "network_" + n + ".tf.tmpl", dst: "terraform/modules/network/" + n + ".tf"})
-		}
-	}
-	if f.Layout == "dirs" {
-		for _, n := range []string{"main.tf", "backend.tf", "variables.tf", "outputs.tf"} {
-			m = append(m, entry{src: tf + n + ".tmpl", dst: "terraform/envs/{{.Env}}/" + n, each: "env"})
-		}
-		m = append(m, entry{src: tf + "tfvars.tmpl", dst: "terraform/envs/{{.Env}}/terraform.tfvars", each: "env"})
-	} else {
-		for _, n := range []string{"main.tf", "backend.tf", "variables.tf", "outputs.tf"} {
-			m = append(m, entry{src: tf + n + ".tmpl", dst: "terraform/" + n})
-		}
-		m = append(m, entry{src: tf + "tfvars.tmpl", dst: "terraform/env/{{.Env}}.tfvars", each: "env"})
-	}
-
-	m = append(m,
-		entry{src: sh + "ansible.cfg.tmpl", dst: "ansible/ansible.cfg"},
-		entry{src: sh + "site.yml.tmpl", dst: "ansible/playbooks/site.yml"},
-		entry{src: sh + "role_tasks.yml.tmpl", dst: "ansible/roles/{{.Role}}/tasks/main.yml", each: "role"},
-		entry{src: sh + "group_vars_vars.yml.tmpl", dst: "ansible/group_vars/{{.Env}}/vars.yml", each: "env"},
-	)
-	if f.Vault {
-		m = append(m, entry{src: sh + "group_vars_vault.yml.example.tmpl", dst: "ansible/group_vars/{{.Env}}/vault.yml.example", each: "env"})
-	}
-	if f.Inventory == "terraform" {
-		m = append(m, entry{src: sh + "tf_outputs.py.tmpl", dst: "ansible/inventory/tf_outputs.py", exec: true})
-	} else {
-		m = append(m, entry{src: sh + "inventory_static.yml.tmpl", dst: "ansible/inventory/{{.Env}}.yml", each: "env"})
-	}
-	if f.HasCheck("tflint") {
-		m = append(m, entry{src: sh + "tflint.hcl.tmpl", dst: ".tflint.hcl"})
-	}
-	if f.HasCheck("ansible-lint") {
-		m = append(m, entry{src: sh + "ansible-lint.tmpl", dst: ".ansible-lint"})
-	}
-	if f.HasCheck("yamllint") {
-		m = append(m, entry{src: sh + "yamllint.tmpl", dst: ".yamllint"})
-	}
-	if f.PreCommit {
-		m = append(m, entry{src: sh + "pre-commit-config.yaml.tmpl", dst: ".pre-commit-config.yaml"})
-	}
-	if f.CI {
-		m = append(m, entry{src: sh + "plan-workflow.yml.tmpl", dst: ".github/workflows/plan.yml"})
 	}
 	return m
 }
 
-// Render produces the full file set for a standalone scaffold, entirely in
-// memory (this is also what the preview shows). groundwork.yaml is generated
-// from the same form so the two can never disagree.
+// Render produces the file set for a new repository, entirely in memory
+// (this is also what the preview shows). groundwork.yaml is generated from
+// the same form so the two can never disagree.
 func Render(f *Form) ([]File, error) {
 	f.Normalize()
 	if errs := f.Validate(); len(errs) > 0 {
 		return nil, errs[0]
 	}
-	base := tplData{Form: f, FirstEnv: f.Envs[0], Cloud: Clouds[f.Preset], S3Region: S3Region(f.S3Endpoint)}
-	if f.Layout == "workspaces" {
-		base.ModuleSource = "./modules/network"
-	} else {
-		base.ModuleSource = "../../modules/network"
-	}
+	d := tplData{Form: f, FirstEnv: f.Envs[0], Binary: f.IaC(), FromTF: f.IaC() != "" && f.Ansible()}
 
 	var out []File
 	for _, e := range manifest(f) {
@@ -129,38 +68,15 @@ func Render(f *Form) ([]File, error) {
 		if err != nil {
 			return nil, fmt.Errorf("preset file %s: %w", e.src, err)
 		}
-		tpl, err := template.New(e.src).Funcs(template.FuncMap{"add": func(a, b int) int { return a + b }}).Option("missingkey=error").Parse(string(raw))
+		tpl, err := template.New(e.src).Option("missingkey=error").Parse(string(raw))
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", e.src, err)
 		}
-		var datas []tplData
-		switch e.each {
-		case "env":
-			for i, env := range f.Envs {
-				d := base
-				d.Env, d.Index = env, i+1
-				datas = append(datas, d)
-			}
-		case "role":
-			for _, r := range f.Roles {
-				d := base
-				d.Role = r
-				datas = append(datas, d)
-			}
-		default:
-			datas = []tplData{base}
+		var buf bytes.Buffer
+		if err := tpl.Execute(&buf, d); err != nil {
+			return nil, fmt.Errorf("%s: %w", e.src, err)
 		}
-		for _, d := range datas {
-			dst, err := renderString(e.dst, d)
-			if err != nil {
-				return nil, err
-			}
-			var buf bytes.Buffer
-			if err := tpl.Execute(&buf, d); err != nil {
-				return nil, fmt.Errorf("%s: %w", e.src, err)
-			}
-			out = append(out, File{Path: dst, Content: buf.String(), Executable: e.exec, Merge: e.merge})
-		}
+		out = append(out, File{Path: e.dst, Content: buf.String(), Executable: e.exec})
 	}
 
 	cfg := ConfigFor(f)
@@ -176,35 +92,23 @@ func Render(f *Form) ([]File, error) {
 	return out, nil
 }
 
-func renderString(s string, d tplData) (string, error) {
-	if !strings.Contains(s, "{{") {
-		return s, nil
-	}
-	t, err := template.New("path").Parse(s)
-	if err != nil {
-		return "", err
-	}
-	var b bytes.Buffer
-	if err := t.Execute(&b, d); err != nil {
-		return "", err
-	}
-	return b.String(), nil
-}
-
-// ConfigFor builds the groundwork.yaml matching a scaffold form.
+// ConfigFor builds the groundwork.yaml matching a setup form.
 func ConfigFor(f *Form) *config.Config {
 	c := &config.Config{
 		Version: 1, Mode: "standalone",
 		Checks: config.Checks{OnSave: true},
 		Ignore: []string{"vendor/", "node_modules/", "**/.terraform/"},
 	}
-	c.Terraform.Binary = "terraform"
-	if f.Layout == "dirs" {
+	switch {
+	case f.IaC() == "":
+	case f.Layout == "dirs":
+		c.Terraform.Binary = f.IaC()
 		for _, e := range f.Envs {
 			c.Terraform.Roots = append(c.Terraform.Roots, config.TFRoot{Path: "terraform/envs/" + e, Env: e})
 		}
 		c.Terraform.Modules = []string{"terraform/modules/*"}
-	} else {
+	default:
+		c.Terraform.Binary = f.IaC()
 		envs := map[string]config.TFEnv{}
 		for _, e := range f.Envs {
 			envs[e] = config.TFEnv{Workspace: e, VarFiles: []string{"env/" + e + ".tfvars"}}
@@ -212,23 +116,18 @@ func ConfigFor(f *Form) *config.Config {
 		c.Terraform.Roots = []config.TFRoot{{Path: "terraform", Envs: envs}}
 		c.Terraform.Modules = []string{"terraform/modules/*"}
 	}
-	if f.Preset == "onprem" {
-		c.Terraform.Modules = nil
+	if f.Ansible() {
+		c.Ansible.Projects = []config.AnsibleProject{{Path: "ansible", Config: "ansible.cfg", VaultPasswordFile: f.VaultPasswordFile}}
 	}
-	ap := config.AnsibleProject{Path: "ansible", Config: "ansible.cfg", VaultPasswordFile: f.VaultPasswordFile}
-	if f.Inventory == "static" {
-		ap.Inventories = map[string]string{}
-		for _, e := range f.Envs {
-			ap.Inventories[e] = "inventory/" + e + ".yml"
-		}
-	}
-	c.Ansible.Projects = []config.AnsibleProject{ap}
-	for _, name := range []string{"fmt", "validate", "tflint", "checkov", "ansible-lint", "yamllint"} {
+	for _, name := range CheckNames {
 		if f.HasCheck(name) {
 			c.Checks.Enabled = append(c.Checks.Enabled, name)
 		}
 	}
-	c.Checks.Enabled = append(c.Checks.Enabled, "syntax-check", "secrets") // a playbook is always scaffolded; secrets is built in
+	if f.Ansible() {
+		c.Checks.Enabled = append(c.Checks.Enabled, "syntax-check") // runs once there are playbooks
+	}
+	c.Checks.Enabled = append(c.Checks.Enabled, "secrets") // built in
 	return c
 }
 
@@ -240,7 +139,7 @@ type LintReq struct {
 
 // LintConfigs renders just the optional lint config files, for embedded mode
 // where groundwork must not scaffold the repo itself.
-func LintConfigs(f *Form, reqs []LintReq) ([]File, error) {
+func LintConfigs(reqs []LintReq) ([]File, error) {
 	names := map[string][2]string{
 		"tflint":       {"presets/shared/tflint.hcl.tmpl", ".tflint.hcl"},
 		"ansible-lint": {"presets/shared/ansible-lint.tmpl", ".ansible-lint"},
@@ -268,7 +167,7 @@ func LintConfigs(f *Form, reqs []LintReq) ([]File, error) {
 			return nil, err
 		}
 		var b bytes.Buffer
-		if err := t.Execute(&b, tplData{Form: f}); err != nil {
+		if err := t.Execute(&b, nil); err != nil {
 			return nil, err
 		}
 		out = append(out, File{Path: path.Join(dir, n[1]), Content: b.String()})

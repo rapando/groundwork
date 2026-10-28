@@ -11,7 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/rapando/groundwork/internal/auth"
+	"github.com/rapando/groundwork/v2/internal/auth"
 )
 
 const (

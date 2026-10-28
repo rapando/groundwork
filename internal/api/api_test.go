@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -15,8 +16,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/rapando/groundwork/internal/events"
-	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/v2/internal/events"
+	"github.com/rapando/groundwork/v2/internal/store"
 )
 
 func newAPI(t *testing.T, root string) http.Handler {
@@ -81,10 +82,8 @@ func fixture(t *testing.T, name string) string {
 
 func goodForm() map[string]any {
 	return map[string]any{
-		"preset": "aws-envs", "project": "acme", "backend": "s3", "bucket": "acme-tfstate",
-		"region": "eu-west-1", "envs": []string{"dev", "prod"}, "layout": "dirs",
-		"inventory": "terraform", "roles": []string{"common"},
-		"checks": []string{"fmt", "validate", "tflint"}, "ci": true,
+		"project": "acme", "envs": []string{"dev", "prod"}, "layout": "dirs",
+		"checks": []string{"fmt", "validate", "tflint"},
 	}
 }
 
@@ -155,7 +154,7 @@ func TestScaffoldPreviewAndWrite(t *testing.T) {
 	h := newAPI(t, root)
 
 	bad := goodForm()
-	bad["region"] = "nowhere"
+	bad["layout"] = "flat"
 	rec := call(t, h, "POST", "/setup/scaffold/preview", map[string]any{"form": bad})
 	if rec.Code != 422 {
 		t.Fatalf("%d", rec.Code)
@@ -163,7 +162,7 @@ func TestScaffoldPreviewAndWrite(t *testing.T) {
 
 	rec = call(t, h, "POST", "/setup/scaffold/preview", map[string]any{"form": goodForm()})
 	m := into(t, rec)
-	if rec.Code != 200 || m["count"].(float64) < 20 || m["existing"].(float64) != 0 {
+	if rec.Code != 200 || m["count"].(float64) != 3 || m["existing"].(float64) != 0 || m["vault_file"] != nil {
 		t.Fatalf("%d %v", rec.Code, m["count"])
 	}
 	if entries, _ := os.ReadDir(root); len(entries) != 0 {
@@ -173,19 +172,81 @@ func TestScaffoldPreviewAndWrite(t *testing.T) {
 	// zip: streams, writes nothing
 	rec = call(t, h, "POST", "/setup/scaffold?format=zip", map[string]any{"form": goodForm()})
 	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
-	if err != nil || len(zr.File) < 20 {
+	if err != nil || len(zr.File) != 3 {
 		t.Fatalf("zip: %v", err)
 	}
 	if entries, _ := os.ReadDir(root); len(entries) != 0 {
 		t.Fatal("zip must not write")
 	}
 
+	// the vault password comes first
 	rec = call(t, h, "POST", "/setup/scaffold", map[string]any{"form": goodForm()})
-	if rec.Code != 200 {
+	if rec.Code != 422 || !strings.Contains(rec.Body.String(), "vault_password") {
 		t.Fatalf("%d %s", rec.Code, rec.Body)
 	}
+	if entries, _ := os.ReadDir(root); len(entries) != 0 {
+		t.Fatal("nothing is written without the vault password")
+	}
+
+	rec = call(t, h, "POST", "/setup/scaffold", map[string]any{"form": goodForm(), "vault_password": "typed-pw"})
+	m = into(t, rec)
+	if rec.Code != 200 || m["vault"] != "unlocked" {
+		t.Fatalf("%d %v", rec.Code, m)
+	}
 	if w := into(t, call(t, h, "GET", "/workspace", nil)); w["configured"] != true {
-		t.Fatalf("scaffold should leave a valid config: %v", w)
+		t.Fatalf("setup should leave a valid config: %v", w)
+	}
+	// typed: kept in memory, so the console can encrypt with it straight away
+	sec := into(t, call(t, h, "GET", "/secrets", nil))
+	if !strings.Contains(fmt.Sprint(sec["vault"]), "unlocked:true") {
+		t.Fatalf("vault not unlocked: %v", sec["vault"])
+	}
+	if b, _ := os.ReadFile(filepath.Join(root, "groundwork.yaml")); strings.Contains(string(b), "typed-pw") {
+		t.Fatal("password written to groundwork.yaml")
+	}
+}
+
+// A password file is created outside the repository with the password in
+// it, mode 0600; an existing one is used as it is.
+func TestScaffoldCreatesVaultPasswordFile(t *testing.T) {
+	root := t.TempDir()
+	h := newAPI(t, root)
+	pwFile := filepath.Join(t.TempDir(), ".vault-pass")
+	form := goodForm()
+	form["vault_password_file"] = pwFile
+
+	inside := goodForm()
+	inside["vault_password_file"] = ".vault-pass"
+	if rec := call(t, h, "POST", "/setup/scaffold/preview", map[string]any{"form": inside}); rec.Code != 422 {
+		t.Fatalf("a password file in the repository: %d", rec.Code)
+	}
+
+	m := into(t, call(t, h, "POST", "/setup/scaffold/preview", map[string]any{"form": form}))
+	if vf, _ := m["vault_file"].(map[string]any); vf["exists"] != false || vf["path"] != pwFile {
+		t.Fatalf("%v", m["vault_file"])
+	}
+	rec := call(t, h, "POST", "/setup/scaffold", map[string]any{"form": form, "vault_password": "file-pw"})
+	if m = into(t, rec); rec.Code != 200 || m["vault"] != "file_created" {
+		t.Fatalf("%d %v", rec.Code, m)
+	}
+	b, _ := os.ReadFile(pwFile)
+	st, _ := os.Stat(pwFile)
+	if string(b) != "file-pw\n" || st.Mode().Perm() != 0o600 {
+		t.Fatalf("%q %v", b, st.Mode())
+	}
+
+	// a second repository reuses the file without asking for the password
+	other := newAPI(t, t.TempDir())
+	m = into(t, call(t, other, "POST", "/setup/scaffold/preview", map[string]any{"form": form}))
+	if vf, _ := m["vault_file"].(map[string]any); vf["exists"] != true {
+		t.Fatalf("%v", m["vault_file"])
+	}
+	rec = call(t, other, "POST", "/setup/scaffold", map[string]any{"form": form})
+	if m = into(t, rec); rec.Code != 200 || m["vault"] != "file_existing" {
+		t.Fatalf("%d %v", rec.Code, m)
+	}
+	if b2, _ := os.ReadFile(pwFile); string(b2) != "file-pw\n" {
+		t.Fatal("existing password file changed")
 	}
 }
 
@@ -218,7 +279,7 @@ func TestScaffoldGitCommitOnlyScaffoldFiles(t *testing.T) {
 	git("add", "wip.txt") // user's staged work must not be swept in
 
 	h := newAPI(t, root)
-	rec := call(t, h, "POST", "/setup/scaffold", map[string]any{"form": goodForm(), "git_commit": true})
+	rec := call(t, h, "POST", "/setup/scaffold", map[string]any{"form": goodForm(), "git_commit": true, "vault_password": "pw"})
 	m := into(t, rec)
 	if rec.Code != 200 || m["git_error"] != nil {
 		t.Fatalf("%d %v", rec.Code, m)
@@ -276,5 +337,26 @@ func TestApplyLintDirMustStayInRepo(t *testing.T) {
 	})
 	if rec.Code != 400 {
 		t.Fatalf("%d %s", rec.Code, rec.Body)
+	}
+}
+
+// Without Ansible there is no vault: no password is asked for and none is
+// kept, and only groundwork.yaml is written.
+func TestScaffoldWithoutAnsibleNeedsNoVaultPassword(t *testing.T) {
+	root := t.TempDir()
+	h := newAPI(t, root)
+	form := goodForm()
+	form["tools"] = []string{"tofu"}
+	rec := call(t, h, "POST", "/setup/scaffold", map[string]any{"form": form})
+	m := into(t, rec)
+	if rec.Code != 200 || m["vault"] != nil {
+		t.Fatalf("%d %v", rec.Code, m)
+	}
+	if _, err := os.Stat(filepath.Join(root, "ansible")); err == nil {
+		t.Fatal("ansible/ written without Ansible")
+	}
+	b, _ := os.ReadFile(filepath.Join(root, "groundwork.yaml"))
+	if !strings.Contains(string(b), "binary: tofu") {
+		t.Fatalf("%s", b)
 	}
 }

@@ -14,11 +14,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rapando/groundwork/internal/ansible"
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/files"
-	"github.com/rapando/groundwork/internal/runner"
-	"github.com/rapando/groundwork/internal/vars"
+	"github.com/rapando/groundwork/v2/internal/ansible"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/files"
+	"github.com/rapando/groundwork/v2/internal/runner"
+	"github.com/rapando/groundwork/v2/internal/vars"
 )
 
 // stack: the same Terraform configuration across environments. A root with

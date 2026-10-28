@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/v2/internal/store"
 )
 
 // A run that outlives run_timeout is stopped and fails with the reason; the

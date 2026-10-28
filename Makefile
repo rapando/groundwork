@@ -1,6 +1,6 @@
 VERSION ?= dev
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
-LDFLAGS := -X github.com/rapando/groundwork/internal/cli.Version=$(VERSION) -X github.com/rapando/groundwork/internal/cli.Commit=$(COMMIT)
+LDFLAGS := -X github.com/rapando/groundwork/v2/internal/cli.Version=$(VERSION) -X github.com/rapando/groundwork/v2/internal/cli.Commit=$(COMMIT)
 
 .PHONY: web build test lint e2e run golden integration perf fuzz release-snapshot demo coverage
 # The SPA is built into internal/server/dist, which is committed and embedded.

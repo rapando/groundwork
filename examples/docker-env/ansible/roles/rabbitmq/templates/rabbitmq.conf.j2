@@ -1,0 +1,6 @@
+# Managed by Ansible ({{ environment_name }}).
+listeners.tcp.default = 5672
+management.tcp.port = 15672
+# A local development broker: the guest user may connect from outside the
+# container. The ports are only published on 127.0.0.1 of the Docker host.
+loopback_users = none

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rapando/groundwork/internal/doctor"
+	"github.com/rapando/groundwork/v2/internal/doctor"
 )
 
 // exec runs the command tree the way the binary does, with a temp data

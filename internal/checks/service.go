@@ -17,13 +17,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/doctor"
-	"github.com/rapando/groundwork/internal/events"
-	"github.com/rapando/groundwork/internal/redact"
-	"github.com/rapando/groundwork/internal/safego"
-	"github.com/rapando/groundwork/internal/store"
-	"github.com/rapando/groundwork/internal/workspace"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/doctor"
+	"github.com/rapando/groundwork/v2/internal/events"
+	"github.com/rapando/groundwork/v2/internal/redact"
+	"github.com/rapando/groundwork/v2/internal/safego"
+	"github.com/rapando/groundwork/v2/internal/store"
+	"github.com/rapando/groundwork/v2/internal/workspace"
 )
 
 // ToolStatus is the outcome of the last run of one tool on one unit.

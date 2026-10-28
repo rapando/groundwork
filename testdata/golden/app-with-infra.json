@@ -1,0 +1,79 @@
+{
+  "mode": "embedded",
+  "empty": false,
+  "file_count": 23,
+  "iac_ratio": 0.52,
+  "terraform_roots": [
+    {
+      "path": "deploy/terraform",
+      "kind": "root",
+      "score": 7,
+      "backend": "local",
+      "tfvars": [
+        "deploy/terraform/env/dev.tfvars",
+        "deploy/terraform/env/prod.tfvars"
+      ],
+      "evidence": [
+        {
+          "file": "deploy/terraform/versions.tf",
+          "line": 4,
+          "note": "backend \"local\" block"
+        },
+        {
+          "file": "deploy/terraform/env/dev.tfvars",
+          "note": "tfvars file present"
+        }
+      ]
+    }
+  ],
+  "terraform_modules": [],
+  "ansible": [
+    {
+      "path": "ops/ansible",
+      "config": "ops/ansible/ansible.cfg",
+      "playbooks": [
+        "ops/ansible/playbooks/deploy.yml"
+      ],
+      "roles": [
+        "ops/ansible/roles/app"
+      ],
+      "inventories": [
+        "ops/ansible/inventory/terraform.py"
+      ],
+      "evidence": [
+        {
+          "file": "ops/ansible/ansible.cfg",
+          "note": "ansible.cfg"
+        },
+        {
+          "file": "ops/ansible/inventory/terraform.py",
+          "note": "inventory"
+        },
+        {
+          "file": "ops/ansible/playbooks/deploy.yml",
+          "line": 2,
+          "note": "playbook (hosts + tasks/roles)"
+        },
+        {
+          "file": "ops/ansible/roles/app/tasks/main.yml",
+          "note": "role app"
+        }
+      ]
+    }
+  ],
+  "ci": [],
+  "envs": [
+    {
+      "name": "dev",
+      "terraform": [
+        "deploy/terraform#dev"
+      ]
+    },
+    {
+      "name": "prod",
+      "terraform": [
+        "deploy/terraform#prod"
+      ]
+    }
+  ]
+}

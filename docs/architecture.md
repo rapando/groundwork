@@ -44,7 +44,7 @@ cmd/groundwork ─► internal/cli (cobra) ─► internal/service.Run
 | `drift` | The drift schedule (cron) and notifications (desktop or webhook). |
 | `graph` | The dependency graph (HCL analysis merged with `terraform graph`), the architecture model, and the System view: state reduced to addresses and firewall rules, host placement. Its container, nesting and server-type rules are data in `rules.yaml`. |
 | `vars` | Variable precedence across tfvars and environments, Ansible variable sources, SOPS and vault reveal, the plaintext secret scan. |
-| `scaffold` | Presets and templates for `init --preset` and the Scaffold screen: `aws-envs`, `gcp-envs`, `vultr`, `digitalocean`, `hetzner`, `linode`, `docker`, `onprem`. |
+| `scaffold` | What setup writes in a new repository (`groundwork.yaml`, `ansible.cfg` and the Terraform inventory script) and the vault password file; also the lint configs the Detect screen offers. |
 | `doctor` | Environment checks: tools and their version floors; AWS, Google Cloud and Azure credentials through their CLIs; Vultr, DigitalOcean, Hetzner and Linode API tokens; the Docker daemon; state backends (S3 and S3-compatible at their endpoint) and locking; SSH agent, inventory reachability, vault files, disk, git. |
 | `store` | SQLite access. Migrations are embedded; opening a database integrity-checks and backs it up before migrating, and refuses one written by a newer release. |
 | `events` | The pub/sub bus behind the SSE stream. |

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/rapando/groundwork/internal/cli"
+	"github.com/rapando/groundwork/v2/internal/cli"
 )
 
 func main() {

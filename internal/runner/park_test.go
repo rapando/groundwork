@@ -3,7 +3,7 @@ package runner
 import (
 	"testing"
 
-	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/v2/internal/store"
 )
 
 // Approving the instant a plan reports waiting_approval must work, even if

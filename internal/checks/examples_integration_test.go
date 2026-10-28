@@ -10,18 +10,19 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/events"
-	"github.com/rapando/groundwork/internal/store"
-	"github.com/rapando/groundwork/internal/workspace"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/events"
+	"github.com/rapando/groundwork/v2/internal/store"
+	"github.com/rapando/groundwork/v2/internal/workspace"
 )
 
 // Every example must pass every installed tool with zero findings.
 func TestExamplesAreCleanUnderRealTools(t *testing.T) {
-	for _, ex := range []string{"terraform-only", "ansible-only", "app-with-infra"} {
+	// examples/docker-env, and the repository scripts/demo.sh drives
+	for _, ex := range []string{"examples/docker-env", "testdata/repos/app-with-infra"} {
 		t.Run(ex, func(t *testing.T) {
 			dir := t.TempDir() // copy: checks must not write into the examples
-			src, _ := filepath.Abs("../../examples/" + ex)
+			src, _ := filepath.Abs("../../" + ex)
 			filepath.WalkDir(src, func(p string, d os.DirEntry, err error) error {
 				rel, _ := filepath.Rel(src, p)
 				if d.IsDir() {
@@ -32,7 +33,7 @@ func TestExamplesAreCleanUnderRealTools(t *testing.T) {
 				return os.WriteFile(filepath.Join(dir, rel), b, info.Mode().Perm())
 			})
 			rep, _ := workspace.Detect(dir, nil)
-			cfg := config.FromReport(rep)
+			cfg := config.FromReport(rep, "terraform")
 			cfg.Terraform.Binary = tfBin() // the binary under test, not the detected default
 			yml, _ := cfg.Marshal()        // checked too: groundwork's own file must lint clean
 			os.WriteFile(filepath.Join(dir, "groundwork.yaml"), yml, 0o644)

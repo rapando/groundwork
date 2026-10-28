@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"sort"
 	"strings"
 	"testing"
 
@@ -16,44 +15,24 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"gopkg.in/yaml.v3"
 
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/workspace"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/workspace"
 )
 
 func baseForm() Form {
 	return Form{
-		Preset: "aws-envs", Project: "acme", Backend: "s3", Bucket: "acme-tfstate", Region: "eu-west-1",
-		Envs: []string{"dev", "staging", "prod"}, Layout: "dirs", Inventory: "terraform",
-		Roles: []string{"common", "nginx"}, Vault: true,
-		Checks:    []string{"fmt", "validate", "tflint", "ansible-lint", "yamllint"},
-		PreCommit: true, CI: true,
+		Project: "acme", Envs: []string{"dev", "staging", "prod"}, Layout: "dirs",
+		Checks: []string{"fmt", "validate", "tflint", "ansible-lint", "yamllint"},
 	}
 }
 
 func variants() map[string]Form {
 	v := map[string]Form{}
-	for _, preset := range Presets {
-		for _, layout := range []string{"dirs", "workspaces"} {
-			for _, inv := range []string{"terraform", "static"} {
-				f := baseForm()
-				f.Preset, f.Layout, f.Inventory = preset, layout, inv
-				switch preset {
-				case "gcp-envs":
-					f.Backend, f.Region, f.GCPProject = "gcs", "europe-west1", "acme-infra"
-				case "docker", "onprem":
-					f.Backend, f.Bucket, f.Region = "local", "", ""
-				default:
-					if c, ok := Clouds[preset]; ok {
-						f.Backend, f.Bucket, f.Region = "local", "", c.RegionHint
-					}
-				}
-				v[preset+"/"+layout+"/"+inv] = f
-				if c, ok := Clouds[preset]; ok { // and on the provider's object storage
-					g := f
-					g.Backend, g.Bucket, g.S3Endpoint = "s3", "acme-tfstate", c.S3Hint
-					v[preset+"/s3/"+layout+"/"+inv] = g
-				}
-			}
+	for _, layout := range []string{"dirs", "workspaces"} {
+		for _, pw := range []string{"", "~/.vault-pass-acme"} {
+			f := baseForm()
+			f.Layout, f.VaultPasswordFile = layout, pw
+			v[layout+"/vault-file="+pw] = f
 		}
 	}
 	return v
@@ -88,9 +67,10 @@ func TestRenderedFilesAreSyntacticallyValid(t *testing.T) {
 	}
 }
 
-// The scaffold, once written, must be detected exactly as the form describes:
-// detection → config must agree with the config the scaffold wrote.
-func TestScaffoldRoundTripsThroughDetection(t *testing.T) {
+// What setup writes is detected as the Ansible project groundwork.yaml
+// describes, inventory script included. The Terraform roots don't exist until
+// the user writes them.
+func TestSetupRoundTripsThroughDetection(t *testing.T) {
 	for name, f := range variants() {
 		t.Run(name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -105,56 +85,108 @@ func TestScaffoldRoundTripsThroughDetection(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			if len(written.Terraform.Roots) == 0 {
+				t.Fatal("no terraform roots in groundwork.yaml")
+			}
 			rep, err := workspace.Detect(dir, written.Ignore)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if rep.Mode != "standalone" {
-				t.Errorf("mode %s", rep.Mode)
-			}
-			if len(rep.TerraformRoots) != len(written.Terraform.Roots) {
-				t.Fatalf("roots: detected %d, config has %d", len(rep.TerraformRoots), len(written.Terraform.Roots))
-			}
 			if len(rep.Ansible) != 1 || rep.Ansible[0].Path != "ansible" {
 				t.Fatalf("ansible: %+v", rep.Ansible)
 			}
-			if len(rep.Ansible[0].Roles) != len(f.Roles) {
-				t.Errorf("roles %v", rep.Ansible[0].Roles)
+			if inv := rep.Ansible[0].Inventories; len(inv) != 1 || inv[0] != "ansible/inventory/tf_outputs.py" {
+				t.Fatalf("inventories %v", inv)
 			}
-			got := config.FromReport(rep)
-			byPath := func(r []config.TFRoot) {
-				sort.Slice(r, func(i, j int) bool { return r[i].Path < r[j].Path })
-			}
-			byPath(got.Terraform.Roots)
-			byPath(written.Terraform.Roots)
-			if !reflect.DeepEqual(got.Terraform.Roots, written.Terraform.Roots) {
-				t.Errorf("roots differ\n detected %+v\n written  %+v", got.Terraform.Roots, written.Terraform.Roots)
-			}
-			if f.Layout == "dirs" && f.Preset != "onprem" && len(rep.TerraformModules) != 1 {
-				t.Errorf("modules %+v", rep.TerraformModules)
-			}
-			if f.Inventory == "static" {
-				if !reflect.DeepEqual(got.Ansible.Projects[0].Inventories, written.Ansible.Projects[0].Inventories) {
-					t.Errorf("inventories differ %v vs %v", got.Ansible.Projects[0].Inventories, written.Ansible.Projects[0].Inventories)
-				}
+			if got := written.Ansible.Projects[0].VaultPasswordFile; got != f.VaultPasswordFile {
+				t.Fatalf("vault_password_file %q", got)
 			}
 		})
+	}
+}
+
+// Only groundwork's config and the files the chosen tools need: the
+// Terraform and the playbooks are the user's to write.
+func TestSetupWritesOnlyTheChosenToolsFiles(t *testing.T) {
+	for _, tc := range []struct {
+		tools, files, checks []string
+		binary               string
+	}{
+		{[]string{"terraform"}, []string{"groundwork.yaml"}, []string{"fmt", "validate", "tflint", "secrets"}, "terraform"},
+		{[]string{"tofu"}, []string{"groundwork.yaml"}, []string{"fmt", "validate", "tflint", "secrets"}, "tofu"},
+		{[]string{"ansible"}, []string{"ansible/ansible.cfg", "groundwork.yaml"}, []string{"ansible-lint", "yamllint", "syntax-check", "secrets"}, ""},
+		{[]string{"tofu", "ansible"}, []string{"ansible/ansible.cfg", "ansible/inventory/tf_outputs.py", "groundwork.yaml"},
+			[]string{"fmt", "validate", "tflint", "ansible-lint", "yamllint", "syntax-check", "secrets"}, "tofu"},
+	} {
+		t.Run(strings.Join(tc.tools, "+"), func(t *testing.T) {
+			f := baseForm()
+			f.Tools, f.VaultPasswordFile = tc.tools, "~/.vault-pass-acme"
+			fs, err := Render(&f)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got []string
+			for _, x := range fs {
+				got = append(got, x.Path)
+			}
+			if !reflect.DeepEqual(got, tc.files) {
+				t.Fatalf("files %v", got)
+			}
+			c, err := config.Parse([]byte(fileNamed(t, fs, "groundwork.yaml")), config.FileName)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if c.Terraform.Binary != tc.binary || (tc.binary == "") != (len(c.Terraform.Roots) == 0) {
+				t.Errorf("terraform %+v", c.Terraform)
+			}
+			if f.Ansible() != (len(c.Ansible.Projects) == 1) {
+				t.Errorf("ansible %+v", c.Ansible)
+			}
+			if !f.Ansible() && f.VaultPasswordFile != "" {
+				t.Error("a vault password file without Ansible")
+			}
+			if !reflect.DeepEqual(c.Checks.Enabled, tc.checks) {
+				t.Errorf("checks %v", c.Checks.Enabled)
+			}
+		})
+	}
+}
+
+func TestDefaultTools(t *testing.T) {
+	look := func(have ...string) func(string) (string, error) {
+		return func(n string) (string, error) {
+			for _, h := range have {
+				if h == n {
+					return "/bin/" + n, nil
+				}
+			}
+			return "", exec.ErrNotFound
+		}
+	}
+	for want, have := range map[string][]string{"terraform": {"terraform", "tofu"}, "tofu": {"tofu"}, "": nil} {
+		exp := []string{want, "ansible"}
+		if want == "" {
+			exp[0] = "terraform"
+		}
+		if got := DefaultTools(look(have...)); !reflect.DeepEqual(got, exp) {
+			t.Errorf("with %v: %v", have, got)
+		}
 	}
 }
 
 func TestValidation(t *testing.T) {
 	f := baseForm()
 	f.Envs = []string{"dev", "Bad Name", "dev"}
-	f.Region = "mars"
-	f.Bucket = "X"
-	f.Roles = []string{"../etc"}
+	f.Layout = "flat"
+	f.Checks = []string{"rm"}
 	f.Project = ""
+	f.Tools = []string{"terraform", "tofu", "pulumi"}
 	errs := f.Validate()
 	fields := map[string]bool{}
 	for _, e := range errs {
 		fields[e.Field] = true
 	}
-	for _, want := range []string{"envs", "region", "bucket", "roles", "project"} {
+	for _, want := range []string{"envs", "layout", "checks", "project", "tools"} {
 		if !fields[want] {
 			t.Errorf("missing error for %s: %v", want, errs)
 		}
@@ -164,81 +196,13 @@ func TestValidation(t *testing.T) {
 	}
 }
 
-func TestCloudsAreListedAsPresets(t *testing.T) {
-	for preset := range Clouds {
-		if !in(preset, Presets) {
-			t.Errorf("%s is in Clouds but not in Presets", preset)
-		}
-	}
-}
-
-func TestCloudPresetValidation(t *testing.T) {
-	f := baseForm()
-	f.Preset, f.Backend, f.Bucket, f.Region = "vultr", "s3", "", "eu-west-1"
-	fields := map[string]bool{}
-	for _, e := range f.Validate() {
-		fields[e.Field] = true
-	}
-	if !fields["region"] || !fields["bucket"] || !fields["s3_endpoint"] || fields["backend"] {
-		t.Errorf("want region, bucket and s3_endpoint errors, got %v", f.Validate())
-	}
-	f.Backend, f.Region = "local", "ams"
-	if errs := f.Validate(); len(errs) > 0 {
-		t.Fatalf("valid vultr form rejected: %v", errs)
-	}
-	f.Backend, f.Bucket, f.S3Endpoint = "s3", "acme-tfstate", "http://ams1.vultrobjects.com"
-	if errs := f.Validate(); len(errs) != 1 || errs[0].Field != "s3_endpoint" {
-		t.Fatalf("want an s3_endpoint error for a plain-http endpoint, got %v", errs)
-	}
-	f.S3Endpoint = "https://ams1.vultrobjects.com"
-	if errs := f.Validate(); len(errs) > 0 {
-		t.Fatalf("valid vultr s3 form rejected: %v", errs)
-	}
-	f.Preset, f.Region, f.S3Endpoint = "docker", "", ""
-	if errs := f.Validate(); len(errs) != 1 || errs[0].Field != "backend" {
-		t.Fatalf("want s3 rejected for docker, got %v", errs)
-	}
-}
-
-func TestS3Region(t *testing.T) {
-	for in, want := range map[string]string{
-		"https://fsn1.your-objectstorage.com":     "fsn1",
-		"https://eu-central-1.linodeobjects.com/": "eu-central-1",
-		"https://s3.example.com:9000":             "s3",
-	} {
-		if got := S3Region(in); got != want {
-			t.Errorf("S3Region(%q) = %q, want %q", in, got, want)
-		}
-	}
-}
-
-func TestGCPValidation(t *testing.T) {
-	f := baseForm()
-	f.Preset, f.Backend, f.Region, f.GCPProject = "gcp-envs", "gcs", "eu-west-1", "X"
-	fields := map[string]bool{}
-	for _, e := range f.Validate() {
-		fields[e.Field] = true
-	}
-	for _, want := range []string{"region", "gcp_project"} {
-		if !fields[want] {
-			t.Errorf("missing error for %s", want)
-		}
-	}
-	f.Region, f.GCPProject = "europe-west1", "acme-infra"
-	if errs := f.Validate(); len(errs) > 0 {
-		t.Fatalf("valid gcp form rejected: %v", errs)
-	}
-	f.Backend = "s3"
-	if errs := f.Validate(); len(errs) == 0 {
-		t.Fatal("s3 backend accepted for gcp-envs")
-	}
-}
-
 func TestApplyNeverOverwritesSilently(t *testing.T) {
 	dir := t.TempDir()
 	f := baseForm()
 	fs, _ := Render(&f)
-	os.WriteFile(filepath.Join(dir, "README.md"), []byte("mine\n"), 0o644)
+	os.MkdirAll(filepath.Join(dir, "ansible"), 0o755)
+	os.WriteFile(filepath.Join(dir, "ansible/ansible.cfg"), []byte("mine\n"), 0o644)
+	fs = append(fs, GitignoreEntry())
 	os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("node_modules/\n"), 0o644)
 
 	pl, _ := Plan(dir, fs)
@@ -259,20 +223,20 @@ func TestApplyNeverOverwritesSilently(t *testing.T) {
 	for _, r := range res {
 		status[r.Path] = r.Status
 	}
-	if status["README.md"] != "skipped" || status[".gitignore"] != "merged" || status["groundwork.yaml"] != "created" {
+	if status["ansible/ansible.cfg"] != "skipped" || status[".gitignore"] != "merged" || status["groundwork.yaml"] != "created" {
 		t.Fatalf("statuses: %v", status)
 	}
-	if b, _ := os.ReadFile(filepath.Join(dir, "README.md")); string(b) != "mine\n" {
-		t.Fatal("README overwritten")
+	if b, _ := os.ReadFile(filepath.Join(dir, "ansible/ansible.cfg")); string(b) != "mine\n" {
+		t.Fatal("ansible.cfg overwritten")
 	}
 	gi, _ := os.ReadFile(filepath.Join(dir, ".gitignore"))
 	if !strings.HasPrefix(string(gi), "node_modules/\n") || !strings.Contains(string(gi), ".groundwork/") {
 		t.Fatalf("gitignore not merged: %q", gi)
 	}
 	// explicit overwrite
-	res, _ = Apply(dir, fs, map[string]bool{"README.md": true})
+	res, _ = Apply(dir, fs, map[string]bool{"ansible/ansible.cfg": true})
 	for _, r := range res {
-		if r.Path == "README.md" && r.Status != "overwritten" {
+		if r.Path == "ansible/ansible.cfg" && r.Status != "overwritten" {
 			t.Fatalf("got %s", r.Status)
 		}
 	}
@@ -313,15 +277,6 @@ func TestZip(t *testing.T) {
 	}
 }
 
-func TestDefaultThreeEnvLayoutFileCount(t *testing.T) {
-	f := baseForm()
-	fs, _ := Render(&f)
-	t.Logf("%d files", len(fs))
-	if len(fs) < 30 {
-		t.Fatalf("suspiciously few files: %d", len(fs))
-	}
-}
-
 func TestTerraformOutputsInventoryIsDetected(t *testing.T) {
 	f := baseForm()
 	dir := t.TempDir()
@@ -340,13 +295,14 @@ func TestTerraformOutputsInventoryIsDetected(t *testing.T) {
 }
 
 // The inventory script turns ip into ansible_host and passes every other
-// field through as a host variable.
+// field through as a host variable. It runs the binary setup chose.
 func TestInventoryScriptPassesExtraFields(t *testing.T) {
 	py, err := exec.LookPath("python3")
 	if err != nil {
 		t.Skip("python3 not installed")
 	}
 	f := baseForm()
+	f.Tools = []string{"tofu", "ansible"}
 	dir := t.TempDir()
 	fs, _ := Render(&f)
 	if _, err := Apply(dir, fs, nil); err != nil {
@@ -355,7 +311,10 @@ func TestInventoryScriptPassesExtraFields(t *testing.T) {
 	bin := t.TempDir()
 	out := `{"web":[{"name":"web-1","ip":"10.0.0.1","ansible_user":"ubuntu","ansible_port":2222}],` +
 		`"app":[{"name":"c1","ansible_host":"demo-web","ansible_connection":"community.docker.docker","ip":null}]}`
-	if err := os.WriteFile(filepath.Join(bin, "terraform"), []byte("#!/bin/sh\ncat <<'JSON'\n"+out+"\nJSON\n"), 0o755); err != nil {
+	if err := os.WriteFile(filepath.Join(bin, "tofu"), []byte("#!/bin/sh\ncat <<'JSON'\n"+out+"\nJSON\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bin, "terraform"), []byte("#!/bin/sh\necho terraform ran >&2; exit 1\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	cmd := exec.Command(py, filepath.Join(dir, "ansible/inventory/tf_outputs.py"), "--list")
@@ -378,34 +337,6 @@ func TestInventoryScriptPassesExtraFields(t *testing.T) {
 	}
 	if !reflect.DeepEqual(inv.Meta.Hostvars, want) {
 		t.Errorf("hostvars %v", inv.Meta.Hostvars)
-	}
-}
-
-// The agent skill documents every preset; a new preset must be added there too.
-func TestSkillListsEveryPreset(t *testing.T) {
-	b, err := os.ReadFile("../../skills/groundwork/references/scaffold.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, p := range Presets {
-		if !strings.Contains(string(b), "| `"+p+"` |") {
-			t.Errorf("skills/groundwork/references/scaffold.md has no row for preset %s", p)
-		}
-	}
-}
-
-// Vultr is the default preset, offered first.
-func TestVultrIsTheDefaultPreset(t *testing.T) {
-	if Presets[0] != "vultr" || Presets[1] != "aws-envs" || Presets[2] != "gcp-envs" {
-		t.Fatalf("order %v", Presets)
-	}
-	f := Form{Project: "acme", Region: "ams"}
-	f.Normalize()
-	if f.Preset != "vultr" || f.Backend != "local" {
-		t.Fatalf("%+v", f)
-	}
-	if errs := f.Validate(); len(errs) != 0 {
-		t.Fatal(errs)
 	}
 }
 
@@ -452,4 +383,45 @@ func fileNamed(t *testing.T, files []File, p string) string {
 	}
 	t.Fatalf("no %s", p)
 	return ""
+}
+
+// The password file must sit outside the repository; an existing one is used
+// as it is, a new one is created with mode 0600 and never replaced.
+func TestPasswordFile(t *testing.T) {
+	root := t.TempDir()
+	f := baseForm()
+	if v, err := PasswordFile(root, &f); v != nil || err != nil {
+		t.Fatalf("no file named: %v %v", v, err)
+	}
+	for _, inside := range []string{".vault-pass", "../.vault-pass", filepath.Join(root, "x/.vault-pass")} {
+		f.VaultPasswordFile = inside
+		if _, err := PasswordFile(root, &f); err == nil {
+			t.Errorf("%s inside the repository accepted", inside)
+		}
+	}
+
+	f.VaultPasswordFile = filepath.Join(t.TempDir(), "keys", ".vault-pass")
+	v, err := PasswordFile(root, &f)
+	if err != nil || v.Exists {
+		t.Fatalf("%+v %v", v, err)
+	}
+	for _, bad := range []string{"", "a\nb"} {
+		if err := v.Create(bad); err == nil {
+			t.Errorf("password %q accepted", bad)
+		}
+	}
+	if err := v.Create("s3cret"); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := os.ReadFile(v.Full)
+	st, _ := os.Stat(v.Full)
+	if string(b) != "s3cret\n" || st.Mode().Perm() != 0o600 {
+		t.Fatalf("%q %v", b, st.Mode())
+	}
+	if err := v.Create("other"); err == nil {
+		t.Fatal("replaced an existing file")
+	}
+	if v, err = PasswordFile(root, &f); err != nil || !v.Exists {
+		t.Fatalf("%+v %v", v, err)
+	}
 }

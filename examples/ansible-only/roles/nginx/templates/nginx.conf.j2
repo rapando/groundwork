@@ -1,9 +1,0 @@
-# Managed by Ansible
-worker_processes {{ nginx_worker_processes }};
-events {}
-http {
-  server {
-    listen {{ nginx_port }};
-    location / { return 200 "ok\n"; }
-  }
-}

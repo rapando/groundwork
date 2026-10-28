@@ -43,8 +43,8 @@ The generated changelog is a list of commit titles. For a release that deserves 
 ## Installing a version
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | GROUNDWORK_VERSION=v1.0.0 sh
-go install github.com/rapando/groundwork/cmd/groundwork@v1.0.0
+curl -fsSL https://raw.githubusercontent.com/rapando/groundwork/main/install.sh | GROUNDWORK_VERSION=v2.0.0 sh
+go install github.com/rapando/groundwork/v2/cmd/groundwork@v2.0.0
 ```
 
 `groundwork version` prints the installed version in either case.

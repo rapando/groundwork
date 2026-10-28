@@ -219,6 +219,12 @@ const nvIds = computed(() => idsFor(nv.file))
 watch(nvIds, (ids) => { if (!ids.some((i) => i.label === nv.vaultId)) nv.vaultId = ids[0]?.label ?? '' })
 const openNew = () => Object.assign(nv, { open: true, mode: 'variable', file: '', key: '', value: '', error: '' })
 const closeNew = () => Object.assign(nv, { open: false, value: '', error: '' })
+// open New secret from the setup screen's "Add a secret" (?new=1)
+watch(sec, (v) => {
+  if (!v || route.query.new !== '1') return
+  router.replace({ query: { ...route.query, new: undefined } })
+  if (v.vault?.length) openNew()
+})
 const nvReady = computed(() => !!nv.file.trim() && (nv.mode === 'encrypt' || (nv.mode === 'variable' ? !!nv.key.trim() && nv.value !== '' : nv.value !== '')))
 async function submitNew() {
   nv.busy = true; nv.error = ''

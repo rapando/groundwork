@@ -20,10 +20,10 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/proc"
-	"github.com/rapando/groundwork/internal/safego"
-	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/proc"
+	"github.com/rapando/groundwork/v2/internal/safego"
+	"github.com/rapando/groundwork/v2/internal/store"
 )
 
 // Check is one Doctor result.
@@ -238,26 +238,14 @@ func checkTools(ctx context.Context, in Input) []Check {
 	var found []string
 	var out []Check
 	for _, n := range names {
-		var spec *struct {
-			name string
-			args []string
-			re   string
-			hint string
-		}
-		for i := range specs {
-			if specs[i].name == n {
-				spec = &specs[i]
-			}
-		}
+		spec := specFor(n)
 		if _, err := in.Exec.LookPath(n); err != nil {
 			st := "fail"
 			if need[n] != "required" {
 				st = "warn"
 			}
 			c := Check{ID: "tool:" + n, Name: n, Status: st, Detail: "not found on PATH"}
-			if spec != nil {
-				c.Hint = spec.hint
-			}
+			c.Hint = Hint(n)
 			if need[n] == "check" {
 				c.Detail += "; the " + n + " check is skipped"
 			}

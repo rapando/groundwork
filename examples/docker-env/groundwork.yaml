@@ -1,0 +1,32 @@
+# groundwork configuration. Edit freely; groundwork re-reads it on start.
+---
+version: 1
+mode: standalone
+terraform:
+  binary: terraform
+  roots:
+    - path: terraform/envs/dev
+      env: dev
+  modules:
+    - terraform/modules/*
+ansible:
+  projects:
+    - path: ansible
+      config: ansible.cfg
+      # the inventory is the Terraform output of terraform/envs/dev
+      inventories:
+        dev: inventory/tf_outputs.py
+checks:
+  enabled:
+    - fmt
+    - validate
+    - tflint
+    - ansible-lint
+    - yamllint
+    - syntax-check
+    - secrets
+  on_save: true
+ignore:
+  - vendor/
+  - node_modules/
+  - '**/.terraform/'

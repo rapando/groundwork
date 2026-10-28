@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rapando/groundwork/internal/proc"
-	"github.com/rapando/groundwork/internal/terraform"
+	"github.com/rapando/groundwork/v2/internal/proc"
+	"github.com/rapando/groundwork/v2/internal/terraform"
 )
 
 // StateRef identifies the state a plan was made against.

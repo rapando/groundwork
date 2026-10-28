@@ -1,0 +1,14 @@
+- name: RabbitMQ
+  hosts: rabbitmq
+  roles:
+    - rabbitmq
+
+- name: Redis
+  hosts: redis
+  roles:
+    - redis
+
+- name: Nginx
+  hosts: nginx
+  roles:
+    - nginx

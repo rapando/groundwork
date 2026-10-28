@@ -12,8 +12,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/rapando/groundwork/internal/events"
-	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/v2/internal/events"
+	"github.com/rapando/groundwork/v2/internal/store"
 )
 
 func TestTerraformVarsMatrixEditAndReveal(t *testing.T) {

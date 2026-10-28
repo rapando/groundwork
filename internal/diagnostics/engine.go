@@ -16,11 +16,11 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/rapando/groundwork/internal/checks"
-	"github.com/rapando/groundwork/internal/events"
-	"github.com/rapando/groundwork/internal/runner"
-	"github.com/rapando/groundwork/internal/safego"
-	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/v2/internal/checks"
+	"github.com/rapando/groundwork/v2/internal/events"
+	"github.com/rapando/groundwork/v2/internal/runner"
+	"github.com/rapando/groundwork/v2/internal/safego"
+	"github.com/rapando/groundwork/v2/internal/store"
 )
 
 // Context is what an issue is about; templates see it as .Target, .Root, ….

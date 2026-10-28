@@ -12,10 +12,10 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	"github.com/rapando/groundwork/internal/checks"
-	"github.com/rapando/groundwork/internal/doctor"
-	"github.com/rapando/groundwork/internal/server"
-	"github.com/rapando/groundwork/internal/service"
+	"github.com/rapando/groundwork/v2/internal/checks"
+	"github.com/rapando/groundwork/v2/internal/doctor"
+	"github.com/rapando/groundwork/v2/internal/server"
+	"github.com/rapando/groundwork/v2/internal/service"
 )
 
 // Set via -ldflags at release time.

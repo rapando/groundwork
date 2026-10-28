@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rapando/groundwork/internal/service"
+	"github.com/rapando/groundwork/v2/internal/service"
 )
 
 // runRoot executes the command tree with the given stdin and returns stdout.
@@ -39,44 +39,83 @@ func gitRepo(t *testing.T) string {
 	return dir
 }
 
-func TestInitScaffoldsWritesFilesAndCommits(t *testing.T) {
+func TestInitSetsUpWritesFilesAndCommits(t *testing.T) {
 	dir := gitRepo(t)
 	t.Setenv("GROUNDWORK_HOME", t.TempDir())
 	// without --yes, answering "n" writes nothing
-	out, err := runRoot(t, "n\n", "init", "--preset", "onprem", "--project", "demo")
+	out, err := runRoot(t, "n\n", "init", "--project", "demo")
 	if err != nil {
 		t.Fatalf("%v\n%s", err, out)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "groundwork.yaml")); err == nil {
-		t.Fatal("declined scaffold wrote files")
+		t.Fatal("declined setup wrote files")
 	}
 	// --dry-run shows the plan and writes nothing either
-	out, err = runRoot(t, "", "init", "--preset", "onprem", "--project", "demo", "--dry-run")
-	if err != nil || !strings.Contains(out, "groundwork.yaml") {
+	out, err = runRoot(t, "", "init", "--project", "demo", "--dry-run")
+	if err != nil || !strings.Contains(out, "ansible/inventory/tf_outputs.py") {
 		t.Fatalf("%v\n%s", err, out)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "groundwork.yaml")); err == nil {
 		t.Fatal("dry run wrote files")
 	}
-	// for real, and committed
-	out, err = runRoot(t, "", "init", "--preset", "onprem", "--project", "demo", "--yes", "--git-commit", "--envs", "dev,prod", "--vault")
+	// a bad flag is refused before anything is written
+	if _, err := runRoot(t, "", "init", "--layout", "flat", "--yes"); err == nil {
+		t.Fatal("unknown layout accepted")
+	}
+	if _, err := runRoot(t, "", "init", "--vault-password-file", ".vault-pass", "--yes"); err == nil {
+		t.Fatal("a password file inside the repository accepted")
+	}
+	// for real, with a new password file, and committed
+	pwFile := filepath.Join(t.TempDir(), ".vault-pass")
+	if _, err := runRoot(t, "pw-one\npw-two\n", "init", "--project", "demo", "--yes", "--vault-password-file", pwFile); err == nil {
+		t.Fatal("mismatched passwords accepted")
+	}
+	if _, err := os.Stat(pwFile); err == nil {
+		t.Fatal("password file written although the passwords differ")
+	}
+	out, err = runRoot(t, "s3cret\ns3cret\n", "init", "--project", "demo", "--tools", "terraform,ansible", "--yes", "--git-commit", "--envs", "dev,prod", "--vault-password-file", pwFile)
 	if err != nil {
 		t.Fatalf("%v\n%s", err, out)
 	}
-	if !strings.Contains(out, "committed: chore: scaffold with groundwork") {
+	if !strings.Contains(out, "committed: chore: set up groundwork") {
 		t.Fatalf("no commit message in output:\n%s", out)
 	}
+	if b, _ := os.ReadFile(pwFile); string(b) != "s3cret\n" {
+		t.Fatalf("password file %q", b)
+	}
 	b, err := os.ReadFile(filepath.Join(dir, "groundwork.yaml"))
-	if err != nil || !strings.Contains(string(b), "version: 1") {
+	if err != nil || !strings.Contains(string(b), "vault_password_file: "+pwFile) {
 		t.Fatalf("config: %v %s", err, b)
 	}
+	if _, err := os.Stat(filepath.Join(dir, "terraform")); err == nil {
+		t.Fatal("setup wrote Terraform")
+	}
+	if !strings.Contains(string(b), "binary: terraform") || !strings.Contains(string(b), "projects:") {
+		t.Fatalf("config without both tools:\n%s", b)
+	}
 	log, _ := exec.Command("git", "-C", dir, "log", "--oneline").Output()
-	if !strings.Contains(string(log), "scaffold with groundwork") {
+	if !strings.Contains(string(log), "set up groundwork") {
 		t.Fatalf("not committed: %s", log)
 	}
-	// a bad preset and a bad flag combination are refused before anything is written
-	if _, err := runRoot(t, "", "init", "--preset", "nope", "--yes"); err == nil {
-		t.Fatal("unknown preset accepted")
+}
+
+// --tools tofu sets up OpenTofu alone: groundwork.yaml only, no vault password.
+func TestInitForOpenTofuAlone(t *testing.T) {
+	dir := gitRepo(t)
+	t.Setenv("GROUNDWORK_HOME", t.TempDir())
+	if _, err := runRoot(t, "", "init", "--tools", "terraform,tofu", "--yes"); err == nil {
+		t.Fatal("terraform and tofu together accepted")
+	}
+	out, err := runRoot(t, "", "init", "--project", "demo", "--tools", "tofu", "--yes", "--vault-password-file", filepath.Join(t.TempDir(), "pw"))
+	if err != nil {
+		t.Fatalf("%v\n%s", err, out)
+	}
+	b, _ := os.ReadFile(filepath.Join(dir, "groundwork.yaml"))
+	if !strings.Contains(string(b), "binary: tofu") || strings.Contains(string(b), "ansible") {
+		t.Fatalf("config:\n%s", b)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "ansible")); err == nil {
+		t.Fatal("ansible/ written for OpenTofu alone")
 	}
 }
 
@@ -84,7 +123,7 @@ func TestInitGitCommitOutsideARepository(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
 	t.Setenv("GROUNDWORK_HOME", t.TempDir())
-	_, err := runRoot(t, "", "init", "--preset", "onprem", "--project", "demo", "--yes", "--git-commit")
+	_, err := runRoot(t, "", "init", "--project", "demo", "--yes", "--git-commit")
 	if err == nil || !strings.Contains(err.Error(), "not a git repository") {
 		t.Fatalf("got %v", err)
 	}

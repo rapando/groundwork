@@ -12,10 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/events"
-	"github.com/rapando/groundwork/internal/store"
-	"github.com/rapando/groundwork/internal/workspace"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/doctor"
+	"github.com/rapando/groundwork/v2/internal/events"
+	"github.com/rapando/groundwork/v2/internal/store"
+	"github.com/rapando/groundwork/v2/internal/workspace"
 )
 
 type fakeExec struct {
@@ -82,7 +83,7 @@ func newEnv(t *testing.T, fx *fakeExec) *env {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := config.FromReport(rep)
+	cfg := config.FromReport(rep, "terraform")
 	cfg.Checks.Enabled = []string{"fmt", "validate", "tflint", "ansible-lint", "yamllint", "syntax-check"}
 	st, err := store.Open(filepath.Join(t.TempDir(), "s.db"))
 	if err != nil {
@@ -239,7 +240,7 @@ func TestMissingToolIsSkippedWithHintAndClearsStale(t *testing.T) {
 			}
 		}
 	}
-	if tl.Status != "skipped" || tl.Hint != "brew install tflint" || !strings.Contains(tl.Message, "not found") {
+	if tl.Status != "skipped" || tl.Hint != doctor.Hint("tflint") || tl.Hint == "" || !strings.Contains(tl.Message, "not found") {
 		t.Fatalf("%+v", tl)
 	}
 	ds, _ := e.svc.Diagnostics("tf:terraform/envs/dev", "", "")
@@ -460,7 +461,7 @@ func TestFormatFile(t *testing.T) {
 		t.Fatal("only terraform files can be formatted")
 	}
 	fx.missing = map[string]bool{"terraform": true}
-	if err := e.svc.FormatFile(context.Background(), "a.tf"); err == nil || !strings.Contains(err.Error(), "brew install terraform") {
+	if err := e.svc.FormatFile(context.Background(), "a.tf"); err == nil || !strings.Contains(err.Error(), doctor.Hint("terraform")) {
 		t.Fatalf("%v", err)
 	}
 }
@@ -674,6 +675,41 @@ func TestOverlappingRunsOfOneUnitNeverBreakTheShadowTree(t *testing.T) {
 			if r.Status == "failed" {
 				t.Fatalf("%s %s failed: %s", u.ID, r.Tool, r.Message)
 			}
+		}
+	}
+}
+
+// A root groundwork.yaml names before its Terraform is written is skipped,
+// not failed: a fresh setup has no Terraform yet.
+func TestMissingRootIsSkipped(t *testing.T) {
+	fx := &fakeExec{}
+	e := newEnv(t, fx)
+	if err := os.RemoveAll(filepath.Join(e.root, "terraform/envs/dev")); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.svc.Run(context.Background(), "tf:terraform/envs/dev", true); err != nil {
+		t.Fatal(err)
+	}
+	skipped := 0
+	for _, u := range e.svc.Status() {
+		if u.ID != "tf:terraform/envs/dev" {
+			continue
+		}
+		for _, r := range u.Results {
+			if r.Tool != "secrets" {
+				skipped++
+			}
+			if r.Tool != "secrets" && (r.Status != "skipped" || r.Message != "terraform/envs/dev doesn't exist yet") {
+				t.Errorf("%s: %+v", r.Tool, r)
+			}
+		}
+	}
+	if skipped == 0 {
+		t.Fatal("no results for the missing root")
+	}
+	for _, c := range fx.calls {
+		if strings.Contains(strings.Join(c.Argv, " "), "envs/dev") {
+			t.Errorf("ran %v", c.Argv)
 		}
 	}
 }

@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/rapando/groundwork/internal/redact"
-	"github.com/rapando/groundwork/internal/store"
-	"github.com/rapando/groundwork/internal/terraform"
-	"github.com/rapando/groundwork/internal/vars"
+	"github.com/rapando/groundwork/v2/internal/redact"
+	"github.com/rapando/groundwork/v2/internal/store"
+	"github.com/rapando/groundwork/v2/internal/terraform"
+	"github.com/rapando/groundwork/v2/internal/vars"
 )
 
 // lockKey: one active job per Terraform root. (The plan keys on root+workspace,

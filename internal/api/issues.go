@@ -15,11 +15,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/rapando/groundwork/internal/diagnostics"
-	"github.com/rapando/groundwork/internal/doctor"
-	"github.com/rapando/groundwork/internal/safego"
-	"github.com/rapando/groundwork/internal/store"
-	"github.com/rapando/groundwork/internal/workspace"
+	"github.com/rapando/groundwork/v2/internal/diagnostics"
+	"github.com/rapando/groundwork/v2/internal/doctor"
+	"github.com/rapando/groundwork/v2/internal/safego"
+	"github.com/rapando/groundwork/v2/internal/store"
+	"github.com/rapando/groundwork/v2/internal/workspace"
 )
 
 // Start runs the background services: the issue engine, an inventory

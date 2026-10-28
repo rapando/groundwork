@@ -51,7 +51,7 @@ Saves are atomic (temp file + rename) and require `If-Match` with the sha you lo
 
 ```
 make integration                       # real terraform / tflint / yamllint / ansible-lint if installed
-GW_TEST_NETWORK=1 make integration     # also downloads providers, to validate every scaffold preset
+GW_TEST_NETWORK=1 make integration     # also runs the tests that download providers
 ```
 
 The parsers are tested against captured output of the real tools in `testdata/checks/`.

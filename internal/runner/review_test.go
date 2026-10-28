@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/v2/internal/store"
 )
 
 func stateFile(t *testing.T, serial int, lineage string) string {

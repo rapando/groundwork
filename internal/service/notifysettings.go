@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/notify"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/notify"
 )
 
 // NotifyPath is the file holding the notification settings for every

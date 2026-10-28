@@ -14,12 +14,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rapando/groundwork/internal/ansible"
-	"github.com/rapando/groundwork/internal/graph"
-	"github.com/rapando/groundwork/internal/proc"
-	"github.com/rapando/groundwork/internal/runner"
-	"github.com/rapando/groundwork/internal/terraform"
-	"github.com/rapando/groundwork/internal/workspace"
+	"github.com/rapando/groundwork/v2/internal/ansible"
+	"github.com/rapando/groundwork/v2/internal/graph"
+	"github.com/rapando/groundwork/v2/internal/proc"
+	"github.com/rapando/groundwork/v2/internal/runner"
+	"github.com/rapando/groundwork/v2/internal/terraform"
+	"github.com/rapando/groundwork/v2/internal/workspace"
 )
 
 // stateTTL: how long a pulled state is reused. Pulling a remote state takes

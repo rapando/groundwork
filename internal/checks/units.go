@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/workspace"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/workspace"
 )
 
 const (

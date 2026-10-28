@@ -21,10 +21,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/rapando/groundwork/internal/api"
-	"github.com/rapando/groundwork/internal/events"
-	"github.com/rapando/groundwork/internal/server"
-	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/v2/internal/api"
+	"github.com/rapando/groundwork/v2/internal/events"
+	"github.com/rapando/groundwork/v2/internal/server"
+	"github.com/rapando/groundwork/v2/internal/store"
 )
 
 const token = "0123456789abcdef0123456789abcdef"

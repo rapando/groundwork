@@ -4,7 +4,7 @@
 
 - validate Terraform and Ansible changes with `groundwork check --json` and fix what it reports;
 - diagnose tools, credentials and state backends with `groundwork doctor --json`;
-- check for drift, adopt an existing repository with `init`, or scaffold a new one with the right preset and flags;
+- check for drift, adopt an existing repository with `init`, or set up a new one for the tools it uses (Terraform or OpenTofu, Ansible, or both);
 - edit `groundwork.yaml` without weakening its protections;
 - keep secrets out of plain text, and send you to the console to create, edit or rekey ansible-vault values, so a secret never passes through the agent.
 

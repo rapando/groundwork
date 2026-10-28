@@ -14,8 +14,8 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/rapando/groundwork/internal/safego"
-	"github.com/rapando/groundwork/internal/workspace"
+	"github.com/rapando/groundwork/v2/internal/safego"
+	"github.com/rapando/groundwork/v2/internal/workspace"
 )
 
 // PollAbove is the file count above which, on kqueue platforms (macOS, BSD),

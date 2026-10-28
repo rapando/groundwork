@@ -15,11 +15,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/rapando/groundwork/internal/ansible"
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/runner"
-	"github.com/rapando/groundwork/internal/store"
-	"github.com/rapando/groundwork/internal/workspace"
+	"github.com/rapando/groundwork/v2/internal/ansible"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/runner"
+	"github.com/rapando/groundwork/v2/internal/store"
+	"github.com/rapando/groundwork/v2/internal/workspace"
 )
 
 type invScope struct {

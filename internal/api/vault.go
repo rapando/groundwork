@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/files"
-	"github.com/rapando/groundwork/internal/vars"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/files"
+	"github.com/rapando/groundwork/v2/internal/vars"
 )
 
 // ansible-vault editing. Plaintext arrives in the request and goes to

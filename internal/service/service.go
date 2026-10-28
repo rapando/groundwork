@@ -17,13 +17,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/rapando/groundwork/internal/api"
-	"github.com/rapando/groundwork/internal/app"
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/events"
-	"github.com/rapando/groundwork/internal/files"
-	"github.com/rapando/groundwork/internal/server"
-	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/v2/internal/api"
+	"github.com/rapando/groundwork/v2/internal/app"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/events"
+	"github.com/rapando/groundwork/v2/internal/files"
+	"github.com/rapando/groundwork/v2/internal/server"
+	"github.com/rapando/groundwork/v2/internal/store"
 )
 
 // Service owns every open project. Each project gets the same machinery the

@@ -1,6 +1,0 @@
-resource "vultr_vpc" "this" {
-  description    = var.name
-  region         = var.region
-  v4_subnet      = split("/", var.cidr)[0]
-  v4_subnet_mask = tonumber(split("/", var.cidr)[1])
-}

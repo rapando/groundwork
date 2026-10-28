@@ -11,10 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rapando/groundwork/internal/ansible"
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/files"
-	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/v2/internal/ansible"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/files"
+	"github.com/rapando/groundwork/v2/internal/store"
 )
 
 func ansibleReadOnly(module string) bool { return ansible.ReadOnlyModules[module] }
