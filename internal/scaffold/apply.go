@@ -54,8 +54,16 @@ func Apply(root string, fs []File, overwrite map[string]bool) ([]Result, error) 
 		if f.Executable {
 			mode = 0o755
 		}
-		_, statErr := os.Stat(full)
+		st, statErr := os.Stat(full)
 		exists := statErr == nil
+		// a script kept as it is still has to run (ansible only executes an
+		// inventory script with the execute bit): one copied in, or checked
+		// out with core.fileMode=false, may have lost it
+		if exists && f.Executable && st.Mode().IsRegular() && st.Mode().Perm()&0o100 == 0 {
+			if err := os.Chmod(full, st.Mode().Perm()|0o111); err != nil {
+				return res, err
+			}
+		}
 		switch {
 		case exists && f.Merge:
 			changed, err := mergeLines(full, f.Content)

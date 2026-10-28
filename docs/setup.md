@@ -34,7 +34,7 @@ First choose the tools the repository will use (`--tools`): **Terraform** or **O
 - Starter Terraform: `versions.tf`, `main.tf`, `variables.tf` and `outputs.tf` in each root, with a `required_version`, an `environment` variable set per environment, and a `name_prefix` local and output. No provider is chosen: add yours to `versions.tf`. With Ansible too, `outputs.tf` has an empty `ansible_hosts` output to fill in (see below). The files pass `fmt`, `validate` and tflint as written.
 - `.gitignore`: `.terraform/`, state files and crash logs. An existing `.gitignore` only gets the lines it lacks.
 - `ansible/ansible.cfg`: points Ansible at `ansible/inventory/`, so `ansible-playbook` finds the inventory outside groundwork too. With Ansible alone, put your own inventory there, such as `inventory/hosts.yml`.
-- `ansible/inventory/tf_outputs.py`: the inventory script that turns your Terraform or OpenTofu hosts into Ansible hosts.
+- `ansible/inventory/tf_outputs.py`: the inventory script that turns your Terraform or OpenTofu hosts into Ansible hosts. Ansible only runs it if it's executable, so setup makes it executable, including a copy already there that it keeps.
 
 Environments and layout only apply to Terraform and OpenTofu, and the vault password only to Ansible. `--envs` sets the environments (default `dev,staging,prod`). `--layout` says where the Terraform roots live: `dirs`, a directory per environment under `terraform/envs/<env>/` with its own `terraform.tfvars` (the default), or `workspaces`, one root in `terraform/` with a workspace and a `terraform/env/<env>.tfvars` per environment. Existing files are never overwritten.
 

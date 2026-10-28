@@ -123,6 +123,14 @@ type Ansible struct {
 	AllowVaultScript bool `yaml:"allow_vault_script,omitempty"`
 	// RunTimeout bounds one playbook or ad-hoc run (default 2h).
 	RunTimeout string `yaml:"run_timeout,omitempty"`
+	// InstallRequirements: when a project's requirements.yml changes, install
+	// its roles and collections in the background (default true).
+	InstallRequirements *bool `yaml:"install_requirements,omitempty"`
+}
+
+// InstallRequirementsOn reports whether requirements are installed as you edit them.
+func (a Ansible) InstallRequirementsOn() bool {
+	return a.InstallRequirements == nil || *a.InstallRequirements
 }
 
 // RunTimeoutDuration returns the configured run timeout (default two hours).

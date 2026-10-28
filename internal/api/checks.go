@@ -114,4 +114,5 @@ func (a *API) OnFilesChanged(paths []string) {
 	}
 	a.Checks.OnChange(paths)
 	a.providersChanged(paths)
+	a.requirementsChanged(paths)
 }
