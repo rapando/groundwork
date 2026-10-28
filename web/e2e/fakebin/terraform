@@ -13,6 +13,14 @@ for a in "$@"; do
 done
 cmd="${args[0]:-}"
 
+# `fmt -` (format on save) tightens "x  =  y" to "x = y"; "= =" is a parse error.
+if [ "$cmd" = fmt ] && [ "${args[${#args[@]}-1]}" = - ]; then
+  src=$(cat; echo .); src=${src%.}
+  if [[ "$src" == *"= ="* ]]; then echo "Error: Invalid expression" >&2; exit 2; fi
+  printf '%s' "${src//  =  / = }"
+  exit 0
+fi
+
 # Everything except `validate -json` (used by the Code screen's checks) is the
 # scriptable fake that the runner tests use: plan/show/apply with real captured output.
 wants_json=0; for a in "${args[@]}"; do [ "$a" = "-json" ] && wants_json=1; done

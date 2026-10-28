@@ -8,6 +8,10 @@ let gw: Instance
 test.afterEach(async () => {
   await gw?.stop()
 })
+// the architecture view follows edits that aren't saved yet
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('gw.autosave', 'off'))
+})
 
 const origin = () => gw.base
 

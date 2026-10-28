@@ -47,6 +47,7 @@ type Service struct {
 	notifyMu      sync.Mutex // guards notify
 	notify        notifyFile
 	notifyWriteMu sync.Mutex // one notify.yaml write at a time
+	onboardMu     sync.Mutex // guards onboarding.json
 }
 
 type instance struct {
@@ -86,14 +87,14 @@ func (s *Service) open(p Project) *instance {
 	}
 	in := &instance{p: p}
 	s.live[p.ID] = in
-	if err := in.start(s.ctx, s.Version, s.MachineNotify, s.Log.With("project", p.ID)); err != nil {
+	if err := in.start(s.ctx, s.Version, s.MachineNotify, s.FirstUse, s.Log.With("project", p.ID)); err != nil {
 		in.err = err
 		s.Log.Warn("project unavailable", "project", p.ID, "path", p.Path, "err", err)
 	}
 	return in
 }
 
-func (in *instance) start(ctx context.Context, version string, base func() *config.Notify, log *slog.Logger) error {
+func (in *instance) start(ctx context.Context, version string, base func() *config.Notify, firstUse func() bool, log *slog.Logger) error {
 	if fi, err := os.Stat(in.p.Path); err != nil || !fi.IsDir() {
 		return fmt.Errorf("folder not found: %s", in.p.Path)
 	}
@@ -116,6 +117,7 @@ func (in *instance) start(ctx context.Context, version string, base func() *conf
 	}
 	a.Notifier.Streams = server.OpenStreams
 	a.MachineNotify = base
+	a.FirstUse = firstUse
 	var ret config.Retention
 	if c := a.Config(); c != nil {
 		ret = c.Retention

@@ -8,6 +8,10 @@ let gw: Instance
 test.afterEach(async () => {
   await gw?.stop()
 })
+// these tests save by hand; autosave has its own test
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('gw.autosave', 'off'))
+})
 
 const MAIN = `provider "aws" {
   region = "eu-west-1"
@@ -106,6 +110,75 @@ test('saving over a file that changed meanwhile is refused (409), with a way out
   await page.getByRole('button', { name: 'Overwrite anyway' }).click()
   await expect(page.getByText('Saved · checks will re-run')).toBeVisible()
   expect(readFileSync(file, 'utf8')).toContain('# mine')
+})
+
+test('autosave writes a second after the last edit, unformatted, and leaving saves (formatted) what is pending', async ({ page }) => {
+  gw = await start('iac-only', { init: true, files: { 'terraform/envs/dev/main.tf': MAIN } })
+  const file = path.join(gw.dir, 'terraform/envs/dev/main.tf')
+  await page.addInitScript(() => localStorage.setItem('gw.autosave', 'on'))
+  await open(page, gw.url, 'terraform/envs/dev/main.tf')
+  await expect(page.getByRole('checkbox', { name: 'Autosave' })).toBeChecked()
+
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('ControlOrMeta+End')
+  await page.keyboard.type('z  =  9 # auto')
+  await expect(page.getByText('● modified')).toBeVisible()
+  // the timer never formats: that would move text under the cursor
+  await expect.poll(() => readFileSync(file, 'utf8'), { timeout: 5_000 }).toContain('z  =  9 # auto')
+  await expect(page.getByText('● modified')).toHaveCount(0)
+
+  // leaving before the timer fires saves instead of asking
+  page.on('dialog', (d) => {
+    throw new Error('unexpected dialog: ' + d.message())
+  })
+  await page.keyboard.type(' # left')
+  await page.getByRole('link', { name: 'Overview', exact: true }).click()
+  await expect(page).not.toHaveURL(/\/code\//)
+  expect(readFileSync(file, 'utf8')).toContain('z = 9 # auto # left')
+
+  // turned off, edits wait for Save, and the choice is remembered
+  await open(page, gw.url, 'terraform/envs/dev/main.tf')
+  await page.getByRole('checkbox', { name: 'Autosave' }).uncheck()
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('ControlOrMeta+End')
+  await page.keyboard.type(' # manual')
+  await page.waitForTimeout(1_500)
+  expect(readFileSync(file, 'utf8')).not.toContain('# manual')
+  await page.keyboard.press('ControlOrMeta+s')
+  await expect(page.getByText('Saved · checks will re-run')).toBeVisible()
+  expect(await page.evaluate(() => localStorage.getItem('gw.autosave'))).toBe('off')
+})
+
+test('format on save tidies Terraform in the editor and on disk, and never blocks a save', async ({ page }) => {
+  gw = await start('iac-only', { init: true, files: { 'terraform/envs/dev/main.tf': MAIN } })
+  const file = path.join(gw.dir, 'terraform/envs/dev/main.tf')
+  await open(page, gw.url, 'terraform/envs/dev/main.tf')
+  const box = page.getByRole('checkbox', { name: 'Format on save' })
+  await expect(box).toBeChecked()
+
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('ControlOrMeta+End')
+  await page.keyboard.type('owner  =  "ops"')
+  await page.keyboard.press('ControlOrMeta+s')
+  await expect(page.getByText('Saved · checks will re-run')).toBeVisible()
+  await expect(page.locator('.cm-content')).toContainText('owner = "ops"')
+  expect(readFileSync(file, 'utf8')).toContain('owner = "ops"')
+  await expect(page.locator('.status')).toContainText('Ln 10, Col 14') // the cursor stays at the end of the line
+
+  // a file that doesn't parse is saved as it is, with the reason
+  await page.keyboard.type('\nbad = = 1')
+  await page.keyboard.press('ControlOrMeta+s')
+  await expect(page.getByText(/Saved without formatting: .*Invalid expression/)).toBeVisible()
+  expect(readFileSync(file, 'utf8')).toContain('bad = = 1')
+
+  // turned off, the text is saved exactly as typed
+  await box.uncheck()
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('ControlOrMeta+End')
+  await page.keyboard.type('\nloose  =  true')
+  await page.keyboard.press('ControlOrMeta+s')
+  await expect(page.getByText('Saved · checks will re-run')).toBeVisible()
+  expect(readFileSync(file, 'utf8')).toContain('loose  =  true')
 })
 
 test('file tree: IaC-only hides unmanaged files, All files shows them; filter narrows', async ({ page }) => {

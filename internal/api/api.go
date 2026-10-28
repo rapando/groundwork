@@ -59,7 +59,13 @@ type API struct {
 	// (the service's notify.yaml), which this project's notify: block
 	// overrides. nil: none.
 	MachineNotify func() *config.Notify
-	DoctorExec    doctor.Exec // nil: the real one
+	// FirstUse reports whether the tour and checklist haven't been shown on
+	// this machine yet, and records that they now have been. nil: this
+	// project's own store decides.
+	FirstUse   func() bool
+	DoctorExec doctor.Exec // nil: the real one
+
+	prov providerWatch
 }
 
 func New(root, version string, bus *events.Bus, st *store.Store) *API {
@@ -135,6 +141,7 @@ func (a *API) Routes(r chi.Router) {
 	r.Get("/checks", a.listChecks)
 	r.Post("/checks/run", a.runChecks)
 	r.Post("/checks/fix", a.applyFix)
+	r.Post("/checks/format", a.formatSource)
 	r.Get("/envs", a.listEnvs)
 	r.Get("/inventory", a.getInventory)
 	r.Get("/graph/deps", a.graphDeps)

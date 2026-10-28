@@ -80,11 +80,14 @@ async function load(p: string) {
   }
 }
 
-async function save(overwrite = false): Promise<boolean> {
+// quiet: no "Saved" notice (autosave); format: Terraform files go through fmt first
+async function save(overwrite = false, { quiet = false, format = true } = {}): Promise<boolean> {
   if (!loaded.value || saving.value) return false
   saving.value = true
   try {
     const sha = overwrite && conflict.value ? conflict.value.currentSha : loaded.value.sha
+    let unformatted = ''
+    if (format && formatOnSave.value && isTerraform.value) unformatted = await formatBuffer()
     const text = buffer.value
     const r = await api<{ sha: string }>('/files/content?path=' + encodeURIComponent(path.value), {
       method: 'PUT', body: { content: text }, headers: { 'If-Match': sha },
@@ -92,7 +95,8 @@ async function save(overwrite = false): Promise<boolean> {
     loaded.value = { ...loaded.value, content: text, sha: r.sha }
     conflict.value = null
     externalChange.value = false
-    say('Saved · checks will re-run')
+    if (unformatted) say('Saved without formatting: ' + unformatted)
+    else if (!quiet) say('Saved · checks will re-run')
     return true
   } catch (e) {
     if (e instanceof ApiError && e.code === 'conflict') {
@@ -107,6 +111,56 @@ async function save(overwrite = false): Promise<boolean> {
 async function reloadFromDisk() {
   await load(path.value)
 }
+
+// --- format on save ---
+// Terraform files only (terraform fmt); the setting is remembered per browser
+function savedFormatOnSave(): boolean {
+  try { return localStorage.getItem('gw.formatOnSave') !== 'off' } catch { return true }
+}
+const formatOnSave = ref(savedFormatOnSave())
+function setFormatOnSave(on: boolean) {
+  formatOnSave.value = on
+  try { localStorage.setItem('gw.formatOnSave', on ? 'on' : 'off') } catch { /* ignore */ }
+}
+// Formats the buffer in place before it is written. Returns why it wasn't
+// formatted ("" when it was, or there was nothing to do); the save goes on.
+async function formatBuffer(): Promise<string> {
+  const before = buffer.value
+  try {
+    const r = await api<{ content: string }>('/checks/format', { body: { file: path.value, content: before } })
+    if (buffer.value !== before) return '' // typed meanwhile: the next save formats
+    if (r.content === before) return ''
+    if (!editor.value?.replaceDoc(r.content)) { buffer.value = r.content; version.value++ }
+    else buffer.value = r.content // the editor's change event says the same; don't wait for it
+    return ''
+  } catch (e) {
+    return e instanceof Error ? e.message : String(e)
+  }
+}
+
+// --- autosave ---
+// a second after the last edit; never over a change made on disk meanwhile
+const AUTOSAVE_MS = 1000
+function savedAutosave(): boolean {
+  try { return localStorage.getItem('gw.autosave') !== 'off' } catch { return true }
+}
+const autosave = ref(savedAutosave())
+let autosaveTimer: number | undefined
+function scheduleAutosave() {
+  window.clearTimeout(autosaveTimer)
+  if (!autosave.value || !dirty.value || conflict.value || externalChange.value) return
+  autosaveTimer = window.setTimeout(() => {
+    if (saving.value) scheduleAutosave() // edited while the last save was in flight
+    else if (dirty.value) save(false, { quiet: true, format: false }) // formatting mid-typing would move text under the cursor
+  }, AUTOSAVE_MS)
+}
+function setAutosave(on: boolean) {
+  autosave.value = on
+  try { localStorage.setItem('gw.autosave', on ? 'on' : 'off') } catch { /* ignore */ }
+  scheduleAutosave()
+}
+watch(buffer, scheduleAutosave)
+onBeforeUnmount(() => window.clearTimeout(autosaveTimer))
 
 // --- new / delete ---
 const creating = ref(false)
@@ -188,6 +242,16 @@ const offEvent = onEvent('file.changed', async (d: { paths?: string[] }) => {
 })
 onBeforeUnmount(offEvent)
 
+// --- providers ---
+// installed in the background once required_providers has a source and version
+const offProviders = onEvent('providers.sync', (d: { root: string; status: string; error?: string; removed?: string[] }) => {
+  const removed = d.removed?.length ? ` · removed ${d.removed.map((a) => a.split('/').slice(-2).join('/')).join(', ')}` : ''
+  if (d.status === 'running') say(`Installing providers for ${d.root}…`)
+  else if (d.status === 'done') say(`Providers ready for ${d.root}${removed}`)
+  else if (d.status === 'failed') say(`Installing providers for ${d.root} failed: ${d.error ?? 'unknown error'}`)
+})
+onBeforeUnmount(offProviders)
+
 // --- checks / fixes ---
 const unit = computed(() => checks.unitFor(path.value))
 const fileDiags = computed(() => checks.forFile(path.value))
@@ -208,7 +272,7 @@ async function applyFix(d: Diagnostic) {
   if (fix.kind === 'edit' && fix.edits?.length) {
     if (d.file !== path.value) return gotoDiag(d)
     const ok = fix.edits.every((e) => editor.value?.applyEdit(e))
-    say(ok ? 'Fix applied to the buffer. Save to keep it.' : 'The text changed since the check ran; re-run checks to refresh this fix.')
+    say(ok ? (autosave.value ? 'Fix applied.' : 'Fix applied to the buffer. Save to keep it.') : 'The text changed since the check ran; re-run checks to refresh this fix.')
   } else if (fix.kind === 'fmt' && fix.file) {
     await format(fix.file)
   }
@@ -253,8 +317,14 @@ const openPalette = () => window.dispatchEvent(new Event('gw:palette'))
 function open(p: string) {
   router.push('/code/' + p.split('/').map(encodeURIComponent).join('/'))
 }
-function confirmLeave(): boolean {
-  return !dirty.value || window.confirm('You have unsaved changes. Discard them?')
+async function confirmLeave(): Promise<boolean> {
+  if (!dirty.value) return true
+  // with autosave on, leaving saves what the timer hasn't yet
+  if (autosave.value && !conflict.value && !externalChange.value && !saving.value) {
+    window.clearTimeout(autosaveTimer)
+    if (await save(false, { quiet: true })) return true
+  }
+  return window.confirm('You have unsaved changes. Discard them?')
 }
 onBeforeRouteUpdate(() => confirmLeave())
 onBeforeRouteLeave(() => confirmLeave())
@@ -325,7 +395,8 @@ function gotoFrom(file: string, line: number) {
           <span :class="{ cur: i === crumbs.length - 1 }">{{ c }}</span>
         </template>
         <span v-if="!crumbs.length" class="muted">No file open</span>
-        <span v-if="dirty" class="mod" role="status">● modified</span>
+        <span v-if="saving" class="mod" role="status">● saving…</span>
+        <span v-else-if="dirty" class="mod" role="status">● modified</span>
         <span v-else-if="gitFile" class="mod git" role="status">● uncommitted</span>
       </nav>
       <div v-if="path" class="actions">
@@ -334,6 +405,8 @@ function gotoFrom(file: string, line: number) {
           <button class="seg" :class="{ on: viewMode === 'split' }" type="button" :aria-pressed="viewMode === 'split'" @click="setMode('split')">Split</button>
           <button class="seg" :class="{ on: viewMode === 'visual' }" type="button" :aria-pressed="viewMode === 'visual'" @click="setMode('visual')">Visualize</button>
         </div>
+        <label v-if="isTerraform" class="auto"><input type="checkbox" :checked="formatOnSave" @change="setFormatOnSave(($event.target as HTMLInputElement).checked)"> Format on save</label>
+        <label class="auto"><input type="checkbox" :checked="autosave" @change="setAutosave(($event.target as HTMLInputElement).checked)"> Autosave</label>
         <button class="btn sm" type="button" :disabled="!loaded || !dirty || saving" @click="save()">Save <span class="mono kbd">⌘S</span></button>
         <button v-if="isTerraform" class="btn sm" type="button" :disabled="!loaded" @click="format()">Format</button>
         <button class="btn sm" type="button" :disabled="!loaded || checks.running" @click="runChecks">{{ checks.running ? 'Checking…' : 'Validate' }}</button>
@@ -445,6 +518,7 @@ function gotoFrom(file: string, line: number) {
 .mod.git { color: var(--text-label); }
 .actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
 .kbd { font-size: 13px; color: var(--text-label); }
+.auto { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--text-soft); cursor: pointer; }
 .banner { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 24px; font-size: 14px; border-bottom: 1px solid var(--line); }
 .banner.fail { background: var(--fail-bg); color: var(--fail-strong); }
 .banner.warn { background: var(--warn-bg); color: var(--warn-strong); }

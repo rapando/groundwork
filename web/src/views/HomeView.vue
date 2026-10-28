@@ -28,9 +28,21 @@ const now = useNow(5000)
 const onboarding = ref<Onboarding | null>(null)
 const schedule = ref<DriftSchedule | null>(null)
 const touring = ref(false)
+// The tour and checklist show on first use only: in the tab where groundwork
+// first showed them, for that tab's session, and never again on this machine.
+const FIRST_USE_TAB = 'gw.firstUse'
+function firstUseTab(): boolean {
+  try { return sessionStorage.getItem(FIRST_USE_TAB) === '1' } catch { return false }
+}
+const firstUse = ref(firstUseTab())
 async function loadOnboarding() {
-  onboarding.value = await api<Onboarding>('/onboarding')
-  if (route.query.tour === '1' || (onboarding.value.tips && !onboarding.value.tour_completed)) touring.value = true
+  const o = await api<Onboarding>('/onboarding')
+  onboarding.value = o
+  if (o.first_use) {
+    firstUse.value = true
+    try { sessionStorage.setItem(FIRST_USE_TAB, '1') } catch { /* this page view only, then */ }
+  }
+  if (route.query.tour === '1' || (o.first_use && o.tips && !o.tour_completed)) touring.value = true
 }
 onMounted(() => {
   checks.refresh(); git.refresh(); runs.refresh(); issues.refresh()
@@ -45,7 +57,7 @@ async function tourDone() {
 }
 async function hideChecklist() { onboarding.value = await api<Onboarding>('/onboarding', { body: { checklist_hidden: true } }) }
 const doneCount = computed(() => onboarding.value?.items.filter((i) => i.done).length ?? 0)
-const showChecklist = computed(() => !!onboarding.value && !onboarding.value.checklist_hidden && doneCount.value < onboarding.value.items.length)
+const showChecklist = computed(() => !!onboarding.value && firstUse.value && !onboarding.value.checklist_hidden && doneCount.value < onboarding.value.items.length)
 const nextStep = computed(() => onboarding.value?.items.find((i) => !i.done))
 const allSteps = ref(false)
 const openPalette = () => window.dispatchEvent(new Event('gw:palette'))
@@ -312,8 +324,13 @@ a.path:hover { text-decoration: underline; }
 .lbl { font-size: 12.5px; font-weight: 600; color: var(--text-label); text-transform: uppercase; letter-spacing: .06em; }
 .acts { display: flex; align-items: center; gap: 8px; }
 .acts .mi.dg:not([disabled]) { color: var(--fail); }
-.dconf { grid-column: 1 / -1; }
-.dconf p { margin: 0; }
+/* no checkmark gutter: this menu has nothing to tick */
+.acts .mi.dg { padding: 10px 14px; }
+.dconf { grid-column: 1 / -1; margin-top: 6px; }
+.dconf p { margin: 0; line-height: 1.55; }
+.dconf :deep(.ic) { gap: 14px; padding: 16px 18px; }
+.dconf :deep(.row) { gap: 10px; margin-top: 4px; }
+.dconf :deep(.row .btn) { padding-inline: 16px; min-height: 36px; }
 .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 16px; align-items: start; }
 @media (max-width: 1100px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
 .card.flush { padding: 0; gap: 0; border-radius: var(--r-card); background: var(--bg-panel); overflow: hidden; }

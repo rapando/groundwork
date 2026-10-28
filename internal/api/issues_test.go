@@ -59,6 +59,27 @@ func TestIssuesOverHTTP(t *testing.T) {
 	}
 }
 
+func TestFirstUseIsAskedOfTheServiceAndRemembersOlderDismissals(t *testing.T) {
+	e := newConfigured(t)
+	asked := 0
+	e.a.FirstUse = func() bool { asked++; return asked == 1 }
+	if ob := into(t, call(t, e.h, "GET", "/onboarding", nil)); ob["first_use"] != true {
+		t.Fatalf("%v", ob)
+	}
+	if ob := into(t, call(t, e.h, "GET", "/onboarding", nil)); ob["first_use"] != false {
+		t.Fatalf("%v", ob)
+	}
+
+	// a project whose tour was finished before this was per machine counts as seen
+	e = newConfigured(t)
+	asked = 0
+	e.a.FirstUse = func() bool { asked++; return asked == 1 }
+	_ = e.a.Store.SetKV("onboarding.tour_completed", "true")
+	if ob := into(t, call(t, e.h, "GET", "/onboarding", nil)); ob["first_use"] != false || asked != 1 {
+		t.Fatalf("seen before, and recorded for the machine: %v (asked %d)", ob, asked)
+	}
+}
+
 func TestDoctorAndOnboardingOverHTTP(t *testing.T) {
 	withFakeTerraform(t)
 	e := newConfigured(t)
@@ -70,6 +91,12 @@ func TestDoctorAndOnboardingOverHTTP(t *testing.T) {
 	}
 	if !done["scanned"] || done["plan"] || done["doctor"] || done["visualize"] || ob["tour_completed"] != false {
 		t.Fatalf("%v", ob)
+	}
+	if ob["first_use"] != true {
+		t.Fatalf("the first look is first use: %v", ob)
+	}
+	if ob := into(t, call(t, e.h, "GET", "/onboarding", nil)); ob["first_use"] != false {
+		t.Fatalf("first use happens once: %v", ob)
 	}
 	if rec := call(t, e.h, "POST", "/onboarding/event", map[string]any{"name": "rm -rf"}); rec.Code != 400 {
 		t.Fatal("unknown events are refused")

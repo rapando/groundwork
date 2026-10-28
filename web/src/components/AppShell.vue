@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useWorkspace } from '../stores/workspace'
 import { useChecks } from '../stores/checks'
@@ -13,6 +13,10 @@ import NotificationBell from './NotificationBell.vue'
 import NotificationToasts from './NotificationToasts.vue'
 import { startNotifications, useNotifications } from '../stores/notifications'
 import { startDelivery } from '../composables/notifyDelivery'
+import DropMenu from './DropMenu.vue'
+import { serviceApi } from '../api/client'
+import type { ProjectView } from '../api/types'
+import { projectId } from '../project'
 
 const ws = useWorkspace()
 const checks = useChecks()
@@ -51,6 +55,16 @@ const repoLine = computed(() => {
 })
 const port = location.port || '80'
 const hasIaC = computed(() => (ws.ws?.config?.terraform?.roots ?? []).length + (ws.ws?.config?.ansible?.projects ?? []).length > 0)
+// the project switcher lists the others, most recently run first; fetched on each open
+const projects = ref<ProjectView[]>([])
+async function loadProjects() {
+  try { projects.value = await serviceApi<ProjectView[]>('/projects') } catch { /* All projects still works */ }
+}
+const SWITCH_MAX = 8
+const otherProjects = computed(() => projects.value
+  .filter((p) => p.id !== projectId && p.status === 'ok')
+  .sort((a, b) => (b.last_run?.created_at ?? '').localeCompare(a.last_run?.created_at ?? '') || a.name.localeCompare(b.name))
+  .slice(0, SWITCH_MAX))
 const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 'secrets').length)
 </script>
 
@@ -65,11 +79,22 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
         <NotificationBell />
       </div>
 
-      <div class="repo">
-        <div class="between"><span class="lbl">Project</span><a class="switch" href="/">All projects</a></div>
-        <span class="mono rname">{{ ws.ws?.name }}</span>
-        <span class="mono rline">{{ repoLine }}</span>
-      </div>
+      <DropMenu class="switcher" button-class="repo" align="start" :label="`Switch project (current: ${ws.ws?.name ?? ''})`" @open="loadProjects">
+        <template #button>
+          <span class="rtext">
+            <span class="between"><span class="lbl">Project</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9l4-4 4 4" /><path d="M8 15l4 4 4-4" /></svg></span>
+            <span class="mono rname">{{ ws.ws?.name }}</span>
+            <span class="mono rline">{{ repoLine }}</span>
+          </span>
+        </template>
+        <a class="mono pitem" role="menuitemradio" aria-checked="true" :href="`/p/${projectId}/`">{{ ws.ws?.name }}</a>
+        <a v-for="p in otherProjects" :key="p.id" class="mono pitem" role="menuitemradio" aria-checked="false" :href="`/p/${p.id}/`">{{ p.name }}</a>
+        <div class="sep" role="separator" />
+        <a class="all" role="menuitem" href="/">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z" /><path d="M3 13l9 5 9-5" /></svg>
+          All projects
+        </a>
+      </DropMenu>
 
       <nav aria-label="Primary" class="nav-list" data-tour="nav">
         <RouterLink class="nav" to="/" exact-active-class="on">
@@ -142,15 +167,22 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
 .main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; height: 100vh; margin-left: 232px; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 6px; color: inherit; text-decoration: none; }
 .between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.switch { font-size: 14px; text-decoration: none; }
-.switch:hover { text-decoration: underline; }
 .name { font-weight: 700; font-size: 14px; }
 .ver { font-size: 13px; color: var(--text-label); word-break: break-all; }
 .conn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--warn); padding: 3px 8px; border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); border-radius: 999px; }
 .conn .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
 .main.stale { opacity: .6; transition: opacity .3s; }
-.repo { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-card); }
+.switcher { display: flex; }
+.switcher :deep(.repo) { all: unset; box-sizing: border-box; flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-card); cursor: pointer; }
+.switcher :deep(.repo:hover), .switcher :deep(.repo[aria-expanded='true']) { border-color: var(--line-strong); }
+.switcher :deep(.repo:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.switcher :deep(.menu) { min-width: 0; width: 100%; }
+.rtext { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.chev { flex: none; color: var(--text-muted); }
+.switcher .pitem { font-family: var(--font-mono); word-break: break-all; }
+/* the slot content carries this component's scope, so these outrank the menu's item style */
+.switcher .all { flex-direction: row; align-items: center; gap: 4px; padding-left: 8px; color: var(--accent); font-weight: 500; }
 .rname { font-size: 14px; font-weight: 500; word-break: break-all; }
 .rline { font-size: 13px; color: var(--text-muted); }
 .foot { margin-top: auto; padding: 0 6px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }

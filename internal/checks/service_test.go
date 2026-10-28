@@ -1,6 +1,7 @@
 package checks
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -463,6 +464,36 @@ func TestFormatFile(t *testing.T) {
 	fx.missing = map[string]bool{"terraform": true}
 	if err := e.svc.FormatFile(context.Background(), "a.tf"); err == nil || !strings.Contains(err.Error(), doctor.Hint("terraform")) {
 		t.Fatalf("%v", err)
+	}
+}
+
+func TestFormatSource(t *testing.T) {
+	fx := &fakeExec{handler: func(c Cmd) Output {
+		if string(c.Stdin) == "bad" {
+			return Output{ExitCode: 2, Stderr: []byte("Error: Invalid expression\n")}
+		}
+		if string(c.Stdin) == "lost" {
+			return Output{}
+		}
+		return Output{Stdout: bytes.ReplaceAll(c.Stdin, []byte("  =  "), []byte(" = "))}
+	}}
+	e := newEnv(t, fx)
+	out, err := e.svc.FormatSource(context.Background(), "terraform/envs/dev/main.tf", []byte("a  =  1\n"))
+	if err != nil || string(out) != "a = 1\n" {
+		t.Fatalf("%q %v", out, err)
+	}
+	last := fx.calls[len(fx.calls)-1].Argv
+	if strings.Join(last[1:], " ") != "fmt -no-color -" {
+		t.Fatalf("formats stdin, never the file: %v", last)
+	}
+	if _, err := e.svc.FormatSource(context.Background(), "terraform/envs/dev/main.tf", []byte("bad")); err == nil || !strings.Contains(err.Error(), "Invalid expression") {
+		t.Fatalf("a parse error is reported: %v", err)
+	}
+	if _, err := e.svc.FormatSource(context.Background(), "terraform/envs/dev/main.tf", []byte("lost")); err == nil {
+		t.Fatal("empty output for non-empty input must not replace the buffer")
+	}
+	if _, err := e.svc.FormatSource(context.Background(), "ansible/playbooks/site.yml", []byte("x")); err == nil {
+		t.Fatal("only terraform files can be formatted")
 	}
 }
 

@@ -57,6 +57,37 @@ test('projects page imports, removes and reopens projects', async ({ page }) => 
   await expect(page.getByRole('link', { name: 'Open' })).toBeVisible()
 })
 
+// The Project card in the sidebar opens a menu of the other projects and All projects.
+test('the project switcher lists other projects and leads to All projects', async ({ page }) => {
+  gw = await start('iac-only', { init: true })
+  await page.goto(gw.url)
+  const switcher = page.getByRole('button', { name: /^Switch project/ })
+  await switcher.click()
+  const menu = page.getByRole('menu')
+  await expect(menu.getByRole('menuitemradio', { checked: true })).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(menu).toHaveCount(0)
+  await expect(switcher).toBeFocused()
+
+  // import a second project from the list
+  await switcher.click()
+  await menu.getByRole('menuitem', { name: 'All projects' }).click()
+  await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible()
+  const other = mkdtempSync(path.join(tmpdir(), 'gw-e2e-other-'))
+  execFileSync('git', ['init', '-q'], { cwd: other })
+  await page.getByPlaceholder(/code\/infra/).fill(other)
+  await page.getByRole('button', { name: 'Import folder' }).click()
+  await expect(page).toHaveURL(/\/p\/[a-z0-9-]+\//)
+  const otherURL = new URL(page.url()).pathname.match(/^\/p\/[a-z0-9-]+\//)![0]
+
+  // back in the first project, the switcher offers the second
+  await page.goto(gw.url)
+  await switcher.click()
+  await expect(menu.getByRole('menuitemradio')).toHaveCount(2)
+  await menu.getByRole('menuitemradio', { name: path.basename(other) }).click()
+  await expect(page).toHaveURL((u) => u.pathname.startsWith(otherURL))
+})
+
 // Typing a path lists the folders it could continue into; arrows and Enter
 // or Tab go down one level, and the picked folder is what gets imported.
 test('the import field suggests folders as you type a path', async ({ page }) => {

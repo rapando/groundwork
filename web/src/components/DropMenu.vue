@@ -7,7 +7,8 @@ import { nextTick, onBeforeUnmount, ref } from 'vue'
  * Escape closes the menu and returns focus to the button, and choosing one or
  * clicking outside closes it.
  */
-defineProps<{ label?: string; align?: 'start' | 'end' }>()
+const props = defineProps<{ label?: string; align?: 'start' | 'end'; buttonClass?: string }>()
+const emit = defineEmits<{ open: [] }>()
 const open = ref(false)
 const root = ref<HTMLElement>()
 const btn = ref<HTMLButtonElement>()
@@ -16,6 +17,7 @@ const items = () => [...(root.value?.querySelectorAll<HTMLElement>('[role^="menu
 function outside(e: PointerEvent) { if (!root.value?.contains(e.target as Node)) close(false) }
 async function show(focus: 'first' | 'last' | 'checked' = 'checked') {
   open.value = true
+  emit('open')
   document.addEventListener('pointerdown', outside)
   await nextTick()
   const list = items()
@@ -51,7 +53,7 @@ defineExpose({ close })
 
 <template>
   <div ref="root" class="dm">
-    <button ref="btn" class="btn sm" type="button" aria-haspopup="menu" :aria-expanded="open" :aria-label="label" @click="open ? close() : show()" @keydown="onButtonKey">
+    <button ref="btn" :class="props.buttonClass ?? 'btn sm'" type="button" aria-haspopup="menu" :aria-expanded="open" :aria-label="label" @click="open ? close() : show()" @keydown="onButtonKey">
       <slot name="button" />
     </button>
     <div v-if="open" class="menu" :class="align === 'start' ? 'start' : 'end'" role="menu" :aria-label="label" @keydown="onMenuKey" @click="onMenuClick">

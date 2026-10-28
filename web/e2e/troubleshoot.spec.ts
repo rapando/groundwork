@@ -1,5 +1,6 @@
-import { test, expect, Page, start, Instance } from './helpers'
-import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { test, expect, Page, start, Instance, BIN, FIXTURES } from './helpers'
+import { cpSync, existsSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -149,6 +150,29 @@ test('first run: the tour points at each area, the checklist follows real activi
   await page.getByRole('link', { name: 'Overview', exact: true }).click()
   await list.getByRole('button', { name: 'All steps' }).click()
   for (const l of [/first plan/, /infrastructure view/, /Run doctor/]) await expect(item(l).locator('.tick')).toHaveText('✓')
+
+  // first use is once per machine: a later visit (a new tab), or another
+  // project, shows neither the tour nor the checklist
+  const later = await page.context().newPage()
+  await later.goto(gw.url)
+  await expect(later.getByRole('region', { name: 'Environments' })).toBeVisible()
+  await expect(later.getByRole('dialog', { name: 'Tips' })).toHaveCount(0)
+  await expect(later.getByRole('region', { name: 'Getting started' })).toHaveCount(0)
+  const other = mkdtempSync(path.join(tmpdir(), 'gw-e2e-second-'))
+  cpSync(path.join(FIXTURES, 'iac-only'), other, { recursive: true })
+  execFileSync('git', ['init', '-q'], { cwd: other })
+  execFileSync(BIN, ['init', '--detect', '--yes'], { cwd: other, env: { ...process.env, GROUNDWORK_HOME: gw.home } })
+  await later.goto(new URL(gw.url).origin + '/')
+  await later.getByPlaceholder(/code\/infra/).fill(other)
+  await later.getByRole('button', { name: 'Import folder' }).click()
+  await expect(later).toHaveURL(/\/p\/[a-z0-9-]+\/$/)
+  await expect(later.getByRole('region', { name: 'Environments' })).toBeVisible()
+  await expect(later.getByRole('dialog', { name: 'Tips' })).toHaveCount(0)
+  await expect(later.getByRole('region', { name: 'Getting started' })).toHaveCount(0)
+  await later.close()
+  // the tab where it started keeps the checklist until you're done with it
+  await page.reload()
+  await expect(list).toBeVisible()
 
   // the ? button replays the tour; Hide removes the checklist for good
   await page.getByRole('button', { name: 'Show tips' }).click()
