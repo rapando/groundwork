@@ -47,6 +47,19 @@ func TestScanCatchesTestPatterns(t *testing.T) {
 	}
 }
 
+func TestTerraformExpressionsAreNotSecrets(t *testing.T) {
+	src := strings.Join([]string{
+		`      mysql_password = random_password.mysql_password.result,`,
+		`      rmq_password   = random_password.rabbitmq_password.result`,
+		`  db_password = nonsensitive(random_password.db.result)`,
+		`  admin_password = "Sup3r-S3cret!x"`,
+	}, "\n")
+	fs := Scan("outputs.tf", []byte(src))
+	if len(fs) != 1 || fs[0].Line != 4 {
+		t.Fatalf("only the quoted literal is a secret: %+v", fs)
+	}
+}
+
 func TestEncryptedFilesAreSkipped(t *testing.T) {
 	if Scan("v.yml", []byte("$ANSIBLE_VAULT;1.1;AES256\n6162\n")) != nil {
 		t.Fatal("vault file")

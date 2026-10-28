@@ -311,7 +311,8 @@ h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .small { font-size: 13px; } .small2 { font-size: 14px; }
 .between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .envs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 16px; }
-.env { padding: 0; gap: 0; border-radius: var(--r-card); background: var(--bg-panel); overflow: hidden; }
+/* no overflow: hidden, or the ⋯ menu of a card's last row is cut off at its edge */
+.env { padding: 0; gap: 0; border-radius: var(--r-card); background: var(--bg-panel); }
 .ehead { padding: 14px 18px; border-bottom: 1px solid var(--line); }
 .ename { font-size: 16px; font-weight: 700; }
 .target { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; gap: 8px 14px; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--line); }
