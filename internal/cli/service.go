@@ -224,6 +224,9 @@ func newServiceCmd() *cobra.Command {
 			login := "not installed"
 			if service.Installed() {
 				login = "installed"
+				if h := service.LoginServiceHome(); h != "" && h != home {
+					login = "installed for another data directory, " + h
+				}
 			}
 			fmt.Fprintln(out, "data:         ", home)
 			fmt.Fprintln(out, "log:          ", service.LogPath(home))

@@ -14,11 +14,14 @@ import (
 
 type fakeUnit struct {
 	svcManager
-	stopErr error
-	stopped bool
+	stopErr  error
+	stopped  bool
+	unitHome string // "" = unknown, so it counts as this one
 }
 
 func (f *fakeUnit) installed() bool { return true }
+func (f *fakeUnit) home() string    { return f.unitHome }
+func (f *fakeUnit) start() error    { return nil }
 func (f *fakeUnit) stop() error     { f.stopped = true; return f.stopErr }
 
 // fakeService stands in for a running `groundwork serve`: a process that
@@ -88,5 +91,31 @@ func TestStopWithNothingRunning(t *testing.T) {
 	withUnit(t, &fakeUnit{stopErr: errors.New("not loaded")})
 	if err := Stop(t.TempDir()); err == nil || err.Error() != "groundwork service is not running" {
 		t.Fatalf("%v", err)
+	}
+}
+
+// A service run with another data directory (a second instance, a test) is
+// stopped on its own: the login service, installed for the usual one, is
+// left running.
+func TestStopLeavesTheLoginServiceOfAnotherDataDirectory(t *testing.T) {
+	home := t.TempDir()
+	fakeService(t, home)
+	u := &fakeUnit{unitHome: t.TempDir()}
+	withUnit(t, u)
+	if err := Stop(home); err != nil {
+		t.Fatal(err)
+	}
+	if u.stopped {
+		t.Fatal("stopped the login service of another data directory")
+	}
+	if _, ok := Running(home); ok {
+		t.Fatal("still running")
+	}
+	if ok, _ := StartInstalled(home); ok {
+		t.Fatal("started the login service of another data directory")
+	}
+	u.unitHome = home
+	if ok, _ := StartInstalled(home); !ok {
+		t.Fatal("the login service for this data directory wasn't started")
 	}
 }

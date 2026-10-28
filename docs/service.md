@@ -32,6 +32,8 @@ This registers a launchd agent on macOS (`~/Library/LaunchAgents/io.github.rapan
 | `groundwork service logs [-f] [-n N]` | print the last N lines of the service log (default 100), and follow it with `-f` |
 | `groundwork service install` / `uninstall` | add or remove the login service |
 
+`start`, `stop` and `restart` use the login service only when it was installed for the same data directory. A service run with another `GROUNDWORK_HOME`, such as a second instance or a test, starts and stops on its own and leaves the login service running; `status` says when the login service belongs to another data directory.
+
 `start`, `stop`, `restart`, `install` and `uninstall` say which groundwork they acted on: its version and commit, process ID and uptime, and once it's running, the console URL, projects and log file. `restart` also says when it moved to a new version:
 
 ```

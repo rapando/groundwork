@@ -72,7 +72,7 @@ func TestEnsureServiceSaysWhyTheLoginServiceDidntStart(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			startInstalled = func() (bool, error) { return c.installed, c.err }
+			startInstalled = func(string) (bool, error) { return c.installed, c.err }
 			before := background
 			var stderr bytes.Buffer
 			cmd := &cobra.Command{}
