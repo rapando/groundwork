@@ -251,6 +251,13 @@ const offProviders = onEvent('providers.sync', (d: { root: string; status: strin
   else if (d.status === 'failed') say(`Installing providers for ${d.root} failed: ${d.error ?? 'unknown error'}`)
 })
 onBeforeUnmount(offProviders)
+// and Ansible roles and collections, when a project's requirements.yml changes
+const offRequirements = onEvent('requirements.sync', (d: { file: string; status: string; error?: string }) => {
+  if (d.status === 'running') say(`Installing ${d.file}…`)
+  else if (d.status === 'done') say(`Installed ${d.file}`)
+  else if (d.status === 'failed') say(`Installing ${d.file} failed: ${d.error ?? 'unknown error'}`)
+})
+onBeforeUnmount(offRequirements)
 
 // --- checks / fixes ---
 const unit = computed(() => checks.unitFor(path.value))

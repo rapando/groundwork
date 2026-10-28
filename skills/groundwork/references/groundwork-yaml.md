@@ -37,6 +37,7 @@ ansible:
                                            # Leave it out to type the password in the console (Variables → Secrets → Unlock)
   allow_vault_script: false
   run_timeout: 2h
+  install_requirements: true  # install roles and collections when a project's requirements.yml changes
 
 checks:
   enabled: [fmt, validate, tflint, checkov, ansible-lint, yamllint, syntax-check, secrets]

@@ -267,6 +267,32 @@ func TestApplyNeverOverwritesSilently(t *testing.T) {
 	}
 }
 
+func TestApplyMakesAKeptScriptExecutable(t *testing.T) {
+	dir := t.TempDir()
+	script := filepath.Join(dir, "ansible/inventory/tf_outputs.py")
+	if err := os.MkdirAll(filepath.Dir(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(script, []byte("#!/usr/bin/env python3\n# mine\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, err := Apply(dir, []File{{Path: "ansible/inventory/tf_outputs.py", Content: "new", Executable: true}, {Path: "notes.txt", Content: "x"}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res[0].Status != "skipped" {
+		t.Fatalf("its content is kept: %+v", res)
+	}
+	b, _ := os.ReadFile(script)
+	st, _ := os.Stat(script)
+	if string(b) != "#!/usr/bin/env python3\n# mine\n" || st.Mode().Perm() != 0o755 {
+		t.Fatalf("kept as it is, but executable: %q %v", b, st.Mode())
+	}
+	if st, _ := os.Stat(filepath.Join(dir, "notes.txt")); st.Mode().Perm()&0o111 != 0 {
+		t.Fatal("only scripts get the bit")
+	}
+}
+
 func TestApplyRejectsEscapes(t *testing.T) {
 	dir := t.TempDir()
 	_, err := Apply(dir, []File{{Path: "ok.txt", Content: "x"}, {Path: "../evil", Content: "x"}}, nil)

@@ -48,6 +48,27 @@ A playbook's dry run is its "plan": approving it is refused if the project's fil
 
 Host patterns, `--limit`, `--tags` and module names are validated (no whitespace, no leading `-`), `--limit` and `--tags` are passed as `--flag=value`, and host patterns and playbooks follow `--`, so nothing can be read as an extra option.
 
+## Roles and collections
+
+groundwork runs Ansible (playbooks, dry runs, syntax checks, ansible-lint, the inventory) with its own `ANSIBLE_HOME`, `.groundwork/ansible-home/`, so a collection you installed with `ansible-galaxy` into `~/.ansible` isn't what its runs see. List what a project needs in its `requirements.yml` instead:
+
+```yaml
+collections:
+  - name: community.docker
+  - name: community.general
+    version: ">=9.0.0"
+roles:
+  - geerlingguy.docker
+```
+
+When you save a project's `requirements.yml` (or `requirements.yaml`, `collections/requirements.yml`, `roles/requirements.yml`), groundwork runs `ansible-galaxy install -r` on it in the background, in the project with that `ANSIBLE_HOME`. Collections land in `.groundwork/ansible-home/collections` (or the `collections_path` in your `ansible.cfg`), and roles in your `roles_path`.
+
+- It waits until the file has been unchanged for 3 seconds and parses with every entry named, and installs again only when its content changes.
+- The Code screen says when an install starts, finishes or fails. A failed install is retried on the next change.
+- Removing an entry doesn't uninstall it.
+
+Turn it off with `install_requirements: false` under `ansible` in `groundwork.yaml`.
+
 ## Live results
 
 An embedded callback plugin (`internal/ansible/callback/groundwork.py`) streams play, task and per-host results as JSON on file descriptor 3, alongside Ansible's normal output (which is the run's log). The Run screen shows each host's worst outcome, its per-task results, failure messages and diffs, for the dry run and the real run separately. Messages and diffs are redacted like every log line, and results of `no_log` tasks are hidden. It sets `ANSIBLE_CALLBACKS_ENABLED=groundwork`, which replaces any `callbacks_enabled` from your `ansible.cfg` for groundwork's runs.
