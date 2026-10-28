@@ -30,8 +30,8 @@
     - name: Enable plugins
       ansible.builtin.command: rabbitmq-plugins enable --offline {{ item }}
       loop: "{{ rabbitmq_plugins }}"
-      register: plugin
-      changed_when: "'Plugin configuration unchanged' not in plugin.stdout"
+      register: rabbitmq_plugin
+      changed_when: "'Plugin configuration unchanged' not in rabbitmq_plugin.stdout"
       notify: Restart rabbitmq
 
     - name: Start RabbitMQ

@@ -64,7 +64,7 @@ const step = computed(() => {
   const s = { env: 0, ans: 0, chk: 0 }
   if (iac.value) s.env = ++n
   if (ansible.value) s.ans = ++n
-  s.chk = ++n
+  s.chk = n + 1
   return s
 })
 

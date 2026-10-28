@@ -25,10 +25,10 @@
         line: "{{ item.key }} {{ item.value }}"
       loop:
         # listen on the container's network (the port is published on 127.0.0.1 only)
-        - { key: bind, value: "0.0.0.0" }
-        - { key: protected-mode, value: "no" }
-        - { key: maxmemory, value: "{{ redis_maxmemory }}" }
-        - { key: maxmemory-policy, value: "{{ redis_maxmemory_policy }}" }
+        - {key: bind, value: "0.0.0.0"}
+        - {key: protected-mode, value: "no"}
+        - {key: maxmemory, value: "{{ redis_maxmemory }}"}
+        - {key: maxmemory-policy, value: "{{ redis_maxmemory_policy }}"}
       loop_control:
         label: "{{ item.key }}"
       notify: Restart redis
