@@ -101,6 +101,12 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
           Overview
         </RouterLink>
+        <RouterLink class="nav" to="/code" active-class="on">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h6l2 2h8v14H4z" /></svg>
+          Code
+          <span v-if="checks.counts.error" class="mono badge fail" :aria-label="`${checks.counts.error} errors`">{{ checks.counts.error }}</span>
+          <span v-else-if="checks.counts.warning" class="mono badge warn" :aria-label="`${checks.counts.warning} warnings`">{{ checks.counts.warning }}</span>
+        </RouterLink>
         <RouterLink class="nav" to="/runs" active-class="on">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M5 3l14 9-14 9z" /></svg>
           Runs
@@ -108,29 +114,23 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
           <span v-else-if="runs.awaiting" class="mono badge warn" :aria-label="`${runs.awaiting} waiting for approval`">{{ runs.awaiting }} waiting</span>
           <span v-else-if="runs.live" class="mono badge run">{{ runs.live }} live</span>
         </RouterLink>
-        <RouterLink v-if="(ws.ws?.config?.terraform?.roots ?? []).length" class="nav" to="/graph" active-class="on">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="5" cy="12" r="2.5" /><circle cx="19" cy="5" r="2.5" /><circle cx="19" cy="19" r="2.5" /><path d="M7.3 11l9.4-5M7.3 13l9.4 5" /></svg>
-          Graph
-        </RouterLink>
-        <RouterLink v-if="(ws.ws?.config?.ansible?.projects ?? []).length" class="nav" to="/inventory" active-class="on">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" /></svg>
-          Inventory
-        </RouterLink>
         <RouterLink v-if="hasIaC" class="nav" to="/variables" active-class="on">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4c-2 0-3 1-3 3v2c0 1.5-1 3-2 3 1 0 2 1.5 2 3v2c0 2 1 3 3 3" /><path d="M16 4c2 0 3 1 3 3v2c0 1.5 1 3 2 3-1 0-2 1.5-2 3v2c0 2-1 3-3 3" /></svg>
           Variables
           <span v-if="secretIssues" class="mono badge fail" :aria-label="`${secretIssues} plaintext secrets`">{{ secretIssues }}</span>
         </RouterLink>
+        <RouterLink v-if="(ws.ws?.config?.ansible?.projects ?? []).length" class="nav" to="/inventory" active-class="on">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" /></svg>
+          Inventory
+        </RouterLink>
+        <RouterLink v-if="(ws.ws?.config?.terraform?.roots ?? []).length" class="nav" to="/graph" active-class="on">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="5" cy="12" r="2.5" /><circle cx="19" cy="5" r="2.5" /><circle cx="19" cy="19" r="2.5" /><path d="M7.3 11l9.4-5M7.3 13l9.4 5" /></svg>
+          Graph
+        </RouterLink>
         <RouterLink class="nav" to="/troubleshoot" active-class="on">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 16H3z" /><path d="M12 10v4M12 17h.01" /></svg>
           Troubleshoot
           <span v-if="issues.open.length" class="mono badge warn" :aria-label="`${issues.open.length} open issues`">{{ issues.open.length }}</span>
-        </RouterLink>
-        <RouterLink class="nav" to="/code" active-class="on">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h6l2 2h8v14H4z" /></svg>
-          Code
-          <span v-if="checks.counts.error" class="mono badge fail" :aria-label="`${checks.counts.error} errors`">{{ checks.counts.error }}</span>
-          <span v-else-if="checks.counts.warning" class="mono badge warn" :aria-label="`${checks.counts.warning} warnings`">{{ checks.counts.warning }}</span>
         </RouterLink>
         <RouterLink class="nav" to="/notifications" active-class="on">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
