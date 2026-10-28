@@ -87,6 +87,9 @@ func Scan(file string, content []byte) []Finding {
 	if strings.HasPrefix(strings.TrimSpace(s), "$ANSIBLE_VAULT;") || (strings.Contains(s, "\nsops:") && strings.Contains(s, "mac:")) || strings.Contains(s, `"sops": {`) {
 		return nil
 	}
+	// in a .tf file only a quoted string is a literal; anything else
+	// (random_password.x.result, sensitive(...), a heredoc) is an expression
+	tf := filepath.Ext(file) == ".tf"
 	var out []Finding
 	inVaultBlock := false
 	for i, line := range strings.Split(s, "\n") {
@@ -123,6 +126,9 @@ func Scan(file string, content []byte) []Finding {
 		key, raw := line[m[2]:m[3]], line[m[4]:m[5]]
 		val := strings.Trim(strings.TrimSpace(raw), `"'`)
 		if notASecretKey.MatchString(key) || strings.HasPrefix(val, "/") || strings.HasPrefix(val, "./") || strings.HasPrefix(val, "~/") || strings.HasPrefix(val, "../") {
+			continue
+		}
+		if tf && !strings.HasPrefix(strings.TrimSpace(raw), `"`) {
 			continue
 		}
 		if val == "" || isReference(raw) || placeholder.MatchString(val) || len(val) < 6 || entropy(val) < 2.5 {
