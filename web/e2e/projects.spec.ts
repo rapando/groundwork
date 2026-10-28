@@ -56,3 +56,44 @@ test('projects page imports, removes and reopens projects', async ({ page }) => 
   await expect(page.getByText('unavailable')).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Open' })).toBeVisible()
 })
+
+// Typing a path lists the folders it could continue into; arrows and Enter
+// or Tab go down one level, and the picked folder is what gets imported.
+test('the import field suggests folders as you type a path', async ({ page }) => {
+  gw = await start('iac-only')
+  await page.goto(gw.url)
+  const origin = new URL(gw.url).origin
+  await page.goto(origin + '/')
+  const parent = mkdtempSync(path.join(tmpdir(), 'gw-e2e-dirs-'))
+  execFileSync('git', ['init', '-q', path.join(parent, 'infra-live')])
+  execFileSync('mkdir', ['-p', path.join(parent, 'infra-modules'), path.join(parent, 'notes', 'inner'), path.join(parent, '.hidden')])
+
+  const field = page.getByRole('combobox', { name: 'Import' })
+  const options = page.getByRole('listbox', { name: 'Folders' }).getByRole('option')
+  await field.fill(parent + '/')
+  await expect(options).toHaveText([`${parent}/infra-live/git`, `${parent}/infra-modules/`, `${parent}/notes/`])
+  await field.fill(parent + '/inf')
+  await expect(options).toHaveCount(2)
+  await expect(options.first()).toContainText('git')
+
+  // Tab completes the first match; arrows and Enter pick another
+  await field.press('Tab')
+  await expect(field).toHaveValue(parent + '/infra-live/')
+  await field.fill(parent + '/no')
+  await expect(options).toHaveText([`${parent}/notes/`])
+  await field.press('ArrowDown')
+  await expect(options.first()).toHaveAttribute('aria-selected', 'true')
+  await field.press('Enter')
+  await expect(field).toHaveValue(parent + '/notes/')
+  await expect(options).toHaveText([`${parent}/notes/inner/`])
+  await field.press('Escape')
+  await expect(page.getByRole('listbox', { name: 'Folders' })).toBeHidden()
+
+  // a click picks too, and Import folder imports what's in the field
+  await field.fill(parent + '/infra-l')
+  await expect(options).toHaveCount(1)
+  await options.first().click()
+  await expect(field).toHaveValue(parent + '/infra-live/')
+  await page.getByRole('button', { name: 'Import folder' }).click()
+  await expect(page).toHaveURL(/\/p\/[a-z0-9-]+\/(setup\/scaffold)?$/)
+})
