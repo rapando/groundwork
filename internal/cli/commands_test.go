@@ -219,7 +219,7 @@ func TestProjectCommandsAgainstARunningService(t *testing.T) {
 		t.Fatalf("status: %v\n%s", err, out)
 	}
 	out, err = runRoot(t, "", "service", "start")
-	if err != nil || !strings.Contains(out, "running:") {
+	if err != nil || !strings.Contains(out, "already running (pid") || !strings.Contains(out, "url:") || !strings.Contains(out, "projects:  1 available") {
 		t.Fatalf("start while running: %v\n%s", err, out)
 	}
 	if _, err := runRoot(t, "", "remove", "nope"); err == nil || !strings.Contains(err.Error(), "no project matches") {
@@ -237,6 +237,14 @@ func TestProjectCommandsAgainstARunningService(t *testing.T) {
 	}
 	if _, err := runRoot(t, "", "add", "/"); err == nil {
 		t.Fatal("importing / should be refused")
+	}
+}
+
+func TestUptime(t *testing.T) {
+	for sec, want := range map[int64]string{0: "0s", 50: "50s", 60: "1m", 3725: "1h2m", 7200: "2h0m"} {
+		if got := uptime(sec); got != want {
+			t.Errorf("uptime(%d) = %q, want %q", sec, got, want)
+		}
 	}
 }
 
