@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/rapando/groundwork/internal/scaffold"
+	"github.com/rapando/groundwork/v2/internal/scaffold"
 )
 
 // commitScaffold commits only the files init just wrote, leaving other staged work alone.
@@ -33,9 +33,9 @@ func commitScaffold(out io.Writer, root string, res []scaffold.Result) error {
 	if err := run(append([]string{"add", "--"}, paths...)...); err != nil {
 		return err
 	}
-	if err := run(append([]string{"commit", "-m", "chore: scaffold with groundwork", "--"}, paths...)...); err != nil {
+	if err := run(append([]string{"commit", "-m", "chore: set up groundwork", "--"}, paths...)...); err != nil {
 		return err
 	}
-	fmt.Fprintln(out, "committed: chore: scaffold with groundwork")
+	fmt.Fprintln(out, "committed: chore: set up groundwork")
 	return nil
 }

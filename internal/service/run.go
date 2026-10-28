@@ -19,8 +19,8 @@ import (
 
 	"github.com/pkg/browser"
 
-	"github.com/rapando/groundwork/internal/auth"
-	"github.com/rapando/groundwork/internal/server"
+	"github.com/rapando/groundwork/v2/internal/auth"
+	"github.com/rapando/groundwork/v2/internal/server"
 )
 
 type Options struct {

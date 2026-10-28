@@ -7,7 +7,8 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"github.com/rapando/groundwork/internal/proc"
+	"github.com/rapando/groundwork/v2/internal/doctor"
+	"github.com/rapando/groundwork/v2/internal/proc"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -430,7 +431,7 @@ func Query(ctx context.Context, projectDir, ansibleHome string, argv []string) (
 func QueryVault(ctx context.Context, projectDir, ansibleHome string, argv, env, passwords []string) ([]byte, error) {
 	bin, err := exec.LookPath(argv[0])
 	if err != nil {
-		return nil, fmt.Errorf("%s not found on PATH (pipx install ansible-core)", argv[0])
+		return nil, fmt.Errorf("%s not found on PATH (%s)", argv[0], doctor.Hint("ansible"))
 	}
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()

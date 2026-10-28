@@ -4,13 +4,15 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/rapando/groundwork/internal/doctor"
+	"github.com/rapando/groundwork/v2/internal/doctor"
 )
 
 // needsInit are validate errors that mean "run init first", not "your code is wrong".
@@ -66,6 +68,10 @@ func fail(msg string) ToolStatus { return ToolStatus{Status: "failed", Message: 
 func (s *Service) execTool(ctx context.Context, u Unit, tool string) ([]Diagnostic, ToolStatus) {
 	if tool == "secrets" {
 		return s.scanSecrets(ctx, u), ToolStatus{}
+	}
+	// a root groundwork.yaml names before its Terraform is written (a fresh setup)
+	if _, err := os.Stat(s.abs(u.Path)); errors.Is(err, fs.ErrNotExist) {
+		return nil, ToolStatus{Status: "skipped", Message: u.Path + " doesn't exist yet"}
 	}
 	bin := s.binFor(tool)
 	if _, err := s.Exec.LookPath(bin); err != nil {

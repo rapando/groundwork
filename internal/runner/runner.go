@@ -22,15 +22,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rapando/groundwork/internal/ansible"
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/events"
-	"github.com/rapando/groundwork/internal/proc"
-	"github.com/rapando/groundwork/internal/redact"
-	"github.com/rapando/groundwork/internal/safego"
-	"github.com/rapando/groundwork/internal/store"
-	"github.com/rapando/groundwork/internal/terraform"
-	"github.com/rapando/groundwork/internal/vars"
+	"github.com/rapando/groundwork/v2/internal/ansible"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/events"
+	"github.com/rapando/groundwork/v2/internal/proc"
+	"github.com/rapando/groundwork/v2/internal/redact"
+	"github.com/rapando/groundwork/v2/internal/safego"
+	"github.com/rapando/groundwork/v2/internal/store"
+	"github.com/rapando/groundwork/v2/internal/terraform"
+	"github.com/rapando/groundwork/v2/internal/vars"
 )
 
 const (

@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/rapando/groundwork/internal/store"
-	"github.com/rapando/groundwork/internal/terraform"
+	"github.com/rapando/groundwork/v2/internal/store"
+	"github.com/rapando/groundwork/v2/internal/terraform"
 )
 
 // runDrift: init → [workspace] → refresh-only plan → record drift. Read-only:

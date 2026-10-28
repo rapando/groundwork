@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/v2/internal/store"
 )
 
 // A variable declared sensitive is masked by terraform in its own output, but

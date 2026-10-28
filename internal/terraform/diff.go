@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/rapando/groundwork/internal/redact"
+	"github.com/rapando/groundwork/v2/internal/redact"
 )
 
 const (

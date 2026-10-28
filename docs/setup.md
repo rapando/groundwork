@@ -5,7 +5,7 @@ When you import a project (by running `groundwork` in it, `groundwork add`, or t
 | Repo contents | Screen | CLI equivalent |
 |---|---|---|
 | Terraform and/or Ansible found | **Detect** (`/setup/detect`) | `groundwork init --detect` |
-| Nothing recognisable | **Scaffold** (`/setup/scaffold`) | `groundwork init --preset <preset>` |
+| Nothing recognisable | **Set up** (`/setup/scaffold`) | `groundwork init` |
 | `groundwork.yaml` exists | Overview | `groundwork` |
 
 Nothing is written until you confirm (`--yes` skips the prompt); `--dry-run` writes nothing.
@@ -16,39 +16,55 @@ Detection never runs Terraform or Ansible. It reads files: HCL blocks (`backend`
 
 A directory referenced as `source = "./…"` by another is a **module**; one with a backend, provider or tfvars is a **root**. Environments are matched across tools by normalised name (`production` = `prod`, `stg` = `staging`, `development` = `dev`).
 
-`mode` is `standalone` when more than 60% of files are IaC or YAML, otherwise `embedded`. In either mode the Detect flow writes only `groundwork.yaml` (plus lint configs and a `.gitignore` line if you tick them).
+`mode` is `standalone` when more than 60% of files are IaC or YAML, otherwise `embedded`. In either mode the Detect flow writes only `groundwork.yaml` (plus lint configs and a `.gitignore` line if you tick them). It sets `terraform.binary` to `terraform`, or to `tofu` when only OpenTofu is installed; change it in the YAML if that's wrong.
 
-## Scaffolding
+## Setting up a new repository
 
-A scaffold is a Terraform layout with a `network` module, an Ansible project (`ansible.cfg`, `playbooks/site.yml`, starter roles from `--roles`, `group_vars` per environment), lint configs for the checks you pick, a `.pre-commit-config.yaml` and a GitHub Actions plan workflow (`--no-pre-commit` and `--no-ci` leave those two out). `--envs` sets the environments (default `dev,staging,prod`).
+In a repository with no Terraform or Ansible yet, groundwork writes only what it needs and leaves the rest to you. You write the Terraform (for any provider) and the playbooks.
 
-| Preset | Provider and credentials | State (`--backend`) | `--region` |
-|---|---|---|---|
-| `vultr` (default) | `vultr/vultr`, token in `VULTR_API_KEY` | `local` (default), `http`, `s3` | e.g. `ams` |
-| `aws-envs` | AWS | `s3` (default) with a DynamoDB lock table `<bucket>-lock`; `local`, `http` | an AWS region, e.g. `eu-west-1` |
-| `gcp-envs` | Google Cloud; pass `--gcp-project` | `gcs` (default); `local`, `http` | a GCP region, e.g. `europe-west1` |
-| `digitalocean` | `digitalocean/digitalocean`, token in `DIGITALOCEAN_TOKEN` | `local` (default), `http`, `s3` | e.g. `fra1` |
-| `hetzner` | `hetznercloud/hcloud`, token in `HCLOUD_TOKEN` | `local` (default), `http`, `s3` | a network zone, e.g. `eu-central` |
-| `linode` | `linode/linode`, token in `LINODE_TOKEN` | `local` (default), `http`, `s3` | e.g. `eu-central` |
-| `docker` | `kreuzwerker/docker`, against the local daemon or `DOCKER_HOST` | `local` (default), `http` | not used |
-| `onprem` | none: add your own provider block | `local` (default), `http` | not used |
+First choose the tools the repository will use (`--tools`): **Terraform** or **OpenTofu** (one of the two), **Ansible**, or both. The default is Terraform and Ansible, or OpenTofu and Ansible when only `tofu` is installed. groundwork sets up only what you choose:
 
-`--bucket` names the state bucket (default `<project>-tfstate`). `groundwork doctor` (and the Troubleshoot screen) checks each provider's credentials: the token variable for the token-based providers, the Docker daemon for `docker`. Token variables must be in the service's environment, which the login service doesn't take from your shell ([the service](service.md#starting-it)).
+| Tools | Files |
+|---|---|
+| Terraform or OpenTofu | `groundwork.yaml` |
+| Ansible | `groundwork.yaml`, `ansible/ansible.cfg` |
+| both | `groundwork.yaml`, `ansible/ansible.cfg`, `ansible/inventory/tf_outputs.py` |
 
-- **S3-compatible state** for Vultr, DigitalOcean, Hetzner and Linode: `--backend s3 --s3-endpoint <url>` stores state in the provider's object storage (e.g. `https://fra1.digitaloceanspaces.com`), with its access keys in `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Hetzner gets `use_lockfile = true` and requires Terraform 1.10; the others require 1.6 and leave it commented out: Vultr's object storage doesn't support locking, and DigitalOcean's and Linode's support for the conditional writes it needs isn't confirmed. Without a lock, don't run two applies at once.
-- **Network module**: a VPC network on AWS and Google Cloud, a private network on the token-based providers, a Docker network for `docker`. `onprem` has none.
-- **Docker**: a starter `web` container whose published ports are the `web_ports` variable, bound to `127.0.0.1` on port 8081 for the first environment, 8082 for the second, and so on.
-- **Other providers** (Azure, for example) start from `onprem`. Adding another token-based preset to groundwork is a row in `internal/scaffold/clouds.go` plus `network_main.tf.tmpl` and `network_outputs.tf.tmpl` under `internal/scaffold/presets/cloud/<preset>/`.
+- `groundwork.yaml`: the binary (`terraform` or `tofu`), your environments and where their roots will live, the Ansible project, and the checks for the chosen tools.
+- `ansible/ansible.cfg`: points Ansible at `ansible/inventory/`, so `ansible-playbook` finds the inventory outside groundwork too. With Ansible alone, put your own inventory there, such as `inventory/hosts.yml`.
+- `ansible/inventory/tf_outputs.py`: the inventory script that turns your Terraform or OpenTofu hosts into Ansible hosts.
 
-Layouts (`--layout`): `dirs`, a directory per environment (the default), or `workspaces`, one root with a workspace per environment.
+Environments and layout only apply to Terraform and OpenTofu, and the vault password only to Ansible. `--envs` sets the environments (default `dev,staging,prod`). `--layout` says where the Terraform roots will live: `dirs`, a directory per environment under `terraform/envs/` (the default), or `workspaces`, one root in `terraform/` with a workspace per environment. Checks skip a root that doesn't exist yet.
 
-The Ansible inventory (`--inventory`) is either a static YAML file per environment or, by default, `ansible/inventory/tf_outputs.py`, which reads the Terraform `ansible_hosts` output: a map of group to a list of hosts. Each host needs a `name`. `ip` becomes `ansible_host`, and every other field (`ansible_user`, `ansible_port`, `ansible_connection`, or your own variables) is passed through as a host variable. Select the environment with `GROUNDWORK_ENV`.
+### The ansible_hosts output
 
-The preview is rendered in memory. **Create files** never overwrites an existing file unless you tick it, and `.gitignore` is merged, not replaced. **Download as zip** produces the same files without touching the repo. Missing tools are only listed with install commands; groundwork never runs a package manager.
+The inventory script runs `terraform output -json ansible_hosts` (or `tofu output …`) in the environment's root. It uses the binary chosen at setup, else whichever of `terraform` and `tofu` is installed; set `GROUNDWORK_TF_BINARY` to override it. If you later change `terraform.binary` in `groundwork.yaml`, edit the script's default too. Add that output to your Terraform: a map of group to a list of hosts.
 
-The Ansible vault option (`--vault`) writes `vault.yml.example` files only. groundwork never writes secrets.
+```hcl
+output "ansible_hosts" {
+  value = {
+    web = [for s in vultr_instance.web : { name = s.label, ip = s.main_ip }]
+    db  = [{ name = "db-1", ip = vultr_instance.db.internal_ip, ansible_user = "root" }]
+  }
+}
+```
 
-The **ansible-vault password** choice (`--vault-password-file`) decides how groundwork opens the vault. By default no password file is configured, and you type the password in the console ([Variables → Secrets → Unlock](variables.md#typing-the-vault-password)), which keeps it in memory only. Choose **Password file** (or pass `--vault-password-file ~/.vault-pass`) to set `vault_password_file` on the Ansible project in `groundwork.yaml`. The path is relative to `ansible/`, under `~/` or absolute. groundwork doesn't create the file: put the password in it, one line, `chmod 600`.
+Each host needs a `name`. `ip` becomes `ansible_host`, and every other field (`ansible_user`, `ansible_port`, `ansible_connection`, or your own variables) is passed through as a host variable. Select the environment with `GROUNDWORK_ENV`.
+
+### The ansible-vault password
+
+Setup asks for the vault password before it writes anything, and **Create files** stays disabled until you've typed it twice.
+
+- **Type it in groundwork** (the default): groundwork unlocks the vault with it straight away and keeps it in memory, never on disk, until you lock the vault or the service stops. After a restart, unlock it again on [Variables → Secrets](variables.md#typing-the-vault-password).
+- **Password file** (`--vault-password-file ~/.vault-pass-<project>`): groundwork creates the file with the password on one line, mode `600`, and sets `vault_password_file` in `groundwork.yaml`. The file must be outside the repository so it can't be committed. If it already exists, groundwork uses it as it is and doesn't ask for a password. `groundwork init` asks for the password on the terminal, hidden.
+
+When setup is done, **Add a secret** opens Variables → Secrets → New secret. Put a secret in `ansible/group_vars/<env>/vault.yml` for one environment, or `ansible/group_vars/all/vault.yml` for every host.
+
+### Preview and tools
+
+The preview is rendered in memory. **Create files** never overwrites an existing file unless you tick it. **Download as zip** produces the same files without touching the repo; the password file is never in it.
+
+Missing tools are listed with install commands that use an installer found on the machine (Homebrew, pipx, uv or Go), with the other ways to install them under **Other ways to install**. groundwork never runs a package manager.
 
 ## Code and checks
 

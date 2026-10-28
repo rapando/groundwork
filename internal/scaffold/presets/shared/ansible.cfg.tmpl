@@ -1,3 +1,6 @@
+{{- if not .FromTF -}}
+# Put your inventory in inventory/, e.g. inventory/hosts.yml.
+{{ end -}}
 [defaults]
 inventory         = inventory
 roles_path        = roles

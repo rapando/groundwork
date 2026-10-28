@@ -25,8 +25,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/rapando/groundwork/internal/auth"
-	"github.com/rapando/groundwork/internal/events"
+	"github.com/rapando/groundwork/v2/internal/auth"
+	"github.com/rapando/groundwork/v2/internal/events"
 )
 
 //go:embed all:dist

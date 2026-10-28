@@ -3,7 +3,10 @@ export interface Tool {
   found: boolean
   path?: string
   version?: string
+  /** install hint when missing, using an installer this machine has */
   hint?: string
+  /** other ways to install it */
+  alternatives?: string[]
 }
 
 export interface Workspace {
@@ -14,6 +17,8 @@ export interface Workspace {
   git: boolean
   tools: Tool[]
   setup: 'none' | 'detect' | 'scaffold'
+  /** with setup 'scaffold': the tools a new repository starts with */
+  default_tools?: SetupTool[]
   mode?: 'standalone' | 'embedded'
   config?: Record<string, any>
   config_error?: string
@@ -73,24 +78,18 @@ export interface DetectResponse {
   exists: boolean
 }
 
+/** terraform and tofu exclude each other */
+export type SetupTool = 'terraform' | 'tofu' | 'ansible'
 export interface ScaffoldForm {
-  preset: 'aws-envs' | 'gcp-envs' | 'vultr' | 'digitalocean' | 'hetzner' | 'linode' | 'docker' | 'onprem'
   project: string
-  backend: 's3' | 'gcs' | 'local' | 'http'
-  bucket: string
-  region: string
-  gcp_project: string
-  s3_endpoint: string
+  /** only these tools' files and checks are set up */
+  tools: SetupTool[]
   envs: string[]
+  /** where the Terraform roots will live */
   layout: 'dirs' | 'workspaces'
-  inventory: 'terraform' | 'static'
-  roles: string[]
-  vault: boolean
-  /** ansible-vault password file for groundwork.yaml; '' = typed in the console */
+  /** ansible-vault password file outside the repo; '' = typed in the console */
   vault_password_file: string
   checks: string[]
-  pre_commit: boolean
-  ci: boolean
 }
 export interface PlannedFile {
   path: string
@@ -104,6 +103,8 @@ export interface PreviewResponse {
   count: number
   existing: number
   new: number
+  /** the vault password file, when the form names one; an existing one is used as it is */
+  vault_file: { path: string; exists: boolean } | null
 }
 export interface WriteResult {
   path: string

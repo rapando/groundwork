@@ -16,19 +16,19 @@ import (
 	"github.com/go-chi/chi/v5"
 	"gopkg.in/yaml.v3"
 
-	"github.com/rapando/groundwork/internal/checks"
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/diagnostics"
-	"github.com/rapando/groundwork/internal/doctor"
-	"github.com/rapando/groundwork/internal/drift"
-	"github.com/rapando/groundwork/internal/events"
-	"github.com/rapando/groundwork/internal/notify"
-	"github.com/rapando/groundwork/internal/redact"
-	"github.com/rapando/groundwork/internal/runner"
-	"github.com/rapando/groundwork/internal/scaffold"
-	"github.com/rapando/groundwork/internal/store"
-	"github.com/rapando/groundwork/internal/vars"
-	"github.com/rapando/groundwork/internal/workspace"
+	"github.com/rapando/groundwork/v2/internal/checks"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/diagnostics"
+	"github.com/rapando/groundwork/v2/internal/doctor"
+	"github.com/rapando/groundwork/v2/internal/drift"
+	"github.com/rapando/groundwork/v2/internal/events"
+	"github.com/rapando/groundwork/v2/internal/notify"
+	"github.com/rapando/groundwork/v2/internal/redact"
+	"github.com/rapando/groundwork/v2/internal/runner"
+	"github.com/rapando/groundwork/v2/internal/scaffold"
+	"github.com/rapando/groundwork/v2/internal/store"
+	"github.com/rapando/groundwork/v2/internal/vars"
+	"github.com/rapando/groundwork/v2/internal/workspace"
 )
 
 type API struct {
@@ -231,6 +231,7 @@ func (a *API) workspace(w http.ResponseWriter, r *http.Request) {
 			out["setup"] = "detect"
 		} else {
 			out["setup"] = "scaffold"
+			out["default_tools"] = scaffold.DefaultTools(exec.LookPath)
 		}
 	}
 	writeJSON(w, 200, out)
@@ -258,7 +259,7 @@ func (a *API) setupDetect(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 500, "detect_failed", err.Error(), nil)
 		return
 	}
-	cfg := config.FromReport(rep)
+	cfg := config.FromReport(rep, config.DefaultTFBinary(exec.LookPath))
 	y, err := cfg.Marshal()
 	if err != nil {
 		writeError(w, 500, "config_failed", err.Error(), nil)
@@ -283,7 +284,7 @@ func (a *API) setupConfig(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 500, "detect_failed", err.Error(), nil)
 		return
 	}
-	y, err := config.FromReport(rep).Apply(sel).Marshal()
+	y, err := config.FromReport(rep, config.DefaultTFBinary(exec.LookPath)).Apply(sel).Marshal()
 	if err != nil {
 		writeError(w, 500, "config_failed", err.Error(), nil)
 		return
@@ -309,7 +310,7 @@ func (a *API) setupApply(w http.ResponseWriter, r *http.Request) {
 			writeError(w, 500, "detect_failed", err.Error(), nil)
 			return
 		}
-		b, err := config.FromReport(rep).Marshal()
+		b, err := config.FromReport(rep, config.DefaultTFBinary(exec.LookPath)).Marshal()
 		if err != nil {
 			writeError(w, 500, "config_failed", err.Error(), nil)
 			return
@@ -327,7 +328,7 @@ func (a *API) setupApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	files := []scaffold.File{{Path: config.FileName, Content: req.YAML}}
-	lint, err := scaffold.LintConfigs(&scaffold.Form{Preset: "aws-envs"}, req.LintConfigs)
+	lint, err := scaffold.LintConfigs(req.LintConfigs)
 	if err != nil {
 		writeError(w, 400, "bad_request", err.Error(), nil)
 		return
@@ -360,6 +361,10 @@ type scaffoldReq struct {
 	Form      scaffold.Form `json:"form"`
 	Overwrite []string      `json:"overwrite"`
 	GitCommit bool          `json:"git_commit"`
+	// VaultPassword is the ansible-vault password: kept in memory when the form
+	// names no file, else written to a new password file. Never in the preview
+	// or the zip.
+	VaultPassword string `json:"vault_password"`
 }
 
 func (a *API) scaffoldPreview(w http.ResponseWriter, r *http.Request) {
@@ -368,6 +373,10 @@ func (a *API) scaffoldPreview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	files, ok := a.render(w, &req.Form)
+	if !ok {
+		return
+	}
+	vf, ok := a.vaultFile(w, &req.Form)
 	if !ok {
 		return
 	}
@@ -384,6 +393,7 @@ func (a *API) scaffoldPreview(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, 200, map[string]any{
 		"files": planned, "count": len(planned), "existing": existing, "new": len(planned) - existing,
+		"vault_file": vf,
 	})
 }
 
@@ -409,6 +419,32 @@ func (a *API) scaffoldWrite(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 400, "not_git", "initial commit requested but this directory is not a git repository", nil)
 		return
 	}
+	vf, ok := a.vaultFile(w, &req.Form)
+	if !ok {
+		return
+	}
+	// with Ansible, the password is needed unless an existing file holds it
+	if req.Form.Ansible() && (vf == nil || !vf.Exists) {
+		if err := scaffold.CheckPassword(req.VaultPassword); err != nil {
+			writeError(w, 422, "invalid_form", "the form has problems", []scaffold.FieldError{{Field: "vault_password", Message: "set the ansible-vault password"}})
+			return
+		}
+	}
+	noStore(w)
+	vault := "unlocked"
+	switch {
+	case !req.Form.Ansible():
+		vault = ""
+	case vf != nil && vf.Exists:
+		vault = "file_existing"
+	case vf != nil:
+		// before the other files, so a failure leaves nothing half set up
+		if err := vf.Create(req.VaultPassword); err != nil {
+			writeError(w, 500, "write_failed", "could not create "+vf.Path+": "+err.Error(), nil)
+			return
+		}
+		vault = "file_created"
+	}
 	ow := map[string]bool{}
 	for _, p := range req.Overwrite {
 		ow[p] = true
@@ -419,6 +455,12 @@ func (a *API) scaffoldWrite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := map[string]any{"results": res}
+	if vault != "" {
+		out["vault"] = vault
+	}
+	if vf != nil {
+		out["vault_file"] = vf.Path
+	}
 	if req.GitCommit {
 		var paths []string
 		for _, x := range res {
@@ -433,8 +475,33 @@ func (a *API) scaffoldWrite(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	a.reloadConfig()
+	if vault == "unlocked" {
+		ctx, cancel := context.WithTimeout(r.Context(), time.Minute)
+		defer cancel()
+		if _, err := a.secretStore().Unlock(ctx, filepath.Join(a.Root, "ansible"), "", req.VaultPassword); err != nil {
+			out["vault"], out["vault_error"] = "locked", err.Error() // files are written; unlock from Variables → Secrets
+		} else {
+			_ = a.Store.RecordReveal("vault-unlock", "vault unlocked", "ansible")
+		}
+	}
 	a.Bus.Publish("workspace.updated", nil)
 	writeJSON(w, 200, out)
+}
+
+// vaultFile resolves the form's password file, writing a field error when it
+// can't be used. nil (and ok) when the form names none.
+func (a *API) vaultFile(w http.ResponseWriter, f *scaffold.Form) (*scaffold.VaultFile, bool) {
+	vf, err := scaffold.PasswordFile(a.Root, f)
+	var fe scaffold.FieldError
+	switch {
+	case errors.As(err, &fe):
+		writeError(w, 422, "invalid_form", "the form has problems", []scaffold.FieldError{fe})
+		return nil, false
+	case err != nil:
+		writeError(w, 500, "vault_file", err.Error(), nil)
+		return nil, false
+	}
+	return vf, true
 }
 
 func (a *API) render(w http.ResponseWriter, f *scaffold.Form) ([]scaffold.File, bool) {

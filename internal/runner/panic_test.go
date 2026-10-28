@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/v2/internal/store"
 )
 
 // A panic on a job goroutine must not take the service down, must not leave

@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/events"
-	"github.com/rapando/groundwork/internal/store"
-	"github.com/rapando/groundwork/internal/workspace"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/events"
+	"github.com/rapando/groundwork/v2/internal/store"
+	"github.com/rapando/groundwork/v2/internal/workspace"
 )
 
 // Every example must pass every installed tool with zero findings.
@@ -33,7 +33,7 @@ func TestExamplesAreCleanUnderRealTools(t *testing.T) {
 				return os.WriteFile(filepath.Join(dir, rel), b, info.Mode().Perm())
 			})
 			rep, _ := workspace.Detect(dir, nil)
-			cfg := config.FromReport(rep)
+			cfg := config.FromReport(rep, "terraform")
 			cfg.Terraform.Binary = tfBin() // the binary under test, not the detected default
 			yml, _ := cfg.Marshal()        // checked too: groundwork's own file must lint clean
 			os.WriteFile(filepath.Join(dir, "groundwork.yaml"), yml, 0o644)

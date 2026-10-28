@@ -10,9 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rapando/groundwork/internal/checks"
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/workspace"
+	"github.com/rapando/groundwork/v2/internal/checks"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/doctor"
+	"github.com/rapando/groundwork/v2/internal/workspace"
 )
 
 type fakeExec struct {
@@ -57,7 +58,7 @@ func repo(t *testing.T, configure bool) string {
 	})
 	if configure {
 		rep, _ := workspace.Detect(dir, nil)
-		cfg := config.FromReport(rep)
+		cfg := config.FromReport(rep, "terraform")
 		cfg.Checks.Enabled = []string{"fmt", "validate", "yamllint", "syntax-check"}
 		y, _ := cfg.Marshal()
 		os.WriteFile(filepath.Join(dir, "groundwork.yaml"), y, 0o644)
@@ -201,7 +202,7 @@ func TestCheckSkippedToolIsNotAFailure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	if !strings.Contains(out, "yamllint skipped") || !strings.Contains(out, "pipx install yamllint") {
+	if !strings.Contains(out, "yamllint skipped") || !strings.Contains(out, doctor.Hint("yamllint")) {
 		t.Fatalf("%s", out)
 	}
 }

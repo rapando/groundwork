@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rapando/groundwork/internal/checks"
+	"github.com/rapando/groundwork/v2/internal/checks"
 )
 
 func scopeOf(id string) string {

@@ -14,11 +14,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/rapando/groundwork/internal/app"
-	"github.com/rapando/groundwork/internal/checks"
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/events"
-	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/v2/internal/app"
+	"github.com/rapando/groundwork/v2/internal/checks"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/events"
+	"github.com/rapando/groundwork/v2/internal/store"
 )
 
 // ExitError carries a process exit code out of a command (and an optional message).

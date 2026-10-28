@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/store"
 )
 
 type fakeExec struct {

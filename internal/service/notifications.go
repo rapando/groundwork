@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/v2/internal/store"
 )
 
 // ProjectNotification is a notification on the service-wide list: the

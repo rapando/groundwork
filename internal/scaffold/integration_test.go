@@ -6,26 +6,21 @@ import (
 	"context"
 	"io"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/rapando/groundwork/internal/checks"
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/events"
-	"github.com/rapando/groundwork/internal/store"
+	"github.com/rapando/groundwork/v2/internal/checks"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/events"
+	"github.com/rapando/groundwork/v2/internal/store"
 )
 
-// Scaffolds every variant and runs the real tools over the result. A fresh
-// scaffold must be completely clean: a starter that ships warnings teaches
-// people to ignore the checks. Tools that are not installed are skipped.
-func TestScaffoldIsCleanUnderRealTools(t *testing.T) {
-	network := os.Getenv("GW_TEST_NETWORK") == "1" // cloud variants download their provider
+// Sets up every variant and runs the real tools over the result. A fresh
+// setup must be completely clean, before the user has written any Terraform
+// or playbooks. Tools that are not installed are skipped.
+func TestSetupIsCleanUnderRealTools(t *testing.T) {
 	for name, f := range variants() {
-		if f.Preset != "onprem" && !network {
-			continue
-		}
 		t.Run(name, func(t *testing.T) {
 			dir := t.TempDir()
 			fs, err := Render(&f)

@@ -9,8 +9,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/rapando/groundwork/internal/ansible"
-	"github.com/rapando/groundwork/internal/files"
+	"github.com/rapando/groundwork/v2/internal/ansible"
+	"github.com/rapando/groundwork/v2/internal/files"
 )
 
 // Structured inventory edits: add/remove hosts and groups and set/unset

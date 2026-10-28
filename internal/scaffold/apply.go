@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/rapando/groundwork/internal/files"
+	"github.com/rapando/groundwork/v2/internal/files"
 )
 
 type Planned struct {

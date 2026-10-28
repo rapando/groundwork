@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/rapando/groundwork/internal/proc"
+	"github.com/rapando/groundwork/v2/internal/proc"
 	"os"
 	"os/exec"
 	"time"

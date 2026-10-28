@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/rapando/groundwork/internal/server"
+	"github.com/rapando/groundwork/v2/internal/server"
 )
 
 // A panicking handler answers 500 with a JSON error and is logged through

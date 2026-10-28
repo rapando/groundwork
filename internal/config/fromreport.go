@@ -5,11 +5,22 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/rapando/groundwork/internal/workspace"
+	"github.com/rapando/groundwork/v2/internal/workspace"
 )
 
-// FromReport derives a starting config from detection results.
-func FromReport(r *workspace.Report) *Config {
+// DefaultTFBinary is terraform, or tofu when only OpenTofu is installed.
+func DefaultTFBinary(lookPath func(string) (string, error)) string {
+	if _, err := lookPath("terraform"); err != nil {
+		if _, err := lookPath("tofu"); err == nil {
+			return "tofu"
+		}
+	}
+	return "terraform"
+}
+
+// FromReport derives a starting config from detection results; tfBinary is
+// the Terraform binary to name (see DefaultTFBinary).
+func FromReport(r *workspace.Report, tfBinary string) *Config {
 	c := &Config{
 		Version: 1,
 		Mode:    r.Mode,
@@ -17,7 +28,7 @@ func FromReport(r *workspace.Report) *Config {
 		Ignore:  []string{"vendor/", "node_modules/", "**/.terraform/"},
 	}
 	if len(r.TerraformRoots) > 0 || len(r.TerraformModules) > 0 {
-		c.Terraform.Binary = "terraform"
+		c.Terraform.Binary = tfBinary
 		c.Checks.Enabled = append(c.Checks.Enabled, "fmt", "validate")
 	}
 	for _, d := range r.TerraformRoots {

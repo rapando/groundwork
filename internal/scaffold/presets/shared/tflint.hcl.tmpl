@@ -2,16 +2,3 @@ plugin "terraform" {
   enabled = true
   preset  = "recommended"
 }
-{{ if eq .Preset "aws-envs" }}
-plugin "aws" {
-  enabled = true
-  version = "0.34.0"
-  source  = "github.com/terraform-linters/tflint-ruleset-aws"
-}
-{{ else if eq .Preset "gcp-envs" }}
-plugin "google" {
-  enabled = true
-  version = "0.30.0"
-  source  = "github.com/terraform-linters/tflint-ruleset-google"
-}
-{{ end }}

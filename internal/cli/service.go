@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/rapando/groundwork/internal/service"
+	"github.com/rapando/groundwork/v2/internal/service"
 )
 
 func sleep() { time.Sleep(250 * time.Millisecond) }

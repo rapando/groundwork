@@ -3,8 +3,8 @@ package checks
 import (
 	"testing"
 
-	"github.com/rapando/groundwork/internal/config"
-	"github.com/rapando/groundwork/internal/workspace"
+	"github.com/rapando/groundwork/v2/internal/config"
+	"github.com/rapando/groundwork/v2/internal/workspace"
 )
 
 func fixtureUnits(t *testing.T) []Unit {
@@ -13,7 +13,7 @@ func fixtureUnits(t *testing.T) []Unit {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := config.FromReport(rep)
+	cfg := config.FromReport(rep, "terraform")
 	cfg.Checks.Enabled = []string{"fmt", "validate", "tflint", "ansible-lint", "yamllint", "syntax-check"}
 	return BuildUnits(cfg, rep)
 }
@@ -66,7 +66,7 @@ func TestAffectedByModuleChange(t *testing.T) {
 
 func TestDisabledToolsDropUnit(t *testing.T) {
 	rep, _ := workspace.Detect("../../testdata/repos/iac-only", nil)
-	cfg := config.FromReport(rep)
+	cfg := config.FromReport(rep, "terraform")
 	cfg.Checks.Enabled = []string{"yamllint"}
 	for _, u := range BuildUnits(cfg, rep) {
 		if u.Kind != KindAnsible {

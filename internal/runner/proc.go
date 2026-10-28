@@ -3,7 +3,7 @@ package runner
 import (
 	"os/exec"
 
-	"github.com/rapando/groundwork/internal/proc"
+	"github.com/rapando/groundwork/v2/internal/proc"
 )
 
 // Each job runs in its own process group so a cancel reaches terraform's

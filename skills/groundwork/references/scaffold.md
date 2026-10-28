@@ -1,75 +1,36 @@
-# Scaffolding a repository with `groundwork init --preset`
+# Setting up a new repository with `groundwork init`
 
-`init --preset <name>` writes a complete starter layout:
-- Terraform roots per environment, plus a network module;
-- an Ansible project with roles and inventory;
-- `groundwork.yaml`, lint configs, a pre-commit config and a GitHub Actions plan workflow.
+In a repository with no Terraform or Ansible, `groundwork init` sets up only the `--tools` chosen, and nothing else:
+- `groundwork.yaml`, always;
+- `ansible/ansible.cfg`, with Ansible;
+- `ansible/inventory/tf_outputs.py`, with Ansible and Terraform or OpenTofu: the inventory script that reads the `ansible_hosts` output.
 
-It never overwrites an existing file. Existing files are listed and kept, and `.gitignore` is merged. Nothing touches the cloud.
+The user writes the Terraform (any provider) and the playbooks. It never overwrites an existing file. Nothing touches the cloud.
 
 **Always preview first and show the user the file list:**
 
 ```sh
-groundwork init --preset aws-envs --region eu-west-1 --dry-run
-groundwork init --preset aws-envs --region eu-west-1 --yes          # after the user agrees
+groundwork init --project acme --tools terraform,ansible --dry-run
+groundwork init --project acme --tools terraform,ansible --yes   # after the user agrees
 ```
 
-**Choose `--project` deliberately.** It defaults to the directory name, and it prefixes every resource name and the default state bucket (`<project>-tfstate`). S3, GCS and most S3-compatible stores have global bucket names, so a generic name like `repo-tfstate` or `infra-tfstate` is probably taken. Use the company or product name the user gave you, or ask for one.
-
-## Presets
-
-| Preset | Required flags | State backends (`--backend`) | Credentials at plan time |
-|---|---|---|---|
-| `vultr` | `--region ams` (offered first, the console's default) | `local` (default), `http`, `s3` + `--s3-endpoint https://ams1.vultrobjects.com` | `VULTR_API_KEY` |
-| `aws-envs` | `--region eu-west-1` | `s3` (default; bucket + DynamoDB lock), `local`, `http` | AWS profile, SSO or keys |
-| `gcp-envs` | `--gcp-project acme-prod-123 --region europe-west1` | `gcs` (default), `local`, `http` | `gcloud auth application-default login` |
-| `digitalocean` | `--region fra1` | `local`, `http`, `s3` + `--s3-endpoint https://fra1.digitaloceanspaces.com` | `DIGITALOCEAN_TOKEN` |
-| `hetzner` | `--region eu-central` (a network zone) | `local`, `http`, `s3` + `--s3-endpoint https://fsn1.your-objectstorage.com` | `HCLOUD_TOKEN` |
-| `linode` | `--region eu-central` | `local`, `http`, `s3` + `--s3-endpoint https://eu-central-1.linodeobjects.com` | `LINODE_TOKEN` |
-| `docker` | none | `local`, `http` | the Docker daemon, or `DOCKER_HOST` |
-| `onprem` | none | `local`, `http` | none (no cloud provider; hosts are a variable) |
-
-For `s3` on the token providers, Terraform reads the object storage's access keys from `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
-- **Hetzner** gets native state locking.
-- **Vultr, DigitalOcean and Linode** leave `use_lockfile` commented, because conditional writes aren't confirmed there.
-
-`--bucket` defaults to `<project>-tfstate`.
-
-**Docker** creates a network and a `web` container (`nginx:stable-alpine`). Its published ports come from the `web_ports` variable, bound to `127.0.0.1` on port 8080 plus the environment's position.
-
-## Other flags
+## Flags
 
 | Flag | Default | |
 |---|---|---|
-| `--project` | directory name | used in resource names; lowercase, digits, dashes |
-| `--envs dev,staging,prod` | `dev,staging,prod` | `prod` requires approval in the console |
-| `--layout dirs\|workspaces` | `dirs` | a directory per environment, or one root with a workspace per environment |
-| `--inventory terraform\|static` | `terraform` | Ansible inventory from the `ansible_hosts` output, or static YAML per environment |
-| `--roles common,nginx` | `common` | starter Ansible roles |
+| `--project` | directory name | lowercase, digits, dashes |
+| `--tools terraform,ansible` | `terraform,ansible` (`tofu,ansible` when only tofu is installed) | `terraform` or `tofu` (not both), and/or `ansible`. Ask the user which they use |
+| `--envs dev,staging,prod` | `dev,staging,prod` | Terraform/OpenTofu only. `prod` requires approval in the console |
+| `--layout dirs\|workspaces` | `dirs` | where the Terraform roots will live: `terraform/envs/<env>`, or `terraform/` with a workspace per environment |
 | `--checks fmt,validate,tflint,ansible-lint,yamllint` | that list | also `checkov` |
-| `--vault` | off | adds `vault.yml.example` files (never real secrets) |
-| `--vault-password-file ~/.vault-pass` | none | sets `vault_password_file` in `groundwork.yaml`; without it the user types the vault password in the console (Variables → Secrets → Unlock). Don't create the file or write a password into it |
-| `--no-pre-commit`, `--no-ci` | | skip `.pre-commit-config.yaml` / `.github/workflows/plan.yml` |
-| `--git-commit` | off | commit the scaffolded files |
+| `--vault-password-file ~/.vault-pass-acme` | none | Ansible only; must be outside the repository. If it doesn't exist, init asks for the password on the terminal (hidden, twice) and creates it with mode 600. Without it, the user types the password in the console (Variables → Secrets → Unlock) |
+| `--git-commit` | off | commit the files written |
+| `--detect` | off | only detect existing code; never set up |
 
-Invalid flags are reported together (`--region: enter a Vultr region such as ams`). Fix them all and re-run.
+Invalid flags are reported together. Fix them all and re-run. Never ask for the vault password yourself, and don't pass `--vault-password-file` for a file that doesn't exist unless the user will type the password.
 
-## After scaffolding
+## After setup
 
-1. `groundwork check --json`: a fresh scaffold is expected to be clean. Tools that aren't installed show as `skipped`.
-2. `groundwork doctor`: shows which credentials are missing before anyone plans.
-3. Hand off to the console (`groundwork --no-open`) for the first plan.
-
-## Without a preset: adopting an existing repository
-
-```sh
-groundwork init --dry-run      # detection: prints the groundwork.yaml it would write, with evidence
-groundwork init --yes          # writes only groundwork.yaml
-```
-
-Detection reads files only and never runs Terraform or Ansible:
-- HCL backend, provider and module blocks;
-- `ansible.cfg`, playbooks, inventories, `group_vars` and `host_vars`;
-- CI steps that call terraform or ansible.
-
-Review the detected roots and environments with the user before writing.
+1. The user adds an `ansible_hosts` output to their Terraform (see "Passing data from Terraform to Ansible" in SKILL.md).
+2. `groundwork check --json`: roots that don't exist yet show as `skipped`, not failed.
+3. `groundwork doctor`: shows missing tools, with install commands that use an installer on this machine.

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rapando/groundwork/internal/auth"
+	"github.com/rapando/groundwork/v2/internal/auth"
 )
 
 func TestAuthStatusAndReset(t *testing.T) {

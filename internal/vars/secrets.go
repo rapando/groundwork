@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rapando/groundwork/internal/proc"
+	"github.com/rapando/groundwork/v2/internal/proc"
 	"gopkg.in/yaml.v3"
 )
 

@@ -1,4 +1,4 @@
-module github.com/rapando/groundwork
+module github.com/rapando/groundwork/v2
 
 go 1.27.3
 

@@ -15,7 +15,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/rapando/groundwork/internal/checks"
+	"github.com/rapando/groundwork/v2/internal/checks"
 )
 
 //go:embed rules/*.yaml

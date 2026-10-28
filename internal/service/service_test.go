@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rapando/groundwork/internal/server"
+	"github.com/rapando/groundwork/v2/internal/server"
 )
 
 const tok = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
