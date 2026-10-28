@@ -20,21 +20,23 @@ A directory referenced as `source = "./…"` by another is a **module**; one wit
 
 ## Setting up a new repository
 
-In a repository with no Terraform or Ansible yet, groundwork writes only what it needs and leaves the rest to you. You write the Terraform (for any provider) and the playbooks.
+In a repository with no Terraform or Ansible yet, groundwork writes its config and a provider-neutral starting point for each environment. You add the providers, resources and playbooks.
 
 First choose the tools the repository will use (`--tools`): **Terraform** or **OpenTofu** (one of the two), **Ansible**, or both. The default is Terraform and Ansible, or OpenTofu and Ansible when only `tofu` is installed. groundwork sets up only what you choose:
 
 | Tools | Files |
 |---|---|
-| Terraform or OpenTofu | `groundwork.yaml` |
+| Terraform or OpenTofu | `groundwork.yaml`, starter Terraform, `.gitignore` |
 | Ansible | `groundwork.yaml`, `ansible/ansible.cfg` |
-| both | `groundwork.yaml`, `ansible/ansible.cfg`, `ansible/inventory/tf_outputs.py` |
+| both | all of the above, plus `ansible/inventory/tf_outputs.py` |
 
-- `groundwork.yaml`: the binary (`terraform` or `tofu`), your environments and where their roots will live, the Ansible project, and the checks for the chosen tools.
+- `groundwork.yaml`: the binary (`terraform` or `tofu`), your environments and where their roots are, the Ansible project, and the checks for the chosen tools.
+- Starter Terraform: `versions.tf`, `main.tf`, `variables.tf` and `outputs.tf` in each root, with a `required_version`, an `environment` variable set per environment, and a `name_prefix` local and output. No provider is chosen: add yours to `versions.tf`. With Ansible too, `outputs.tf` has an empty `ansible_hosts` output to fill in (see below). The files pass `fmt`, `validate` and tflint as written.
+- `.gitignore`: `.terraform/`, state files and crash logs. An existing `.gitignore` only gets the lines it lacks.
 - `ansible/ansible.cfg`: points Ansible at `ansible/inventory/`, so `ansible-playbook` finds the inventory outside groundwork too. With Ansible alone, put your own inventory there, such as `inventory/hosts.yml`.
 - `ansible/inventory/tf_outputs.py`: the inventory script that turns your Terraform or OpenTofu hosts into Ansible hosts.
 
-Environments and layout only apply to Terraform and OpenTofu, and the vault password only to Ansible. `--envs` sets the environments (default `dev,staging,prod`). `--layout` says where the Terraform roots will live: `dirs`, a directory per environment under `terraform/envs/` (the default), or `workspaces`, one root in `terraform/` with a workspace per environment. Checks skip a root that doesn't exist yet.
+Environments and layout only apply to Terraform and OpenTofu, and the vault password only to Ansible. `--envs` sets the environments (default `dev,staging,prod`). `--layout` says where the Terraform roots live: `dirs`, a directory per environment under `terraform/envs/<env>/` with its own `terraform.tfvars` (the default), or `workspaces`, one root in `terraform/` with a workspace and a `terraform/env/<env>.tfvars` per environment. Existing files are never overwritten.
 
 ### The ansible_hosts output
 
@@ -68,7 +70,7 @@ Missing tools are listed with install commands that use an installer found on th
 
 ## Code and checks
 
-Once configured, the **Code** screen shows a file tree (IaC-only or all files, filterable), an editor with inline diagnostics and one-click fixes, a problems tray, and a git diff view. See [checks](checks.md).
+Once configured, the **Code** screen shows a file tree (IaC-only or all files, filterable), an editor with inline diagnostics and one-click fixes, a problems tray, and a git diff view. **+** above the tree creates a file (folders are created as needed) and **Delete** removes the open one after a confirmation. See [checks](checks.md).
 
 ## Runs
 

@@ -2,10 +2,11 @@
 
 In a repository with no Terraform or Ansible, `groundwork init` sets up only the `--tools` chosen, and nothing else:
 - `groundwork.yaml`, always;
+- with Terraform or OpenTofu, provider-neutral starter files for each environment (`versions.tf`, `main.tf`, `variables.tf`, `outputs.tf` and a tfvars file, in `terraform/envs/<env>/`, or in `terraform/` with `terraform/env/<env>.tfvars` for `--layout workspaces`) and `.gitignore` lines for `.terraform/` and state;
 - `ansible/ansible.cfg`, with Ansible;
 - `ansible/inventory/tf_outputs.py`, with Ansible and Terraform or OpenTofu: the inventory script that reads the `ansible_hosts` output.
 
-The user writes the Terraform (any provider) and the playbooks. It never overwrites an existing file. Nothing touches the cloud.
+The user adds the providers, resources and playbooks. It never overwrites an existing file. Nothing touches the cloud.
 
 **Always preview first and show the user the file list:**
 
@@ -21,7 +22,7 @@ groundwork init --project acme --tools terraform,ansible --yes   # after the use
 | `--project` | directory name | lowercase, digits, dashes |
 | `--tools terraform,ansible` | `terraform,ansible` (`tofu,ansible` when only tofu is installed) | `terraform` or `tofu` (not both), and/or `ansible`. Ask the user which they use |
 | `--envs dev,staging,prod` | `dev,staging,prod` | Terraform/OpenTofu only. `prod` requires approval in the console |
-| `--layout dirs\|workspaces` | `dirs` | where the Terraform roots will live: `terraform/envs/<env>`, or `terraform/` with a workspace per environment |
+| `--layout dirs\|workspaces` | `dirs` | where the Terraform roots go: a root per environment in `terraform/envs/<env>/` (with its `terraform.tfvars`), or one root in `terraform/` with a workspace and `terraform/env/<env>.tfvars` per environment |
 | `--checks fmt,validate,tflint,ansible-lint,yamllint` | that list | also `checkov` |
 | `--vault-password-file ~/.vault-pass-acme` | none | Ansible only; must be outside the repository. If it doesn't exist, init asks for the password on the terminal (hidden, twice) and creates it with mode 600. Without it, the user types the password in the console (Variables → Secrets → Unlock) |
 | `--git-commit` | off | commit the files written |
@@ -31,6 +32,9 @@ Invalid flags are reported together. Fix them all and re-run. Never ask for the 
 
 ## After setup
 
-1. The user adds an `ansible_hosts` output to their Terraform (see "Passing data from Terraform to Ansible" in SKILL.md).
-2. `groundwork check --json`: roots that don't exist yet show as `skipped`, not failed.
-3. `groundwork doctor`: shows missing tools, with install commands that use an installer on this machine.
+The starter files declare `required_version`, an `environment` variable (set in each tfvars file) and a `name_prefix` local and output (`<project>-<env>`). They pass `fmt`, `validate` and tflint as written.
+
+1. Add the provider to `versions.tf` (`required_providers`) and the `provider` block and resources to `main.tf`, in every environment's root with `--layout dirs`. Use `local.name_prefix` for resource names. Put shared code in `terraform/modules/<name>/`, which `groundwork.yaml` already lists.
+2. With Ansible too, fill in the empty `ansible_hosts` output in `outputs.tf` (see "Passing data from Terraform to Ansible" in SKILL.md). Don't add a second one.
+3. `groundwork check --json`: should be clean before and after your edits.
+4. `groundwork doctor`: shows missing tools, with install commands that use an installer on this machine.

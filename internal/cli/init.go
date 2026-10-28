@@ -33,9 +33,10 @@ func newInit() *cobra.Command {
 		Short: "Detect existing IaC, or set up a new repository",
 		Long: `In a repository with Terraform or Ansible, init detects them and writes
 groundwork.yaml. In one without, it sets up only the --tools you choose:
-groundwork.yaml, plus ansible.cfg for Ansible, plus the inventory script that
-reads your Terraform's ansible_hosts output when you use both. You write the
-Terraform and the playbooks yourself.
+groundwork.yaml, plus provider-neutral starter Terraform for each environment,
+plus ansible.cfg for Ansible, plus the inventory script that reads your
+Terraform's ansible_hosts output when you use both. You add the providers,
+resources and playbooks yourself.
 Nothing is written until you confirm (or pass --yes); --dry-run writes nothing.`,
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
@@ -133,9 +134,9 @@ func runSetup(out io.Writer, in *bufio.Reader, root string, f *initFlags) error 
 	fmt.Fprintf(out, "%d files (%d already exist and will be kept)\n", len(planned), existing)
 	switch {
 	case form.IaC() != "" && form.Ansible():
-		fmt.Fprintln(out, "Write your Terraform under terraform/ with an ansible_hosts output; the inventory script reads it.")
+		fmt.Fprintln(out, "Add your providers and resources under terraform/ and fill in the ansible_hosts output; the inventory script reads it.")
 	case form.IaC() != "":
-		fmt.Fprintln(out, "Write your Terraform under terraform/.")
+		fmt.Fprintln(out, "Add your providers and resources under terraform/.")
 	default:
 		fmt.Fprintln(out, "Write your inventory and playbooks under ansible/.")
 	}

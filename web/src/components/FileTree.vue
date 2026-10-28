@@ -12,7 +12,7 @@ const props = defineProps<{
   git: Map<string, { status: string }>
   iacOnly: boolean
 }>()
-const emit = defineEmits<{ (e: 'open', path: string): void; (e: 'iac', v: boolean): void }>()
+const emit = defineEmits<{ (e: 'open', path: string): void; (e: 'iac', v: boolean): void; (e: 'new'): void }>()
 
 const filter = ref('')
 const expanded = ref(new Set<string>(loadExpanded()))
@@ -141,10 +141,15 @@ function treeKeys(e: KeyboardEvent) {
 
 <template>
   <section class="files" aria-label="Repository files">
-    <label class="search">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
-      <input v-model="filter" type="search" placeholder="Filter files" aria-label="Filter files" />
-    </label>
+    <div class="top">
+      <label class="search">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
+        <input v-model="filter" type="search" placeholder="Filter files" aria-label="Filter files" />
+      </label>
+      <button class="add" type="button" title="New file" aria-label="New file" @click="emit('new')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+      </button>
+    </div>
     <div class="seg-group" role="group" aria-label="Files shown">
       <button class="seg" :class="{ on: iacOnly }" type="button" :aria-pressed="iacOnly" @click="emit('iac', true)">IaC only</button>
       <button class="seg" :class="{ on: !iacOnly }" type="button" :aria-pressed="!iacOnly" @click="emit('iac', false)">All files</button>
@@ -164,7 +169,10 @@ function treeKeys(e: KeyboardEvent) {
 
 <style scoped>
 .files { display: flex; flex-direction: column; gap: 2px; padding: 12px 8px; background: var(--bg-sunken); overflow: auto; min-height: 0; }
-.search { display: flex; align-items: center; gap: 8px; height: 32px; margin: 0 4px 8px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--text-label); }
+.top { display: flex; gap: 6px; margin: 0 4px 8px; }
+.search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--text-label); }
+.add { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--bg-card); color: var(--text-label); cursor: pointer; }
+.add:hover { border-color: var(--line-hover); color: var(--text); }
 .search input { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: var(--text); font-size: 13px; }
 .seg-group { display: flex; gap: 2px; padding: 2px; margin: 0 4px 8px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--bg-card); }
 .seg { flex: 1; font-size: 13px; height: 26px; border: 0; border-radius: 5px; background: transparent; color: var(--text-muted); cursor: pointer; }

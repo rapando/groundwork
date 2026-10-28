@@ -129,6 +129,7 @@ func (a *API) Routes(r chi.Router) {
 	r.Get("/files", a.listFiles)
 	r.Get("/files/content", a.readFile)
 	r.Put("/files/content", a.writeFile)
+	r.Delete("/files/content", a.deleteFile)
 	r.Get("/git/status", a.gitStatus)
 	r.Get("/git/diff", a.gitDiff)
 	r.Get("/checks", a.listChecks)
