@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
@@ -13,6 +14,97 @@ import (
 )
 
 func sleep() { time.Sleep(250 * time.Millisecond) }
+
+// serviceStatus asks a running service what it is; ok is false when it doesn't answer.
+func serviceStatus(si service.ServerInfo) (service.Status, bool) {
+	st, err := service.NewClient(si).Status()
+	return st, err == nil
+}
+
+// version names a release with its commit, e.g. "2.0.0 (commit 3c3e367)".
+func version(v, commit string) string {
+	if v == "" {
+		v = "unknown version"
+	}
+	if commit == "" || commit == "none" {
+		return v
+	}
+	return fmt.Sprintf("%s (commit %s)", v, commit)
+}
+
+// uptime rounds to seconds under a minute, else to minutes.
+func uptime(sec int64) string {
+	d := time.Duration(sec) * time.Second
+	if d < time.Minute {
+		return d.String()
+	}
+	return strings.TrimSuffix(d.Truncate(time.Minute).String(), "0s")
+}
+
+// printRunning says which groundwork is serving and where, after a start,
+// restart or install. what is e.g. "started" or "already running".
+func printRunning(out io.Writer, what string, si service.ServerInfo) {
+	st, ok := serviceStatus(si)
+	if !ok {
+		fmt.Fprintf(out, "groundwork %s %s (pid %d)\n", si.Version, what, si.PID)
+		fmt.Fprintln(out, "  url:      ", si.URL("/"))
+		return
+	}
+	fmt.Fprintf(out, "groundwork %s %s (pid %d", version(st.Version, st.Commit), what, st.PID)
+	if st.UptimeSec >= 60 {
+		fmt.Fprintf(out, ", up %s", uptime(st.UptimeSec))
+	}
+	fmt.Fprintln(out, ")")
+	fmt.Fprintln(out, "  url:      ", si.URL("/"))
+	projects := fmt.Sprintf("%d available", st.Projects.Available)
+	if st.Projects.Unavailable > 0 {
+		projects += fmt.Sprintf(", %d unavailable", st.Projects.Unavailable)
+	}
+	fmt.Fprintln(out, "  projects: ", projects)
+	if st.RunningJobs > 0 {
+		fmt.Fprintf(out, "  running:   %d runs in progress\n", st.RunningJobs)
+	}
+	if st.LogFile != "" {
+		fmt.Fprintln(out, "  log:      ", st.LogFile)
+	}
+	if Version != st.Version && Version != "dev" && st.Version != "dev" {
+		fmt.Fprintf(out, "  note:      this command is %s\n", Version)
+	}
+}
+
+// stopService stops the service and says what was stopped. A service that
+// isn't running is an error unless allowNotRunning.
+func stopService(out io.Writer, home string, allowNotRunning bool) (service.Status, error) {
+	si, running := service.Running(home)
+	var st service.Status
+	if running {
+		st, _ = serviceStatus(si)
+	}
+	err := service.Stop(home)
+	switch {
+	case err != nil && allowNotRunning && strings.Contains(err.Error(), "not running"):
+		fmt.Fprintln(out, "groundwork service was not running")
+		return st, nil
+	case err != nil:
+		return st, err
+	case !running:
+		fmt.Fprintln(out, "stopped the login service")
+		return st, nil
+	}
+	v := version(st.Version, st.Commit)
+	if st.Version == "" {
+		v = si.Version
+	}
+	fmt.Fprintf(out, "groundwork %s stopped (pid %d", v, si.PID)
+	if st.UptimeSec > 0 {
+		fmt.Fprintf(out, ", was up %s", uptime(st.UptimeSec))
+	}
+	fmt.Fprintln(out, ")")
+	if st.RunningJobs > 0 {
+		fmt.Fprintf(out, "  %d runs in progress were stopped gracefully\n", st.RunningJobs)
+	}
+	return st, nil
+}
 
 func newServiceCmd() *cobra.Command {
 	svc := &cobra.Command{
@@ -40,30 +132,48 @@ func newServiceCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), "installed", path)
-			fmt.Fprintln(cmd.OutOrStdout(), si.URL("/"))
+			fmt.Fprintln(cmd.OutOrStdout(), "installed the login service:", path)
+			printRunning(cmd.OutOrStdout(), "running", si)
 			return nil
 		},
 	}
 	uninstall := &cobra.Command{
 		Use: "uninstall", Short: "Stop the service and remove it from login items", Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			home, err := service.Home()
+			if err != nil {
+				return err
+			}
+			if si, ok := service.Running(home); ok {
+				if st, ok := serviceStatus(si); ok {
+					fmt.Fprintf(cmd.OutOrStdout(), "stopping groundwork %s (pid %d)\n", version(st.Version, st.Commit), st.PID)
+				}
+			}
 			path, err := service.Uninstall()
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), "removed", path)
+			fmt.Fprintln(cmd.OutOrStdout(), "removed the login service:", path)
 			return nil
 		},
 	}
 	start := &cobra.Command{
 		Use: "start", Short: "Start the service", Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			home, err := service.Home()
+			if err != nil {
+				return err
+			}
+			_, wasRunning := service.Running(home)
 			_, si, err := ensureService(cmd, port)
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), "running:", si.URL("/"))
+			what := "started"
+			if wasRunning {
+				what = "already running"
+			}
+			printRunning(cmd.OutOrStdout(), what, si)
 			return nil
 		},
 	}
@@ -75,14 +185,19 @@ func newServiceCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := service.Stop(home); err != nil && !strings.Contains(err.Error(), "not running") {
+			out := cmd.OutOrStdout()
+			old, err := stopService(out, home, true)
+			if err != nil {
 				return err
 			}
 			_, si, err := ensureService(cmd, port)
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "running %s: %s\n", si.Version, si.URL("/"))
+			printRunning(out, "started", si)
+			if old.Version != "" && si.Version != "" && old.Version != si.Version {
+				fmt.Fprintf(out, "upgraded from %s to %s\n", old.Version, si.Version)
+			}
 			return nil
 		},
 	}
@@ -94,11 +209,8 @@ func newServiceCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := service.Stop(home); err != nil {
-				return err
-			}
-			fmt.Fprintln(cmd.OutOrStdout(), "stopped")
-			return nil
+			_, err = stopService(cmd.OutOrStdout(), home, false)
+			return err
 		},
 	}
 	status := &cobra.Command{
@@ -112,6 +224,9 @@ func newServiceCmd() *cobra.Command {
 			login := "not installed"
 			if service.Installed() {
 				login = "installed"
+				if h := service.LoginServiceHome(); h != "" && h != home {
+					login = "installed for another data directory, " + h
+				}
 			}
 			fmt.Fprintln(out, "data:         ", home)
 			fmt.Fprintln(out, "log:          ", service.LogPath(home))

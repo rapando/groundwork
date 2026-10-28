@@ -130,7 +130,10 @@ func TestLaunchdInstallAndUninstall(t *testing.T) {
 	if !Installed() {
 		t.Fatal("Installed should see the unit")
 	}
-	if ok, err := StartInstalled(); !ok || err != nil {
+	if got := LoginServiceHome(); got != data {
+		t.Fatalf("LoginServiceHome %q, want %q", got, data)
+	}
+	if ok, err := StartInstalled(data); !ok || err != nil {
 		t.Fatalf("StartInstalled: %v %v", ok, err)
 	}
 	removed, err := Uninstall()
@@ -278,5 +281,27 @@ func TestLaunchdStopWaitsForTheJobToGo(t *testing.T) {
 	fakeLaunchctl(t, 0, -1)
 	if err := (launchd{}).stop(); err == nil {
 		t.Fatal("stop returned while the job was still loaded")
+	}
+}
+
+// The data directory reads back out of a rendered unit, quoting and all.
+func TestUnitHomeRoundTrips(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	want := `/home/me/.config/ground "work" 100% \x`
+	for name, m := range map[string]svcManager{"launchd": launchd{}, "systemd": systemd{}} {
+		unit, err := m.render("/bin/groundwork", want, "/usr/bin")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Dir(m.path()), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(m.path(), []byte(unit), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if got := m.home(); got != want {
+			t.Errorf("%s: %q", name, got)
+		}
 	}
 }

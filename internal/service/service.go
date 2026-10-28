@@ -334,6 +334,7 @@ func (s *Service) Routes(r chi.Router) {
 	r.Get("/service", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, s.Status()) })
 	r.Get("/projects", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, s.views()) })
 	r.Post("/projects", s.addProject)
+	r.Get("/dirs", s.suggestDirs)
 	r.Post("/projects/{id}/reopen", func(w http.ResponseWriter, r *http.Request) {
 		p, ok := s.Reg.Get(chi.URLParam(r, "id"))
 		if !ok {

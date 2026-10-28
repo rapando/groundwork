@@ -31,6 +31,61 @@ watch(notes.serviceUnread, () => refresh())
 // https://, ssh:// and git@host:path are cloned; anything else is a folder
 const isURL = computed(() => /^(https:\/\/|ssh:\/\/|[\w.-]+@[\w.-]+:)/.test(source.value.trim()))
 
+// folders matching a typed ~/… or /… path, as a listbox under the field
+interface Dir { path: string; git: boolean }
+const dirs = ref<Dir[]>([])
+const active = ref(-1)
+const showDirs = ref(false)
+let dirTimer = 0
+let dirSeq = 0
+watch(source, (v) => {
+  window.clearTimeout(dirTimer)
+  active.value = -1
+  if (isURL.value || !/^(~|\/)/.test(v)) { dirs.value = []; return }
+  dirTimer = window.setTimeout(async () => {
+    const mine = ++dirSeq
+    try {
+      const res = await serviceApi<Dir[]>('/dirs?path=' + encodeURIComponent(v))
+      if (mine === dirSeq) dirs.value = res
+    } catch { if (mine === dirSeq) dirs.value = [] }
+  }, 120)
+})
+// only what still matches the field: a list fetched for an older value never shows
+const shown = computed(() => {
+  const typed = source.value.toLowerCase()
+  return dirs.value.filter((d) => d.path.toLowerCase().startsWith(typed) || (typed === '~' && d.path.startsWith('~/')))
+})
+const listOpen = computed(() => showDirs.value && shown.value.length > 0 && !busy.value)
+// picking a folder fills it in and lists what's inside, to keep going down
+function pickDir(d: Dir) {
+  source.value = d.path + '/'
+  showDirs.value = true
+  document.getElementById('import-src')?.focus()
+}
+function onImportKey(e: KeyboardEvent) {
+  if (!listOpen.value) {
+    if (e.key === 'ArrowDown' && shown.value.length) { showDirs.value = true; e.preventDefault() }
+    return
+  }
+  const n = shown.value.length
+  switch (e.key) {
+    case 'ArrowDown': active.value = (active.value + 1) % n; break
+    case 'ArrowUp': active.value = active.value <= 0 ? n - 1 : active.value - 1; break
+    case 'Tab':
+      if (e.shiftKey) return
+      pickDir(shown.value[Math.max(active.value, 0)])
+      break
+    case 'Enter':
+      if (active.value < 0) return // submits the form
+      pickDir(shown.value[active.value])
+      break
+    case 'Escape': showDirs.value = false; break
+    default: return
+  }
+  e.preventDefault()
+  document.getElementById(`dir-${active.value}`)?.scrollIntoView({ block: 'nearest' })
+}
+
 async function refresh() {
   try {
     projects.value = await serviceApi<ProjectView[]>('/projects')
@@ -145,7 +200,23 @@ onUnmounted(() => {
       <form class="card import" @submit.prevent="importProject">
         <div class="row">
           <label class="flabel" for="import-src">Import</label>
-          <input id="import-src" v-model="source" class="inp" :disabled="busy" placeholder="~/code/infra   or   git@github.com:acme/infra.git" aria-describedby="import-hint" autocomplete="off" spellcheck="false">
+          <div class="combo">
+            <input
+              id="import-src" v-model="source" class="inp" :disabled="busy" placeholder="~/code/infra   or   git@github.com:acme/infra.git"
+              aria-describedby="import-hint" autocomplete="off" spellcheck="false"
+              role="combobox" aria-autocomplete="list" aria-controls="import-dirs" :aria-expanded="listOpen"
+              :aria-activedescendant="listOpen && active >= 0 ? `dir-${active}` : undefined"
+              @input="showDirs = true" @focus="showDirs = true" @blur="showDirs = false" @keydown="onImportKey"
+            >
+            <ul v-show="listOpen" id="import-dirs" class="dirs" role="listbox" aria-label="Folders">
+              <li
+                v-for="(d, i) in shown" :id="`dir-${i}`" :key="d.path" role="option" :aria-selected="i === active"
+                :class="{ act: i === active }" @mousedown.prevent="pickDir(d)" @mousemove="active = i"
+              >
+                <span class="mono">{{ d.path }}/</span><span v-if="d.git" class="git">git</span>
+              </li>
+            </ul>
+          </div>
           <button class="btn" :class="{ primary: source.trim() }" type="submit" :disabled="busy || !source.trim()">
             {{ busy ? (isURL ? 'Cloning…' : 'Importing…') : isURL ? 'Clone and import' : 'Import folder' }}
           </button>
@@ -229,6 +300,12 @@ h1 { margin: 0; font-size: 30px; font-weight: 600; letter-spacing: -.01em; }
 h2 { margin: 0; font-size: 18px; font-weight: 600; }
 .head p { margin: 0; font-size: 15px; }
 .import { padding: 14px 18px; gap: 8px; }
+.combo { position: relative; flex: 1 1 320px; min-width: 0; display: flex; }
+.combo .inp { flex: 1; min-width: 0; }
+.dirs { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0; margin: 0; padding: 4px; list-style: none; max-height: 280px; overflow: auto; background: var(--bg-panel); border: 1px solid var(--line); border-radius: var(--r-control); box-shadow: 0 8px 24px rgba(0, 0, 0, .12); }
+.dirs li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 13.5px; overflow-wrap: anywhere; }
+.dirs li.act { background: var(--bg-inset); color: var(--accent); }
+.dirs .git { flex: none; font-size: 11.5px; font-weight: 600; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--text-label); }
 .flabel { font-size: 15px; font-weight: 600; color: var(--text); align-self: center; }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .row .inp { flex: 1 1 320px; min-width: 0; }

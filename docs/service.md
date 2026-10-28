@@ -31,6 +31,20 @@ This registers a launchd agent on macOS (`~/Library/LaunchAgents/io.github.rapan
 | `groundwork service restart` | stop and start again, e.g. after installing a new version |
 | `groundwork service logs [-f] [-n N]` | print the last N lines of the service log (default 100), and follow it with `-f` |
 | `groundwork service install` / `uninstall` | add or remove the login service |
+
+`start`, `stop` and `restart` use the login service only when it was installed for the same data directory. A service run with another `GROUNDWORK_HOME`, such as a second instance or a test, starts and stops on its own and leaves the login service running; `status` says when the login service belongs to another data directory.
+
+`start`, `stop`, `restart`, `install` and `uninstall` say which groundwork they acted on: its version and commit, process ID and uptime, and once it's running, the console URL, projects and log file. `restart` also says when it moved to a new version:
+
+```
+$ groundwork service restart
+groundwork 1.4.0 (commit 1fc269e) stopped (pid 812, was up 3h12m)
+groundwork 2.0.0 (commit 3c3e367) started (pid 4410)
+  url:       http://localhost:7420/
+  projects:  3 available
+  log:       /Users/you/Library/Application Support/groundwork/groundwork.log
+upgraded from 1.4.0 to 2.0.0
+```
 | `groundwork serve [folder…]` | run it in the foreground instead, e.g. in a container or to watch its log; folders given are imported |
 
 **Stopping.** `groundwork service stop`, the login service stopping at logout, or SIGTERM/SIGINT give every run in progress up to 25 seconds: each tool gets SIGINT (terraform releases its state lock and exits; ansible stops after the current task), then SIGKILL, and the run is marked cancelled. launchd and systemd wait 40 seconds before killing the service themselves (`ExitTimeOut` / `TimeoutStopSec`). A *hard* stop (`kill -9`, power loss) can't do any of that: the tools keep running on their own. Each run records its tool's process group, so on the next start groundwork raises an issue for any that is still alive, with the commands to inspect or stop it, and marks the interrupted runs failed. Every run also has a `run_timeout` (default 2 hours, in `groundwork.yaml`) after which it is stopped the same way and fails, so a hung provider or host cannot hold a root's lock forever.
@@ -49,7 +63,7 @@ groundwork open platform-infra                   # open one in the browser
 groundwork remove platform-infra                 # stop managing it
 ```
 
-- **A folder** is used where it is. If it's inside a git repository, the repository root is imported. Importing the same repository twice returns the existing project.
+- **A folder** is used where it is. As you type a path starting with `~/` or `/`, the field lists the folders it could continue into and marks git repositories; arrow keys and Enter, or Tab, go down one level. If it's inside a git repository, the repository root is imported. Importing the same repository twice returns the existing project.
 - **A URL** (`https://…`, `ssh://…` or `git@host:path`) is cloned with your own `git`, so your SSH keys and credential helpers apply, into `repos/` in the data directory. The service has no terminal, so git can't prompt: use an SSH key loaded in your agent, or a credential helper, for private repositories.
 - Each row on the Projects page shows the project's environments with their status (failed, waiting for approval, drift, running) and its latest run, so you can see which one needs you without opening it. **Remove…** is in the row's **⋯** menu.
 - **Removing** a project stops the service watching it. The files, including its `.groundwork/` run history, stay where they are, so importing it again picks up where you left off. A project with a run in progress can't be removed.

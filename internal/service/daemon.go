@@ -3,9 +3,11 @@ package service
 import (
 	"errors"
 	"fmt"
+	"html"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -66,7 +68,7 @@ func StartBackground(home string, port int) (ServerInfo, error) {
 // stop, so whatever still answers is then signalled directly.
 func Stop(home string) error {
 	unitStopped := false
-	if m := manager(); m != nil && m.installed() {
+	if m := unitFor(home); m != nil {
 		unitStopped = m.stop() == nil // fails when the unit isn't loaded
 	}
 	si, ok := Running(home)
@@ -103,6 +105,40 @@ type svcManager interface {
 	start() error
 	stop() error
 	render(exe, home, path string) (string, error)
+	home() string // the GROUNDWORK_HOME it was installed with ("" when unknown)
+}
+
+// unitFor is the login service when it serves this data directory, else nil:
+// a command run with another GROUNDWORK_HOME (a second instance, a test)
+// must not stop or start the one that runs at login.
+func unitFor(home string) svcManager {
+	m := manager()
+	if m == nil || !m.installed() {
+		return nil
+	}
+	if h := m.home(); h != "" && !samePath(h, home) {
+		return nil
+	}
+	return m
+}
+
+func samePath(a, b string) bool {
+	clean := func(p string) string {
+		if r, err := filepath.EvalSymlinks(p); err == nil {
+			p = r
+		}
+		return filepath.Clean(p)
+	}
+	return clean(a) == clean(b)
+}
+
+// LoginServiceHome is the data directory the installed login service uses
+// ("" when none is installed or it can't be read).
+func LoginServiceHome() string {
+	if m := manager(); m != nil && m.installed() {
+		return m.home()
+	}
+	return ""
 }
 
 var manager = func() svcManager { // a variable so tests can fake the login service
@@ -169,10 +205,10 @@ func Installed() bool {
 	return m != nil && m.installed()
 }
 
-// StartInstalled starts the login service if one is installed.
-func StartInstalled() (bool, error) {
-	m := manager()
-	if m == nil || !m.installed() {
+// StartInstalled starts the login service if one is installed for home.
+func StartInstalled(home string) (bool, error) {
+	m := unitFor(home)
+	if m == nil {
 		return false, nil
 	}
 	return true, m.start()
@@ -206,6 +242,16 @@ func (launchd) path() string {
 }
 
 func (l launchd) installed() bool { _, err := os.Stat(l.path()); return err == nil }
+
+var launchdHome = regexp.MustCompile(`<key>GROUNDWORK_HOME</key>\s*<string>([^<]*)</string>`)
+
+func (l launchd) home() string {
+	b, _ := os.ReadFile(l.path())
+	if m := launchdHome.FindSubmatch(b); m != nil {
+		return html.UnescapeString(string(m[1]))
+	}
+	return ""
+}
 
 func (launchd) domain() string { return "gui/" + strconv.Itoa(os.Getuid()) }
 
@@ -311,6 +357,16 @@ func (systemd) path() string {
 }
 
 func (s systemd) installed() bool { _, err := os.Stat(s.path()); return err == nil }
+
+var systemdHome = regexp.MustCompile(`(?m)^Environment="GROUNDWORK_HOME=(.*)"$`)
+
+func (s systemd) home() string {
+	b, _ := os.ReadFile(s.path())
+	if m := systemdHome.FindSubmatch(b); m != nil {
+		return strings.NewReplacer(`\\`, `\`, `\"`, `"`, "%%", "%").Replace(string(m[1]))
+	}
+	return ""
+}
 
 func (systemd) render(exe, home, path string) (string, error) {
 	q := func(v string) string {

@@ -31,7 +31,7 @@ func ensureService(cmd *cobra.Command, port int) (*service.Client, service.Serve
 		warnVersionMismatch(cmd, si)
 		return service.NewClient(si), si, nil
 	}
-	ok, err := startInstalled()
+	ok, err := startInstalled(home)
 	if ok && err == nil {
 		var si service.ServerInfo
 		if si, err = waitRunning(home); err == nil {
