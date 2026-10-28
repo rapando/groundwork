@@ -53,6 +53,40 @@ output "ansible_hosts" {
 
 Each host needs a `name`. `ip` becomes `ansible_host`, and every other field (`ansible_user`, `ansible_port`, `ansible_connection`, or your own variables) is passed through as a host variable. Select the environment with `GROUNDWORK_ENV`.
 
+### Passing a generated password to Ansible
+
+Because extra fields become host variables, a value Terraform generates, such as a database password, reaches Ansible through the same output:
+
+```hcl
+resource "random_password" "db" {
+  length  = 32
+  special = false
+}
+
+output "ansible_hosts" {
+  sensitive = true
+  value = {
+    db  = [{ name = "db-1", ip = vultr_instance.db.internal_ip, db_password = random_password.db.result }]
+    web = [{ name = "web-1", ip = vultr_instance.web.main_ip, db_password = random_password.db.result }]
+  }
+}
+```
+
+Add `hashicorp/random` to `required_providers` in `versions.tf`. Then use it in a playbook like any other variable:
+
+```yaml
+- community.postgresql.postgresql_user:
+    name: app
+    password: "{{ db_password }}"
+  no_log: true
+```
+
+- The output must be `sensitive = true` once it holds a sensitive value, or the plan fails. `output -json` still prints it, so the script works.
+- It's a host variable, so set it on every host that needs it (here the database and the web servers that connect to it).
+- The password is in the Terraform state in plain text, as with any `random_password`: keep the state backend private.
+- groundwork's [host variables view](ansible.md) masks it only if its name looks secret (contains `pass`, `secret`, `token`, …). Run logs don't mask it: use `no_log: true` on tasks that could print it.
+- Ansible sees it only after an apply, since the script reads the current state.
+
 ### The ansible-vault password
 
 Setup asks for the vault password before it writes anything, and **Create files** stays disabled until you've typed it twice.
