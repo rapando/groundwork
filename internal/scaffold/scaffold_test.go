@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -67,9 +68,8 @@ func TestRenderedFilesAreSyntacticallyValid(t *testing.T) {
 	}
 }
 
-// What setup writes is detected as the Ansible project groundwork.yaml
-// describes, inventory script included. The Terraform roots don't exist until
-// the user writes them.
+// What setup writes is detected as the Terraform roots and the Ansible
+// project groundwork.yaml describes, inventory script included.
 func TestSetupRoundTripsThroughDetection(t *testing.T) {
 	for name, f := range variants() {
 		t.Run(name, func(t *testing.T) {
@@ -92,6 +92,18 @@ func TestSetupRoundTripsThroughDetection(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			var roots, want []string
+			for _, r := range rep.TerraformRoots {
+				roots = append(roots, r.Path)
+			}
+			for _, r := range written.Terraform.Roots {
+				want = append(want, r.Path)
+			}
+			sort.Strings(roots)
+			sort.Strings(want)
+			if !reflect.DeepEqual(roots, want) {
+				t.Fatalf("terraform roots detected %v, configured %v", roots, want)
+			}
 			if len(rep.Ansible) != 1 || rep.Ansible[0].Path != "ansible" {
 				t.Fatalf("ansible: %+v", rep.Ansible)
 			}
@@ -105,22 +117,25 @@ func TestSetupRoundTripsThroughDetection(t *testing.T) {
 	}
 }
 
-// Only groundwork's config and the files the chosen tools need: the
-// Terraform and the playbooks are the user's to write.
+// groundwork's config, starter Terraform for each environment and the
+// files Ansible needs, for the chosen tools only.
 func TestSetupWritesOnlyTheChosenToolsFiles(t *testing.T) {
+	tfFiles := []string{".gitignore", "groundwork.yaml",
+		"terraform/envs/dev/main.tf", "terraform/envs/dev/outputs.tf", "terraform/envs/dev/terraform.tfvars", "terraform/envs/dev/variables.tf", "terraform/envs/dev/versions.tf",
+		"terraform/envs/prod/main.tf", "terraform/envs/prod/outputs.tf", "terraform/envs/prod/terraform.tfvars", "terraform/envs/prod/variables.tf", "terraform/envs/prod/versions.tf"}
 	for _, tc := range []struct {
 		tools, files, checks []string
 		binary               string
 	}{
-		{[]string{"terraform"}, []string{"groundwork.yaml"}, []string{"fmt", "validate", "tflint", "secrets"}, "terraform"},
-		{[]string{"tofu"}, []string{"groundwork.yaml"}, []string{"fmt", "validate", "tflint", "secrets"}, "tofu"},
+		{[]string{"terraform"}, tfFiles, []string{"fmt", "validate", "tflint", "secrets"}, "terraform"},
+		{[]string{"tofu"}, tfFiles, []string{"fmt", "validate", "tflint", "secrets"}, "tofu"},
 		{[]string{"ansible"}, []string{"ansible/ansible.cfg", "groundwork.yaml"}, []string{"ansible-lint", "yamllint", "syntax-check", "secrets"}, ""},
-		{[]string{"tofu", "ansible"}, []string{"ansible/ansible.cfg", "ansible/inventory/tf_outputs.py", "groundwork.yaml"},
+		{[]string{"tofu", "ansible"}, append([]string{".gitignore", "ansible/ansible.cfg", "ansible/inventory/tf_outputs.py"}, tfFiles[1:]...),
 			[]string{"fmt", "validate", "tflint", "ansible-lint", "yamllint", "syntax-check", "secrets"}, "tofu"},
 	} {
 		t.Run(strings.Join(tc.tools, "+"), func(t *testing.T) {
 			f := baseForm()
-			f.Tools, f.VaultPasswordFile = tc.tools, "~/.vault-pass-acme"
+			f.Tools, f.Envs, f.VaultPasswordFile = tc.tools, []string{"dev", "prod"}, "~/.vault-pass-acme"
 			fs, err := Render(&f)
 			if err != nil {
 				t.Fatal(err)
@@ -202,7 +217,6 @@ func TestApplyNeverOverwritesSilently(t *testing.T) {
 	fs, _ := Render(&f)
 	os.MkdirAll(filepath.Join(dir, "ansible"), 0o755)
 	os.WriteFile(filepath.Join(dir, "ansible/ansible.cfg"), []byte("mine\n"), 0o644)
-	fs = append(fs, GitignoreEntry())
 	os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("node_modules/\n"), 0o644)
 
 	pl, _ := Plan(dir, fs)
@@ -230,7 +244,7 @@ func TestApplyNeverOverwritesSilently(t *testing.T) {
 		t.Fatal("ansible.cfg overwritten")
 	}
 	gi, _ := os.ReadFile(filepath.Join(dir, ".gitignore"))
-	if !strings.HasPrefix(string(gi), "node_modules/\n") || !strings.Contains(string(gi), ".groundwork/") {
+	if !strings.HasPrefix(string(gi), "node_modules/\n") || !strings.Contains(string(gi), ".terraform/") {
 		t.Fatalf("gitignore not merged: %q", gi)
 	}
 	// explicit overwrite

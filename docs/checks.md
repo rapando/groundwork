@@ -45,7 +45,7 @@ If the shadow tree can't be built, `validate` reports **failed** rather than run
 
 ## Editing safety
 
-Saves are atomic (temp file + rename) and require `If-Match` with the sha you loaded; a mismatch is a 409 and nothing is written. Quick-fix edits are applied to the editor buffer (never straight to disk) and only if the text at the fix's range still equals what the fix expects. `.git/`, `.groundwork/`, `.terraform/` and `*.tfstate*` are never editable through the API.
+Saves are atomic (temp file + rename) and require `If-Match` with the sha you loaded; a mismatch is a 409 and nothing is written. Quick-fix edits are applied to the editor buffer (never straight to disk) and only if the text at the fix's range still equals what the fix expects. Deletes need the same `If-Match`, so a file that changed since you opened it is never removed unseen. `.git/`, `.groundwork/`, `.terraform/` and `*.tfstate*` are never editable or deletable through the API.
 
 ## Testing against real tools
 

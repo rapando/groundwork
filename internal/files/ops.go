@@ -172,3 +172,33 @@ func Write(root, rel string, data []byte, ifMatch string, create bool) (string, 
 	}
 	return SHA(data), nil
 }
+
+// Delete removes a file. ifMatch is the sha the caller last read; a mismatch
+// returns *ConflictError so a file that changed since is never lost unseen.
+// Directories are refused.
+func Delete(root, rel, ifMatch string) error {
+	full, err := editablePath(root, rel)
+	if err != nil {
+		return err
+	}
+	writeMu.Lock()
+	defer writeMu.Unlock()
+
+	st, err := os.Lstat(full)
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		return ErrNotFound
+	case err != nil:
+		return err
+	case st.IsDir():
+		return fmt.Errorf("%w: %s is a directory", ErrForbidden, rel)
+	}
+	cur, err := os.ReadFile(full)
+	if err != nil {
+		return err
+	}
+	if ifMatch != SHA(cur) {
+		return &ConflictError{CurrentSHA: SHA(cur)}
+	}
+	return os.Remove(full)
+}

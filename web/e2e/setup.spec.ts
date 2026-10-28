@@ -25,14 +25,14 @@ test('requests without a session are rejected', async ({ request }) => {
   }
 })
 
-test('empty repo: setup asks for the vault password, writes only the glue, unlocks the vault', async ({ page }) => {
+test('empty repo: setup asks for the vault password, writes starter code and the glue, unlocks the vault', async ({ page }) => {
   gw = await start()
   await page.goto(gw.url)
   await expect(page).toHaveURL(/\/setup\/scaffold$/)
   await expect(page.getByRole('heading', { name: 'Set up this repo' })).toBeVisible()
-  // no provider to pick: the Terraform is yours
+  // no provider to pick: the starter Terraform is provider-neutral
   await expect(page.getByRole('group', { name: 'Provider' })).toHaveCount(0)
-  await expect(page.getByText(/^\+3 files/)).toBeVisible()
+  await expect(page.getByText(/^\+19 files/)).toBeVisible() // 5 per environment, .gitignore, config, ansible.cfg, inventory script
 
   // Create files waits for the vault password
   const create = page.getByRole('button', { name: 'Create files' })
@@ -61,7 +61,10 @@ test('empty repo: setup asks for the vault password, writes only the glue, unloc
   expect(cfg).not.toContain('vault_password_file')
   expect(cfg).not.toContain('e2e-vault-pw')
   expect(existsSync(path.join(gw.dir, 'ansible/inventory/tf_outputs.py'))).toBe(true)
-  expect(existsSync(path.join(gw.dir, 'terraform'))).toBe(false)
+  // workspaces: one root, a tfvars file per environment
+  expect(readFileSync(path.join(gw.dir, 'terraform/env/prod.tfvars'), 'utf8')).toBe('environment = "prod"\n')
+  expect(readFileSync(path.join(gw.dir, 'terraform/outputs.tf'), 'utf8')).toContain('output "ansible_hosts"')
+  expect(existsSync(path.join(gw.dir, 'terraform/envs'))).toBe(false)
 
   // Add a secret opens New secret on an unlocked vault
   await page.getByRole('button', { name: 'Add a secret' }).click()
@@ -84,7 +87,7 @@ test('empty repo: a password file is created outside the repo, or reused', async
   await page.getByLabel(/^Password file, under/).fill('.vault-pass')
   await expect(page.getByText(/outside the repository/)).toBeVisible()
   await page.getByLabel(/^Password file, under/).fill(pwFile)
-  await expect(page.getByText(/^\+4 files/)).toBeVisible()
+  await expect(page.getByText(/^\+20 files/)).toBeVisible()
   await expect(page.getByText(pwFile, { exact: true })).toBeVisible() // listed outside the repo
   await page.getByLabel('Vault password').fill('file-pw')
   await page.getByLabel('Repeat it').fill('file-pw')
@@ -137,9 +140,9 @@ test('empty repo: only the chosen tools are set up', async ({ page }) => {
   await expect(page.getByText('choose Terraform, OpenTofu or Ansible')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Create files' })).toBeDisabled()
 
-  // OpenTofu alone: groundwork.yaml only, no vault password to set
+  // OpenTofu alone: config and starter code, no vault password to set
   await tofu.check()
-  await expect(page.getByText(/^\+1 files/)).toBeVisible()
+  await expect(page.getByText(/^\+17 files/)).toBeVisible()
   await expect(page.getByLabel('Vault password')).toHaveCount(0)
   await expect(page.getByText('groundwork init --tools tofu')).toBeVisible()
   await page.getByRole('button', { name: 'Create files' }).click()
@@ -149,6 +152,8 @@ test('empty repo: only the chosen tools are set up', async ({ page }) => {
   expect(cfg).toContain('binary: tofu')
   expect(cfg).not.toContain('ansible')
   expect(existsSync(path.join(gw.dir, 'ansible'))).toBe(false)
+  expect(readFileSync(path.join(gw.dir, 'terraform/envs/staging/terraform.tfvars'), 'utf8')).toBe('environment = "staging"\n')
+  expect(readFileSync(path.join(gw.dir, 'terraform/envs/staging/outputs.tf'), 'utf8')).not.toContain('ansible_hosts')
 })
 
 test('app repo: detect screen lists findings, honours exclusions, writes config', async ({ page }) => {

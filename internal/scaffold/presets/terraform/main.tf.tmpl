@@ -1,0 +1,6 @@
+# Your provider blocks, resources and module calls go here.
+# Shared building blocks belong in terraform/modules/<name>.
+
+locals {
+  name_prefix = "{{ .Project }}-${var.environment}"
+}

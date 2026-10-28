@@ -162,7 +162,7 @@ func TestScaffoldPreviewAndWrite(t *testing.T) {
 
 	rec = call(t, h, "POST", "/setup/scaffold/preview", map[string]any{"form": goodForm()})
 	m := into(t, rec)
-	if rec.Code != 200 || m["count"].(float64) != 3 || m["existing"].(float64) != 0 || m["vault_file"] != nil {
+	if rec.Code != 200 || m["count"].(float64) != 14 || m["existing"].(float64) != 0 || m["vault_file"] != nil {
 		t.Fatalf("%d %v", rec.Code, m["count"])
 	}
 	if entries, _ := os.ReadDir(root); len(entries) != 0 {
@@ -172,7 +172,7 @@ func TestScaffoldPreviewAndWrite(t *testing.T) {
 	// zip: streams, writes nothing
 	rec = call(t, h, "POST", "/setup/scaffold?format=zip", map[string]any{"form": goodForm()})
 	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
-	if err != nil || len(zr.File) != 3 {
+	if err != nil || len(zr.File) != 14 {
 		t.Fatalf("zip: %v", err)
 	}
 	if entries, _ := os.ReadDir(root); len(entries) != 0 {

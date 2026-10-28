@@ -87,8 +87,10 @@ func TestInitSetsUpWritesFilesAndCommits(t *testing.T) {
 	if err != nil || !strings.Contains(string(b), "vault_password_file: "+pwFile) {
 		t.Fatalf("config: %v %s", err, b)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "terraform")); err == nil {
-		t.Fatal("setup wrote Terraform")
+	for _, p := range []string{"terraform/envs/dev/main.tf", "terraform/envs/prod/terraform.tfvars"} {
+		if _, err := os.Stat(filepath.Join(dir, p)); err != nil {
+			t.Fatalf("no starter Terraform: %v", err)
+		}
 	}
 	if !strings.Contains(string(b), "binary: terraform") || !strings.Contains(string(b), "projects:") {
 		t.Fatalf("config without both tools:\n%s", b)
@@ -99,7 +101,7 @@ func TestInitSetsUpWritesFilesAndCommits(t *testing.T) {
 	}
 }
 
-// --tools tofu sets up OpenTofu alone: groundwork.yaml only, no vault password.
+// --tools tofu sets up OpenTofu alone: groundwork.yaml and starter code, no vault password.
 func TestInitForOpenTofuAlone(t *testing.T) {
 	dir := gitRepo(t)
 	t.Setenv("GROUNDWORK_HOME", t.TempDir())

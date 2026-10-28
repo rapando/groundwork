@@ -1,0 +1,14 @@
+output "name_prefix" {
+  description = "Prefix for the names of this environment's resources."
+  value       = local.name_prefix
+}
+{{- if .FromTF }}
+
+# The Ansible inventory script (ansible/inventory/tf_outputs.py) reads this:
+# a map of group -> list of hosts, e.g.
+#   web = [{ name = "web-1", ip = aws_instance.web.public_ip, ansible_user = "ubuntu" }]
+output "ansible_hosts" {
+  description = "Hosts for Ansible, by group."
+  value       = {}
+}
+{{- end }}

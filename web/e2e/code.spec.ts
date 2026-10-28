@@ -163,3 +163,36 @@ test('editing aids: brackets close, indent guides, completions from sibling file
   await page.keyboard.press('Enter')
   await expect(page.locator('.cm-content')).toContainText('size = var.instance_type')
 })
+
+test('a new file is created from the tree and opened; Delete removes it after a confirmation', async ({ page }) => {
+  gw = await start('iac-only', { init: true, commit: true, files: { 'terraform/envs/dev/main.tf': MAIN } })
+  await open(page, gw.url, 'terraform/envs/dev/main.tf')
+
+  // starts in the open file's folder; a name that exists is refused
+  await page.getByRole('button', { name: 'New file' }).click()
+  const dialog = page.getByRole('dialog', { name: 'New file' })
+  const input = dialog.getByLabel('Path in the repository')
+  await expect(input).toHaveValue('terraform/envs/dev/')
+  await input.fill('terraform/envs/dev/main.tf')
+  await dialog.getByRole('button', { name: 'Create' }).click()
+  await expect(dialog.getByText('A file with that name already exists.')).toBeVisible()
+
+  // a new folder is fine
+  await input.fill('terraform/modules/dns/main.tf')
+  await dialog.getByRole('button', { name: 'Create' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page).toHaveURL(/\/code\/terraform\/modules\/dns\/main\.tf$/)
+  await expect(page.locator('[data-path="terraform/modules/dns/main.tf"]')).toBeVisible()
+  expect(readFileSync(path.join(gw.dir, 'terraform/modules/dns/main.tf'), 'utf8')).toBe('')
+
+  // never committed, and the confirmation says so; Keep it changes nothing
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  await expect(page.getByText(/never committed/)).toBeVisible()
+  await page.getByRole('button', { name: 'Keep it' }).click()
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  await page.getByRole('button', { name: 'Delete file' }).click()
+  await expect(page).toHaveURL(/\/code$/)
+  await expect(page.getByText('Deleted terraform/modules/dns/main.tf')).toBeVisible()
+  await expect(page.locator('[data-path="terraform/modules/dns/main.tf"]')).toHaveCount(0)
+  expect(() => readFileSync(path.join(gw.dir, 'terraform/modules/dns/main.tf'))).toThrow()
+})

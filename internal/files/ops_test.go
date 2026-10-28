@@ -153,3 +153,38 @@ func TestUnifiedDiff(t *testing.T) {
 		t.Fatalf("%s", d)
 	}
 }
+
+func TestDelete(t *testing.T) {
+	root := t.TempDir()
+	os.MkdirAll(filepath.Join(root, "d", ".git"), 0o755)
+	os.WriteFile(filepath.Join(root, "d/a.tf"), []byte("one\n"), 0o644)
+	os.WriteFile(filepath.Join(root, "terraform.tfstate"), []byte("{}"), 0o644)
+
+	var ce *ConflictError
+	if err := Delete(root, "d/a.tf", "stale"); !errors.As(err, &ce) || ce.CurrentSHA != SHA([]byte("one\n")) {
+		t.Fatalf("stale sha: %v", err)
+	}
+	if err := Delete(root, "d/a.tf", SHA([]byte("one\n"))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "d/a.tf")); !os.IsNotExist(err) {
+		t.Fatal("file still there")
+	}
+	if err := Delete(root, "d/a.tf", ""); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("missing: %v", err)
+	}
+	if err := Delete(root, "d", ""); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("directory: %v", err)
+	}
+	for _, p := range []string{"d/.git", "terraform.tfstate", ".groundwork/state.db"} {
+		if err := Delete(root, p, SHA([]byte("{}"))); !errors.Is(err, ErrForbidden) {
+			t.Errorf("%s: %v", p, err)
+		}
+	}
+	if err := Delete(root, "../x", ""); !errors.Is(err, ErrOutsideRepo) {
+		t.Fatalf("escape: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "terraform.tfstate")); err != nil {
+		t.Fatal("state file removed")
+	}
+}

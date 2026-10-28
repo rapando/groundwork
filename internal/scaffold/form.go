@@ -1,7 +1,8 @@
-// Package scaffold writes the little groundwork needs in a new repository:
-// groundwork.yaml and, with both an IaC tool and Ansible, the inventory
-// script that reads Terraform's hosts. The Terraform and the playbooks are
-// the user's to write.
+// Package scaffold writes what a new repository starts from: groundwork.yaml,
+// provider-neutral starter Terraform for each environment, ansible.cfg and,
+// with both an IaC tool and Ansible, the inventory script that reads
+// Terraform's hosts. Providers, resources and playbooks are the user's to
+// write.
 package scaffold
 
 import (
@@ -17,9 +18,9 @@ type Form struct {
 	Project string `json:"project"` // shown in the console
 	// Tools is what the repository will use: terraform or tofu (not both),
 	// and/or ansible. Only those tools' files and checks are set up.
-	Tools   []string `json:"tools"`
-	Envs    []string `json:"envs"`    // ordered
-	Layout  string   `json:"layout"`  // dirs | workspaces: where the Terraform roots will live
+	Tools  []string `json:"tools"`
+	Envs   []string `json:"envs"`   // ordered
+	Layout string   `json:"layout"` // dirs | workspaces: where the Terraform roots will live
 	// VaultPasswordFile is where ansible-vault's password lives ("" = none:
 	// it is typed in the console and kept in memory)
 	VaultPasswordFile string   `json:"vault_password_file"`

@@ -156,6 +156,21 @@ func (a *API) writeFile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"sha": sha})
 }
 
+func (a *API) deleteFile(w http.ResponseWriter, r *http.Request) {
+	ifMatch := strings.Trim(r.Header.Get("If-Match"), `"`)
+	if ifMatch == "" {
+		writeError(w, 428, "precondition_required", "If-Match with the sha you loaded is required", nil)
+		return
+	}
+	rel := path.Clean(r.URL.Query().Get("path"))
+	if err := files.Delete(a.Root, rel, ifMatch); err != nil {
+		fileError(w, err)
+		return
+	}
+	a.Checks.RunNow([]string{rel}) // the unit's other files may have used what it declared
+	writeJSON(w, 200, map[string]any{"deleted": rel})
+}
+
 func fileError(w http.ResponseWriter, err error) {
 	var ce *files.ConflictError
 	switch {

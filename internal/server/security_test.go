@@ -229,6 +229,7 @@ func TestNoPathEscapesOrArgumentInjection(t *testing.T) {
 		return []ep{
 			{"GET", "/api/files/content?path=" + q, nil, true},
 			{"PUT", "/api/files/content?path=" + q, map[string]any{"content": "pwned", "create": true}, true},
+			{"DELETE", "/api/files/content?path=" + q, nil, true},
 			{"GET", "/api/git/diff?path=" + q, nil, false},
 			{"GET", "/api/graph/roots?file=" + q, nil, false},
 			{"POST", "/api/checks/fix", map[string]any{"kind": "fmt", "file": p}, true},

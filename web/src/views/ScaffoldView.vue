@@ -240,8 +240,9 @@ const initCmd = computed(() => {
         <div class="head">
           <h1>Set up this repo</h1>
           <p class="muted lead">
-            No <span class="mono">groundwork.yaml</span> here yet. You write the code yourself; groundwork only adds its own config, and
-            with Terraform or OpenTofu and Ansible, the inventory script that turns your hosts into Ansible hosts. Nothing touches your cloud.
+            No <span class="mono">groundwork.yaml</span> here yet. groundwork adds its config, starter Terraform for each environment
+            with no provider picked, and with Terraform or OpenTofu and Ansible, the inventory script that turns your hosts into Ansible hosts.
+            You add the providers, resources and playbooks. Nothing touches your cloud.
           </p>
         </div>
 

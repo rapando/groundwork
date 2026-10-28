@@ -30,19 +30,42 @@ type tplData struct {
 	FirstEnv string
 	Binary   string // terraform | tofu ("" without one)
 	FromTF   bool   // the inventory comes from Terraform's outputs
+	Env      string // the environment a per-environment file is for
 }
 
 type entry struct {
 	src, dst string
 	exec     bool
+	env      string // per-environment file
+	merge    bool
 }
 
-// manifest is everything setup writes besides groundwork.yaml: nothing for
-// Terraform alone, ansible.cfg for Ansible, and the inventory script that
-// joins them when there are both.
+// manifest is everything setup writes besides groundwork.yaml: starter
+// Terraform for each environment (a root per environment with dirs, one root
+// and a tfvars file per environment with workspaces), ansible.cfg for
+// Ansible, and the inventory script that joins them when there are both.
 func manifest(f *Form) []entry {
-	sh := "presets/shared/"
+	sh, tf := "presets/shared/", "presets/terraform/"
 	var m []entry
+	if f.IaC() != "" {
+		code := func(dir string) {
+			for _, n := range []string{"versions.tf", "main.tf", "variables.tf", "outputs.tf"} {
+				m = append(m, entry{src: tf + n + ".tmpl", dst: dir + n})
+			}
+		}
+		if f.Layout == "dirs" {
+			for _, e := range f.Envs {
+				code("terraform/envs/" + e + "/")
+				m = append(m, entry{src: tf + "tfvars.tmpl", dst: "terraform/envs/" + e + "/terraform.tfvars", env: e})
+			}
+		} else {
+			code("terraform/")
+			for _, e := range f.Envs {
+				m = append(m, entry{src: tf + "tfvars.tmpl", dst: "terraform/env/" + e + ".tfvars", env: e})
+			}
+		}
+		m = append(m, entry{src: tf + "gitignore.tmpl", dst: ".gitignore", merge: true})
+	}
 	if f.Ansible() {
 		m = append(m, entry{src: sh + "ansible.cfg.tmpl", dst: "ansible/ansible.cfg"})
 		if f.IaC() != "" {
@@ -73,10 +96,11 @@ func Render(f *Form) ([]File, error) {
 			return nil, fmt.Errorf("%s: %w", e.src, err)
 		}
 		var buf bytes.Buffer
+		d.Env = e.env
 		if err := tpl.Execute(&buf, d); err != nil {
 			return nil, fmt.Errorf("%s: %w", e.src, err)
 		}
-		out = append(out, File{Path: e.dst, Content: buf.String(), Executable: e.exec})
+		out = append(out, File{Path: e.dst, Content: buf.String(), Executable: e.exec, Merge: e.merge})
 	}
 
 	cfg := ConfigFor(f)

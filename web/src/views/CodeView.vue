@@ -7,6 +7,8 @@ import CodeEditor from '../components/CodeEditor.vue'
 import ProblemsTray from '../components/ProblemsTray.vue'
 import DiffView from '../components/DiffView.vue'
 import ArchitecturePanel from '../components/ArchitecturePanel.vue'
+import Modal from '../components/Modal.vue'
+import InlineConfirm from '../components/InlineConfirm.vue'
 import { api, ApiError } from '../api/client'
 import type { Diagnostic, FileContent } from '../api/types'
 import { useChecks } from '../stores/checks'
@@ -104,6 +106,68 @@ async function save(overwrite = false): Promise<boolean> {
 
 async function reloadFromDisk() {
   await load(path.value)
+}
+
+// --- new / delete ---
+const creating = ref(false)
+const newPath = ref('')
+const newError = ref('')
+const newBusy = ref(false)
+function startNew() {
+  // start in the open file's folder, else the first section's
+  const base = path.value ? dirOf(path.value) : (files.sections.find((s) => s.base !== '.')?.base ?? '')
+  newPath.value = base && !base.endsWith('/') ? base + '/' : base
+  newError.value = ''
+  creating.value = true
+}
+async function createFile() {
+  const p = newPath.value.trim().replace(/^\.?\/+/, '')
+  if (!p || p.endsWith('/')) { newError.value = 'Enter a file name, e.g. terraform/envs/dev/network.tf'; return }
+  newBusy.value = true
+  newError.value = ''
+  try {
+    await api('/files/content?path=' + encodeURIComponent(p), { method: 'PUT', body: { content: '', create: true } })
+    creating.value = false
+    await files.refresh().catch(swallow('file list refresh after create'))
+    open(p)
+  } catch (e) {
+    newError.value = e instanceof ApiError && e.code === 'exists' ? 'A file with that name already exists.' : e instanceof Error ? e.message : String(e)
+  } finally {
+    newBusy.value = false
+  }
+}
+
+const deleting = ref(false)
+// say what can and can't be got back: git has committed files, nothing has new ones
+const deleteMessage = computed(() => {
+  const st = gitFile.value?.status
+  const back = !git.status?.available ? ' This cannot be undone.'
+    : !st ? ' Git still has it, so it can be restored.'
+    : st === 'untracked' || st === 'added' ? ' It was never committed, so it cannot be restored.'
+      : ' Git can restore the last committed version; uncommitted changes are lost.'
+  return `Delete ${path.value}?${back}` + (dirty.value ? ' Your unsaved edits go with it.' : '')
+})
+const deleteBusy = ref(false)
+async function deleteFile() {
+  if (!loaded.value) return
+  const p = path.value
+  deleteBusy.value = true
+  try {
+    await api('/files/content?path=' + encodeURIComponent(p), { method: 'DELETE', headers: { 'If-Match': loaded.value.sha } })
+    deleting.value = false
+    loaded.value = null // nothing left to lose, so leaving doesn't ask
+    buffer.value = ''
+    await router.push('/code')
+    say('Deleted ' + p)
+    files.refresh().catch(swallow('file list refresh after delete'))
+    git.refresh().catch(swallow('git status refresh after delete'))
+  } catch (e) {
+    deleting.value = false
+    if (e instanceof ApiError && e.code === 'conflict') conflict.value = { currentSha: (e.details as { current_sha: string }).current_sha }
+    else say('Delete failed: ' + (e instanceof Error ? e.message : String(e)))
+  } finally {
+    deleteBusy.value = false
+  }
 }
 
 // --- external changes ---
@@ -274,8 +338,17 @@ function gotoFrom(file: string, line: number) {
         <button v-if="isTerraform" class="btn sm" type="button" :disabled="!loaded" @click="format()">Format</button>
         <button class="btn sm" type="button" :disabled="!loaded || checks.running" @click="runChecks">{{ checks.running ? 'Checking…' : 'Validate' }}</button>
         <button class="btn sm" type="button" :disabled="!gitFile || dirty" :title="dirty ? 'Save first to diff' : ''" :aria-pressed="diffOpen" @click="toggleDiff">{{ diffOpen ? 'Back to editor' : 'Diff' }}</button>
+        <button class="btn sm" type="button" :disabled="!loaded || deleting" @click="deleting = true">Delete</button>
       </div>
     </header>
+
+    <div v-if="deleting" class="confirm">
+      <InlineConfirm
+        danger :busy="deleteBusy" confirm-label="Delete file"
+        :message="deleteMessage"
+        @confirm="deleteFile" @cancel="deleting = false"
+      />
+    </div>
 
     <div v-if="conflict" class="banner fail" role="alert">
       This file changed on disk after you opened it. Saving would overwrite those changes.
@@ -297,13 +370,14 @@ function gotoFrom(file: string, line: number) {
       <FileTree
         class="tree"
         :files="files.files" :sections="files.sections" :selected="path" :badges="checks.badges" :git="git.byPath"
-        :iac-only="files.iacOnly" @open="open" @iac="files.setIacOnly($event)"
+        :iac-only="files.iacOnly" @open="open" @iac="files.setIacOnly($event)" @new="startNew"
       />
       <div class="pane">
         <div class="editor-area" :class="{ split: showVisual && showEditor, visualonly: showVisual && !showEditor }">
           <section v-if="!path" class="start" aria-label="Open a file">
+            <p v-if="notice" class="notice-start" role="status">{{ notice }}</p>
             <div><h2>Open a file</h2>
-              <p class="muted">Pick one from the tree, or press <kbd class="mono">⌘K</kbd> to <button class="link" type="button" @click="openPalette">search every file by name</button>.</p></div>
+              <p class="muted">Pick one from the tree, press <kbd class="mono">⌘K</kbd> to <button class="link" type="button" @click="openPalette">search every file by name</button>, or <button class="link" type="button" @click="startNew">create a new file</button>.</p></div>
             <div v-if="uncommitted.length">
               <div class="shead"><span class="lbl">Uncommitted · {{ git.dirty }}</span></div>
               <ul class="flist">
@@ -345,6 +419,21 @@ function gotoFrom(file: string, line: number) {
         />
       </div>
     </div>
+
+    <Modal v-if="creating" labelledby="new-title" @close="creating = false">
+      <form class="card" @submit.prevent="createFile">
+        <h2 id="new-title" class="mtitle">New file</h2>
+        <label class="field">Path in the repository
+          <input v-model="newPath" class="inp" :class="{ bad: newError }" type="text" spellcheck="false" autocomplete="off" placeholder="terraform/envs/dev/network.tf" :aria-invalid="!!newError" aria-describedby="new-hint" />
+        </label>
+        <p v-if="newError" class="err" role="alert">{{ newError }}</p>
+        <p v-else id="new-hint" class="muted small">Folders that don't exist yet are created.</p>
+        <div class="mrow">
+          <button class="btn" type="button" @click="creating = false">Cancel</button>
+          <button class="btn primary" type="submit" :disabled="newBusy">Create</button>
+        </div>
+      </form>
+    </Modal>
   </AppShell>
 </template>
 
@@ -390,6 +479,13 @@ function gotoFrom(file: string, line: number) {
 .start .link { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; }
 .status { padding: 6px 16px; font-size: 13px; color: var(--text-faint); border-top: 1px solid var(--bg-hover); display: flex; gap: 12px; }
 .notice { margin-left: auto; color: var(--ok); }
+.notice-start { color: var(--ok); font-size: 14px; }
+.confirm { padding: 10px 24px; border-bottom: 1px solid var(--line); }
+.mtitle { margin: 0; font-size: 18px; font-weight: 600; }
+.card .inp { width: 100%; }
+.card .small { margin: 0; font-size: 13px; }
+.card .err { margin: 0; }
+.mrow { display: flex; justify-content: flex-end; gap: 8px; }
 :deep(.tray) { max-height: 40vh; }
 @media (max-width: 900px) { .work { flex-wrap: wrap; } .tree { max-width: 100%; max-height: 260px; } }
 </style>

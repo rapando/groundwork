@@ -151,6 +151,38 @@ func TestFileContentRoundTripAndErrors(t *testing.T) {
 	if rec := put(t, e.h, "/files/content?path=terraform/envs/dev/new.tf", "", map[string]any{"content": "a", "create": true}); rec.Code != 200 {
 		t.Fatalf("create: %d %s", rec.Code, rec.Body)
 	}
+	if rec := put(t, e.h, "/files/content?path=terraform/envs/dev/new.tf", "", map[string]any{"content": "b", "create": true}); rec.Code != 409 {
+		t.Fatalf("create over an existing file: %d", rec.Code)
+	}
+
+	// delete: needs the sha, refuses a stale one
+	del := func(p, ifMatch string) int {
+		req := httptest.NewRequest("DELETE", "/files/content?path="+p, nil)
+		if ifMatch != "" {
+			req.Header.Set("If-Match", ifMatch)
+		}
+		rec := httptest.NewRecorder()
+		e.h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	newSHA := files.SHA([]byte("a"))
+	if got := del("terraform/envs/dev/new.tf", ""); got != 428 {
+		t.Fatalf("delete without If-Match: %d", got)
+	}
+	if got := del("terraform/envs/dev/new.tf", "stale"); got != 409 {
+		t.Fatalf("delete with a stale sha: %d", got)
+	}
+	if got := del("terraform/envs/dev/new.tf", newSHA); got != 200 {
+		t.Fatalf("delete: %d", got)
+	}
+	if _, err := os.Stat(filepath.Join(e.root, "terraform/envs/dev/new.tf")); !os.IsNotExist(err) {
+		t.Fatal("not deleted")
+	}
+	for p, want := range map[string]int{"terraform/envs/dev/new.tf": 404, "terraform": 403, ".git/config": 403, "../../etc/passwd": 400} {
+		if got := del(p, newSHA); got != want {
+			t.Errorf("delete %s: got %d want %d", p, got, want)
+		}
+	}
 	for path, want := range map[string]int{
 		"/files/content?path=nope.tf":           404,
 		"/files/content?path=../../etc/passwd":  400,
