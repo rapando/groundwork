@@ -1,4 +1,4 @@
-import { test as base, type BrowserContext } from '@playwright/test'
+import { test as base, expect, type BrowserContext, type Page } from '@playwright/test'
 import { spawn, ChildProcess, execFileSync } from 'node:child_process'
 import { cpSync, existsSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -158,4 +158,14 @@ export async function start(fixture?: string, opts: StartOpts = {}): Promise<Ins
       return start(undefined, { ...opts, dir, home, env: { ...(opts.env ?? {}), ...(e ?? {}) } })
     },
   }
+}
+
+/** The Overview shows one environment at a time: picks env there if it is not the one on show. */
+export async function selectEnv(page: Page, env: string) {
+  const shown = page.getByRole('region', { name: 'Environments' }).locator('article .ename')
+  await expect(shown).toBeVisible()
+  if ((await shown.innerText()).trim() === env) return
+  await page.getByRole('button', { name: 'Choose environment' }).click()
+  await page.getByRole('menuitemradio', { name: new RegExp(`^${env}\\b`) }).click()
+  await expect(shown).toHaveText(env)
 }

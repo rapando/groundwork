@@ -1,4 +1,4 @@
-import { test, expect, Page, start, Instance } from './helpers'
+import { test, expect, Page, start, selectEnv, Instance } from './helpers'
 import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -79,6 +79,7 @@ test('plan from the overview, review, approve, watch the apply stream live', asy
 test('prod needs the environment name typed before approval is possible', async ({ page }) => {
   gw = await start('iac-only', { init: true })
   await overview(page, gw.url)
+  await selectEnv(page, 'prod')
   await card(page, 'prod').getByRole('button', { name: 'Plan' }).click()
   await waitForApproval(page)
 
@@ -188,6 +189,7 @@ test('a plan waiting for approval survives a restart; a crashed apply is marked 
   test.setTimeout(120_000) // three server lifetimes and two applies
   gw = await start('iac-only', { init: true })
   await overview(page, gw.url)
+  await selectEnv(page, 'prod')
   await card(page, 'prod').getByRole('button', { name: 'Plan' }).click()
   await waitForApproval(page)
   const runUrl = new URL(page.url())

@@ -13,8 +13,9 @@ import { useChecks } from '../stores/checks'
 import { useGit } from '../stores/git'
 import { ago, duration, kindLabel, useRuns } from '../stores/runs'
 import { useNow } from '../composables/now'
-import type { DriftSchedule, EnvTarget, Onboarding } from '../api/types'
+import type { DriftSchedule, EnvTarget, EnvView, Onboarding } from '../api/types'
 import { swallow } from '../api/swallow'
+import { projectId } from '../project'
 
 const router = useRouter()
 const route = useRoute()
@@ -73,7 +74,7 @@ const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
 const tourSteps = computed<TourStep[]>(() => [
   { title: 'Welcome to groundwork', body: `It scanned this repo and found ${plural(counts.value.envs, 'environment')}, ${plural(counts.value.roots, 'Terraform root')} and ${plural(counts.value.projects, 'Ansible project')}. Here is a one-minute tour of where things live.` },
   { title: 'Everything is one click away', body: 'Code is where you edit and visualize. Runs shows every plan, apply and playbook with live logs. Graph draws how resources connect. Troubleshoot explains errors.', anchor: 'nav' },
-  { title: 'Each environment at a glance', body: 'See drift and pending changes per environment. Plan only previews changes. Nothing is applied until you review the plan and approve it.', anchor: 'envs' },
+  { title: 'One environment at a time', body: 'Pick an environment to see its drift and pending changes; the line beside the picker says what the others are waiting on. Plan only previews changes. Nothing is applied until you review the plan and approve it.', anchor: 'envs' },
   { title: 'Checks run on every save', body: 'fmt, validate, tflint, ansible-lint, yamllint and the secrets scan re-run when a file changes, in the editor or in your own IDE.', anchor: 'checks' },
   { title: 'Problems come with a fix', body: 'Errors, stuck state locks and unreachable hosts land here with a suggested next step. Open Troubleshoot for the full walkthrough.', anchor: 'issues' },
   { title: 'Move fast with the keyboard', body: 'Search jumps to any file, run, host or environment, and starts plans. Reopen these tips any time with the ? button.', anchor: 'header', keys: true },
@@ -101,6 +102,31 @@ const envPill: Record<string, [string, string]> = {
   running: ['running', 'running'], unknown: ['queued', 'not planned yet'], drift: ['waiting_approval', 'drift'],
 }
 const pendingTotal = (t: EnvTarget) => (t.pending ? t.pending.create + t.pending.update + t.pending.replace + t.pending.delete : 0)
+
+// One environment shows at a time: the one in the URL (?env=, which the
+// sidebar sets), else the last one picked here, else the first.
+const ENV_KEY = `gw.env.${projectId}`
+function savedEnv(): string { try { return localStorage.getItem(ENV_KEY) ?? '' } catch { return '' } }
+const chosen = ref(typeof route.query.env === 'string' ? route.query.env : savedEnv())
+const current = computed(() => runs.envs.find((e) => e.name === chosen.value) ?? runs.envs[0])
+function pick(name: string) {
+  chosen.value = name
+  try { localStorage.setItem(ENV_KEY, name) } catch { /* the URL still carries it */ }
+  if (route.query.env !== name) router.replace({ query: { ...route.query, env: name } })
+}
+watch(() => route.query.env, (e) => { if (typeof e === 'string' && e) chosen.value = e })
+// what an environment is waiting on, for the picker's menu and the line about the others
+function needs(e: EnvView): string[] {
+  const out: string[] = []
+  for (const t of e.targets) {
+    if (t.last_run?.status === 'failed') out.push('last run failed')
+    if (t.pending) out.push(`${pendingTotal(t)} ${pendingTotal(t) === 1 ? 'change' : 'changes'} to review`)
+    if (t.drift) out.push(`${t.drift} drifted`)
+  }
+  for (const a of e.ansible) if (a.down > 0) out.push(`${a.down} ${a.down === 1 ? 'host' : 'hosts'} down`)
+  return out
+}
+const elsewhere = computed(() => runs.envs.filter((e) => e !== current.value && needs(e).length))
 function lastLine(t: EnvTarget): string {
   const r = t.last_run
   if (!r) return 'never planned'
@@ -180,12 +206,29 @@ const hasTerraform = computed(() => (ws.ws?.config?.terraform?.roots ?? []).leng
       </section>
 
       <section v-if="runs.envs.length" class="envs" aria-label="Environments" data-tour="envs">
-        <article v-for="e in runs.envs" :key="e.name" class="card env">
+        <div v-if="runs.envs.length > 1" class="pickrow">
+          <DropMenu label="Choose environment" align="start" button-class="picker">
+            <template #button>
+              <span class="lbl">Environment</span>
+              <span class="mono pname">{{ current.name }}</span>
+              <StatusPill :status="envPill[current.status][0]" :label="envPill[current.status][1]" />
+              <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+            </template>
+            <button v-for="e in runs.envs" :key="e.name" class="mi penv" type="button" role="menuitemradio" :aria-checked="e.name === current.name" @click="pick(e.name)">
+              <span class="prow"><span class="mono pname">{{ e.name }}</span><StatusPill :status="envPill[e.status][0]" :label="envPill[e.status][1]" /></span>
+              <span v-if="needs(e).length" class="small muted">{{ needs(e).join(' · ') }}</span>
+            </button>
+          </DropMenu>
+          <p v-if="elsewhere.length" class="small muted elsewhere">Elsewhere:
+            <template v-for="(e, i) in elsewhere" :key="e.name">{{ i ? ' · ' : ' ' }}<button class="linkish mono" type="button" @click="pick(e.name)">{{ e.name }}</button> {{ needs(e).join(', ') }}</template>
+          </p>
+        </div>
+        <article v-if="current" :key="current.name" class="card env">
           <div class="between ehead">
-            <span class="mono ename">{{ e.name }}</span>
-            <StatusPill :status="envPill[e.status][0]" :label="envPill[e.status][1]" />
+            <span class="mono ename">{{ current.name }}</span>
+            <StatusPill :status="envPill[current.status][0]" :label="envPill[current.status][1]" />
           </div>
-          <div v-for="t in e.targets" :key="t.root" class="target">
+          <div v-for="t in current.targets" :key="t.root" class="target">
             <span class="lbl">Terraform</span>
             <div class="tinfo">
               <span class="mono path">{{ t.root }}</span>
@@ -195,7 +238,7 @@ const hasTerraform = computed(() => (ws.ws?.config?.terraform?.roots ?? []).leng
                 · <RouterLink v-if="t.drift" class="warn" :to="{ path: '/graph', query: { root: t.root, env: t.env } }">{{ t.drift }} drifted</RouterLink><template v-else>no drift</template></span>
             </div>
             <span class="acts">
-              <DropMenu :label="`More actions for ${e.name}`" align="end">
+              <DropMenu :label="`More actions for ${current.name}`" align="end">
                 <template #button><span aria-hidden="true">⋯</span></template>
                 <button class="mi dg" type="button" role="menuitem" :disabled="t.running || starting === t.root + t.env" @click="destroying = t.root + t.env">Destroy…</button>
               </DropMenu>
@@ -207,13 +250,13 @@ const hasTerraform = computed(() => (ws.ws?.config?.terraform?.roots ?? []).leng
               <p class="small muted">Nothing is destroyed yet. You review the plan, then type <span class="mono">{{ t.env }}</span> to approve it.</p>
             </InlineConfirm>
           </div>
-          <div v-for="a in e.ansible" :key="'a' + a.project" class="target">
+          <div v-for="a in current.ansible" :key="'a' + a.project" class="target">
             <span class="lbl">Ansible</span>
             <div class="tinfo">
-              <RouterLink class="mono path" :to="{ path: '/inventory', query: { project: a.project, env: e.name } }">{{ a.project === '.' ? 'project root' : a.project }}</RouterLink>
+              <RouterLink class="mono path" :to="{ path: '/inventory', query: { project: a.project, env: current.name } }">{{ a.project === '.' ? 'project root' : a.project }}</RouterLink>
               <span class="small muted"><span :class="{ fail: a.down }">{{ hostLine(a) }}</span> · {{ a.last_run ? `${kindLabel(a.last_run)} #${a.last_run.id} ${a.last_run.status.replace('_', ' ')}` : 'no playbook runs yet' }}</span>
             </div>
-            <span class="acts"><button class="btn sm" type="button" @click="router.push({ path: '/inventory', query: { project: a.project, env: e.name, run: 'playbook' } })">Run playbook</button></span>
+            <span class="acts"><button class="btn sm" type="button" @click="router.push({ path: '/inventory', query: { project: a.project, env: current.name, run: 'playbook' } })">Run playbook</button></span>
           </div>
         </article>
       </section>
@@ -268,6 +311,8 @@ const hasTerraform = computed(() => (ws.ws?.config?.terraform?.roots ?? []).leng
 
 <style scoped>
 .page { padding: 24px 32px; display: flex; flex-direction: column; gap: 20px; overflow: auto; }
+/* sections with overflow: hidden would otherwise shrink to fit a short window, clipping their text */
+.page > * { flex-shrink: 0; }
 .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .head { display: flex; align-items: baseline; gap: 12px; }
 .search { flex: 1 1 260px; max-width: 440px; margin-left: auto; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--bg-card); color: var(--text-label); font: inherit; font-size: 14px; cursor: text; text-align: left; }
@@ -310,7 +355,19 @@ h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.01em; }
 h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .small { font-size: 13px; } .small2 { font-size: 14px; }
 .between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.envs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 16px; }
+.envs { display: flex; flex-direction: column; gap: 12px; }
+.pickrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+/* the button is DropMenu's own element, so its styles need :deep */
+.pickrow :deep(.picker) { display: inline-flex; align-items: center; gap: 10px; height: 40px; max-width: 100%; padding: 0 12px 0 14px; border: 1px solid var(--line-strong); border-radius: var(--r-control); background: var(--bg-button); color: var(--text); font: inherit; cursor: pointer; }
+.pickrow :deep(.picker:hover) { border-color: var(--line-hover); }
+.pname { font-weight: 700; font-size: 15px; }
+.chev { color: var(--text-muted); transition: transform .15s; }
+.pickrow :deep(.picker[aria-expanded='true']) .chev { transform: rotate(180deg); }
+.pickrow .mi.penv { gap: 4px; }
+.prow { display: flex; align-items: center; gap: 10px; }
+.elsewhere { margin: 0; min-width: 0; }
+.linkish { all: unset; cursor: pointer; color: var(--warn); text-decoration: underline; text-underline-offset: 2px; }
+.linkish:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* no overflow: hidden, or the ⋯ menu of a card's last row is cut off at its edge */
 .env { padding: 0; gap: 0; border-radius: var(--r-card); background: var(--bg-panel); }
 .ehead { padding: 14px 18px; border-bottom: 1px solid var(--line); }
@@ -351,5 +408,12 @@ th:last-child, td:last-child { padding-right: 18px; }
 .b { font-weight: 700; }
 td .ok { color: var(--ok); } td .issues { color: var(--warn); } td .failed { color: var(--fail); }
 td .running { color: var(--running); } td .idle, td .skipped { color: var(--text-label); }
-@media (max-width: 640px) { .page { padding: 20px 16px; } }
+@media (max-width: 640px) {
+  .page { padding: 20px 16px; }
+  .pickrow :deep(.picker) { width: 100%; }
+  .chev { margin-left: auto; }
+  /* the label takes its own line, so the path and status keep a readable width */
+  .target { grid-template-columns: minmax(0, 1fr) auto; }
+  .target .lbl { grid-column: 1 / -1; }
+}
 </style>

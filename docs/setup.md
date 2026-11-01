@@ -171,7 +171,7 @@ Once configured, the **Code** screen shows a file tree (IaC-only or all files, f
 
 ## Runs
 
-The Overview lists each environment with a **Plan** button; plans, approvals and applies are described in [runs](runs.md).
+The Overview shows one environment at a time, with a **Plan** button; pick another from its Environment dropdown or the sidebar. Plans, approvals and applies are described in [runs](runs.md).
 
 ## Development
 
