@@ -141,7 +141,7 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
       <div v-if="envs.length" class="envs">
         <span class="lbl">Environments</span>
         <span v-for="e in envs" :key="e" class="nav static">
-          <span class="dot" :class="waiting.has(e) ? 'pending' : envStatus.get(e) ?? 'unknown'" aria-hidden="true" />{{ e }}
+          <RouterLink class="envname" :to="{ path: '/', query: { env: e } }"><span class="dot" :class="waiting.has(e) ? 'pending' : envStatus.get(e) ?? 'unknown'" aria-hidden="true" />{{ e }}</RouterLink>
           <RouterLink v-if="waiting.has(e)" class="mono badge warn approve" :to="`/runs/${waiting.get(e)}/plan`" :aria-label="`Review the plan waiting for approval on ${e}`">approve</RouterLink>
           <span v-else-if="STATUS_TEXT[envStatus.get(e) ?? '']" class="mono badge" :class="envStatus.get(e) === 'failed' ? 'fail' : envStatus.get(e) === 'pending' || envStatus.get(e) === 'drift' ? 'warn' : 'run'">{{ STATUS_TEXT[envStatus.get(e) ?? ''] }}</span>
         </span>
@@ -191,6 +191,9 @@ const secretIssues = computed(() => checks.diagnostics.filter((d) => d.tool === 
 .nav:hover:not(.static) { background: var(--bg-hover); color: var(--text); }
 .nav.on { background: var(--bg-active); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .nav.static { padding: 6px 12px; cursor: default; }
+/* the name opens the Overview on that environment */
+.envname { display: inline-flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
+.envname:hover { color: var(--text); text-decoration: underline; }
 .badge { margin-left: auto; font-size: 13px; }
 .envs { display: flex; flex-direction: column; gap: 4px; }
 .envs .lbl { padding: 0 12px 4px; }

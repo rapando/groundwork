@@ -106,6 +106,8 @@ onMounted(() => {
 .top .name { font-weight: 700; color: var(--text); text-decoration: none; }
 .spacer { flex: 1; }
 .page { padding: 24px 32px; display: flex; flex-direction: column; gap: 20px; overflow: auto; max-width: 960px; }
+/* sections with overflow: hidden would otherwise shrink to fit a short window, clipping their text */
+.page > * { flex-shrink: 0; }
 .page.solo { margin: 0 auto; padding-top: 32px; }
 .phead { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .back { font-size: 14px; color: var(--text-muted); }

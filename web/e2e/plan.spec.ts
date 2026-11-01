@@ -1,4 +1,4 @@
-import { test, expect, Page, start, Instance } from './helpers'
+import { test, expect, Page, start, selectEnv, Instance } from './helpers'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -16,6 +16,7 @@ const card = (page: Page, env: string) => page.locator('article').filter({ has: 
 
 async function planAndReview(page: Page, env: string) {
   await page.goto(gw.url)
+  await selectEnv(page, env)
   await card(page, env).getByRole('button', { name: 'Plan' }).click()
   await expect(page.locator('.dhead .pill', { hasText: 'needs approval' })).toBeVisible({ timeout: 15_000 })
   await page.getByRole('link', { name: 'Review plan and approve →' }).click()
